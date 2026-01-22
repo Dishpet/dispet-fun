@@ -26,12 +26,7 @@ const CameraHandler = ({ isFullscreen }: { isFullscreen: boolean }) => {
 };
 
 // Import all textures
-// @ts-ignore
-const streetDesigns = import.meta.glob('/src/assets/design-collections/street/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
-// @ts-ignore
-const vintageDesigns = import.meta.glob('/src/assets/design-collections/vintage/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
-// @ts-ignore
-const logoDesigns = import.meta.glob('/src/assets/design-collections/logo/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
+
 
 // Colors aligned with Shop.tsx and logo filenames for auto-cycling
 const AUTO_CYCLE_COLORS = [
@@ -85,55 +80,7 @@ const DESIGN_COLOR_MAP: Record<string, string[]> = {
     'VINTAGE-BADGE.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
 };
 
-// Helper to sort designs numerically by filename
-const sortDesigns = (globResult: Record<string, unknown>) => {
-    return Object.keys(globResult)
-        .sort((a, b) => {
-            // Extract filename from path for proper numeric sorting
-            const nameA = a.split('/').pop() || a;
-            const nameB = b.split('/').pop() || b;
 
-            // Check if it's a badge image
-            const isBadgeA = nameA.toUpperCase().includes('BADGE');
-            const isBadgeB = nameB.toUpperCase().includes('BADGE');
-
-            // If one is a badge and the other isn't, put badge at the end
-            if (isBadgeA && !isBadgeB) return 1;
-            if (!isBadgeA && isBadgeB) return -1;
-
-            // Otherwise sort normally (numeric)
-            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-        })
-        .map(key => globResult[key] as string);
-};
-
-// Designs to hide from the shop (Synced with Shop.tsx)
-const HIDDEN_DESIGNS = [
-    'street-9.png',
-    'logo-4.png',
-    'logo-6.png',
-    'logo-8.png',
-    'logo-10.png',
-    'logo-11.png',
-    'KIDS-BADGE.png',
-    'STREET-BADGE.png',
-    'VINTAGE-BADGE.png',
-    'street-2.png',
-    'street-4.png',
-    'street-8.png'
-];
-
-const filterHiddenDesigns = (designs: string[]) => {
-    return designs.filter(designUrl => {
-        const filename = designUrl.split('/').pop()?.split('?')[0] || '';
-        return !HIDDEN_DESIGNS.includes(filename);
-    });
-};
-
-const allDesigns = [
-    ...filterHiddenDesigns(sortDesigns(streetDesigns)),
-    ...filterHiddenDesigns(sortDesigns(logoDesigns))
-];
 
 
 
@@ -262,6 +209,8 @@ interface ProductModelProps {
     textYOffset?: number;
     colorToLogoMap?: Record<string, string>;
     hasUserInteracted?: boolean;
+    designColorMap?: Record<string, string[]>;
+    urlToFilename?: Record<string, string>;
 }
 
 // Helper for bottle specific logic
@@ -293,7 +242,9 @@ const ProductModel = ({
     isLoaded = true,
     onLoadComplete,
     colorToLogoMap,
-    hasUserInteracted = false
+    hasUserInteracted = false,
+    designColorMap,
+    urlToFilename
 }: ProductModelProps & { isLoaded?: boolean; onLoadComplete?: () => void }) => {
     const groupRef = useRef<THREE.Group>(null);
     const [hovered, setHovered] = useState(false);
@@ -312,7 +263,7 @@ const ProductModel = ({
 
     // State
     const [currentDesignIndex, setCurrentDesignIndex] = useState(() =>
-        enableDesignCycle ? Math.floor(Math.random() * (cycleDesignsFront?.length || allDesigns.length || 10)) : 0
+        enableDesignCycle ? Math.floor(Math.random() * (cycleDesignsFront?.length || 0)) : 0
     );
     const designIndexRef = useRef(currentDesignIndex);
     useEffect(() => { designIndexRef.current = currentDesignIndex; }, [currentDesignIndex]);
@@ -804,7 +755,7 @@ const ProductModel = ({
     // isCycling is defined via useMemo above
 
     // Front Cycle
-    const frontCycleList = cycleDesignsFront || allDesigns;
+    const frontCycleList = cycleDesignsFront || [];
     const frontCycleUrl = isCycling ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
 
     // Back Cycle
@@ -964,8 +915,8 @@ const ProductModel = ({
                 if (cycleDesignsFront && !colorToLogoMap) {
                     const url = cycleDesignsFront[nextIndex % cycleDesignsFront.length];
                     if (url) {
-                        const filename = url.split('/').pop()?.split('?')[0] || '';
-                        const mapped = DESIGN_COLOR_MAP[filename];
+                        const filename = urlToFilename?.[url] || url.split('/').pop()?.split('?')[0] || '';
+                        const mapped = designColorMap?.[filename] || DESIGN_COLOR_MAP?.[filename];
                         if (mapped && mapped.length > 0) {
                             // Intersect
                             const currentList = Array.from(validColorsSet);
@@ -978,8 +929,8 @@ const ProductModel = ({
                 if (cycleDesignsBack) {
                     const url = cycleDesignsBack[nextIndex % cycleDesignsBack.length];
                     if (url) {
-                        const filename = url.split('/').pop()?.split('?')[0] || '';
-                        const mapped = DESIGN_COLOR_MAP[filename];
+                        const filename = urlToFilename?.[url] || url.split('/').pop()?.split('?')[0] || '';
+                        const mapped = designColorMap?.[filename] || DESIGN_COLOR_MAP?.[filename];
                         if (mapped && mapped.length > 0) {
                             // Intersect
                             const currentList = Array.from(validColorsSet);
@@ -1352,7 +1303,7 @@ const ProductModel = ({
                 if (fadeState === 'fade-out') {
                     fadeFactor = Math.max(0, frontMaterialsRef.current[0].opacity - clampedDelta * 2);
                     if (fadeFactor === 0) {
-                        const cycleLen = (cycleDesignsFront || allDesigns).length;
+                        const cycleLen = (cycleDesignsFront || []).length;
                         const nextIndex = (currentDesignIndex + 1) % cycleLen;
                         setCurrentDesignIndex(nextIndex);
                         setFadeState('fade-in');
@@ -1448,9 +1399,30 @@ interface ShopSceneProps {
     products?: any; // Start receiving product data
     colorToLogoMap?: Record<string, string>;
     hasUserInteracted?: boolean;
+    logoList?: string[];
+    hoodieBackList?: string[];
+    designColorMap?: Record<string, string[]>;
+    urlToFilename?: Record<string, string>;
 }
 
-export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, selectedColor, designs, selectedDesign, activeZone, mode = 'customizing', isFullscreen = false, products: productData = {}, colorToLogoMap, hasUserInteracted = false }: ShopSceneProps) => {
+export const ShopScene = ({
+    onSelectProduct,
+    selectedProduct,
+    isCustomizing,
+    selectedColor,
+    designs,
+    selectedDesign,
+    activeZone,
+    mode = 'customizing',
+    isFullscreen = false,
+    products: productData = {},
+    colorToLogoMap,
+    hasUserInteracted = false,
+    logoList,
+    hoodieBackList,
+    designColorMap,
+    urlToFilename
+}: ShopSceneProps) => {
 
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
@@ -1619,11 +1591,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                     )}
 
                     {(() => {
-                        const logoList = filterHiddenDesigns(Object.values(logoDesigns as Record<string, string>));
-                        const hoodieBackList = filterHiddenDesigns([
-                            ...Object.values(streetDesigns as Record<string, string>),
-                            ...Object.values(vintageDesigns as Record<string, string>)
-                        ]);
+                        const cycleLogoList = logoList || [];
+                        const cycleBackList = hoodieBackList || [];
 
                         return (
                             <group position={[0, -1.0, 0]}>
@@ -1642,7 +1611,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={false}
-                                                cycleDesignsFront={logoList}
+                                                cycleDesignsFront={cycleLogoList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -1656,6 +1625,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 isLoaded={isModelLoaded('cap')}
                                                 onLoadComplete={() => handleModelLoaded('cap')}
                                                 hasUserInteracted={hasUserInteracted}
+                                                designColorMap={designColorMap}
+                                                urlToFilename={urlToFilename}
                                             />
                                         );
                                     })()}
@@ -1676,7 +1647,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={false}
-                                                cycleDesignsFront={logoList}
+                                                cycleDesignsFront={cycleLogoList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#ffffff"
@@ -1689,6 +1660,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 isLoaded={isModelLoaded('bottle')}
                                                 onLoadComplete={() => handleModelLoaded('bottle')}
                                                 hasUserInteracted={hasUserInteracted}
+                                                designColorMap={designColorMap}
+                                                urlToFilename={urlToFilename}
                                             />
                                         );
                                     })()}
@@ -1709,7 +1682,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
-                                                cycleDesignsFront={logoList}
+                                                cycleDesignsFront={cycleLogoList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -1723,6 +1696,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onLoadComplete={() => handleModelLoaded('tshirt')}
                                                 colorToLogoMap={colorToLogoMap}
                                                 hasUserInteracted={hasUserInteracted}
+                                                designColorMap={designColorMap}
+                                                urlToFilename={urlToFilename}
                                             />
                                         );
                                     })()}
@@ -1743,8 +1718,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
-                                                cycleDesignsFront={logoList}
-                                                cycleDesignsBack={hoodieBackList}
+                                                cycleDesignsFront={cycleLogoList}
+                                                cycleDesignsBack={cycleBackList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -1758,6 +1733,8 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 onLoadComplete={() => handleModelLoaded('hoodie')}
                                                 colorToLogoMap={colorToLogoMap}
                                                 hasUserInteracted={hasUserInteracted}
+                                                designColorMap={designColorMap}
+                                                urlToFilename={urlToFilename}
                                             />
                                         );
                                     })()}

@@ -532,6 +532,11 @@ const Shop = () => {
                             products={products}
                             colorToLogoMap={COLOR_TO_LOGO_MAP}
                             hasUserInteracted={hasUserInteracted}
+                            logoList={DESIGN_COLLECTIONS['Logotip']}
+                            hoodieBackList={[
+                                ...DESIGN_COLLECTIONS['Ulična Moda'],
+                                ...DESIGN_COLLECTIONS['Vintage Stil']
+                            ]}
                         />
 
                     </div>
