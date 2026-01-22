@@ -70,7 +70,10 @@ const HIDDEN_DESIGNS = [
     'logo-11.png',
     'KIDS-BADGE.png',
     'STREET-BADGE.png',
-    'VINTAGE-BADGE.png'
+    'VINTAGE-BADGE.png',
+    'street-2.png',
+    'street-4.png',
+    'street-8.png'
 ];
 
 const filterHiddenDesigns = (designs: string[]) => {
@@ -225,6 +228,7 @@ const Shop = () => {
 
     // Customization State
     const [selectedColor, setSelectedColor] = useState<string>('#1a1a1a');
+    const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
     // Dual-zone state
     const [designs, setDesigns] = useState<{ front: string; back: string }>({
@@ -236,8 +240,8 @@ const Shop = () => {
     const [selectedSize, setSelectedSize] = useState<string>('L');
 
     // UI States
-    // Derive initial viewMode from URL if possible, but state sync in useEffect is safer for hydration
-    const [viewMode, setViewMode] = useState<'showcase' | 'customizing'>('customizing');
+    // Default to showcase mode - cycling should happen on initial load
+    const [viewMode, setViewMode] = useState<'showcase' | 'customizing'>('showcase');
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false); // Kept for potential mobile use
 
@@ -252,6 +256,7 @@ const Shop = () => {
     // Sync ViewMode and Product from URL
     useEffect(() => {
         const mode = searchParams.get('mode');
+        console.log('URL mode param:', mode, '-> setting viewMode to:', mode === 'customizing' ? 'customizing' : 'showcase');
         if (mode === 'customizing') {
             if (viewMode !== 'customizing') setViewMode('customizing');
         } else {
@@ -410,6 +415,7 @@ const Shop = () => {
     const handleProductSelect = (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
         setSelectedProduct(product);
         setIsCustomizing(false); // Reset interaction state
+        setHasUserInteracted(false);
 
         setSearchParams(prev => {
             const newParams = new URLSearchParams(prev);
@@ -422,6 +428,7 @@ const Shop = () => {
 
     const handleInteraction = () => {
         if (!isCustomizing) setIsCustomizing(true);
+        setHasUserInteracted(true);
     };
 
     const handleAddToCart = () => {
@@ -524,6 +531,7 @@ const Shop = () => {
                             isFullscreen={isFullScreen}
                             products={products}
                             colorToLogoMap={COLOR_TO_LOGO_MAP}
+                            hasUserInteracted={hasUserInteracted}
                         />
 
                     </div>

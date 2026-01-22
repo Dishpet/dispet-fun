@@ -46,6 +46,45 @@ const AUTO_CYCLE_COLORS = [
     '#a1d7c0'  // Mint
 ];
 
+// Design to Color Availability Map
+// Maps design filename to array of allowed color hex codes
+const DESIGN_COLOR_MAP: Record<string, string[]> = {
+    // Street Collection
+    'street-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'street-2.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'street-3.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
+    'street-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
+    'street-5.png': ['#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Black
+    'street-6.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'street-7.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#a1d7c0'], // No Grey, Pink
+    'street-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'street-9.png': [], // No colors available
+    'street-10.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
+
+    // Vintage Collection
+    'vintage-1.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
+    'vintage-2.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
+    'vintage-3.png': ['#231f20'], // Only Black
+    'vintage-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'vintage-5.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
+
+    // Logo Collection
+    'logo-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-3.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
+    'logo-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
+    'logo-5.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-6.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
+    'logo-7.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-9.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-10.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-11.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'logo-12.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
+    'KIDS-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'STREET-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+    'VINTAGE-BADGE.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
+};
+
 // Helper to sort designs numerically by filename
 const sortDesigns = (globResult: Record<string, unknown>) => {
     return Object.keys(globResult)
@@ -68,9 +107,32 @@ const sortDesigns = (globResult: Record<string, unknown>) => {
         .map(key => globResult[key] as string);
 };
 
+// Designs to hide from the shop (Synced with Shop.tsx)
+const HIDDEN_DESIGNS = [
+    'street-9.png',
+    'logo-4.png',
+    'logo-6.png',
+    'logo-8.png',
+    'logo-10.png',
+    'logo-11.png',
+    'KIDS-BADGE.png',
+    'STREET-BADGE.png',
+    'VINTAGE-BADGE.png',
+    'street-2.png',
+    'street-4.png',
+    'street-8.png'
+];
+
+const filterHiddenDesigns = (designs: string[]) => {
+    return designs.filter(designUrl => {
+        const filename = designUrl.split('/').pop()?.split('?')[0] || '';
+        return !HIDDEN_DESIGNS.includes(filename);
+    });
+};
+
 const allDesigns = [
-    ...sortDesigns(streetDesigns),
-    ...sortDesigns(logoDesigns)
+    ...filterHiddenDesigns(sortDesigns(streetDesigns)),
+    ...filterHiddenDesigns(sortDesigns(logoDesigns))
 ];
 
 
@@ -199,6 +261,7 @@ interface ProductModelProps {
     cycleDesignsBack?: string[];
     textYOffset?: number;
     colorToLogoMap?: Record<string, string>;
+    hasUserInteracted?: boolean;
 }
 
 // Helper for bottle specific logic
@@ -229,7 +292,8 @@ const ProductModel = ({
     textYOffset = 1.2,
     isLoaded = true,
     onLoadComplete,
-    colorToLogoMap
+    colorToLogoMap,
+    hasUserInteracted = false
 }: ProductModelProps & { isLoaded?: boolean; onLoadComplete?: () => void }) => {
     const groupRef = useRef<THREE.Group>(null);
     const [hovered, setHovered] = useState(false);
@@ -250,7 +314,17 @@ const ProductModel = ({
     const [currentDesignIndex, setCurrentDesignIndex] = useState(() =>
         enableDesignCycle ? Math.floor(Math.random() * (cycleDesignsFront?.length || allDesigns.length || 10)) : 0
     );
+    const designIndexRef = useRef(currentDesignIndex);
+    useEffect(() => { designIndexRef.current = currentDesignIndex; }, [currentDesignIndex]);
     const [fadeState, setFadeState] = useState<'display' | 'fade-out' | 'fade-in'>('display');
+
+    // Single source of truth for cycling state
+    const isCycling = useMemo(() => {
+        if (!enableDesignCycle) return false;
+        if (mode === 'showcase') return true;
+        if (isActive && !hasUserInteracted) return true;
+        return false;
+    }, [enableDesignCycle, mode, isActive, hasUserInteracted]);
 
     // Lerp Refs
     const currentPosition = useRef(new THREE.Vector3(...position));
@@ -267,7 +341,9 @@ const ProductModel = ({
         label,
         activeZone,
         mode,
-        designTransitionProgress: 0
+        designTransitionProgress: 0,
+        hasUserInteracted,
+        isCycling: false
     });
     const bodyMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
 
@@ -276,11 +352,14 @@ const ProductModel = ({
     const backMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
 
     const targetColorRef = useRef(new THREE.Color(
-        enableColorCycle ? SHARED_COLORS[Math.floor(Math.random() * SHARED_COLORS.length)] : initialColor
+        enableColorCycle ? AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)] : initialColor
     ));
 
     // Holographic Swipe Transition State (only for Hoodie)
-    const previousColorRef = useRef(new THREE.Color(initialColor));
+    // Initialize to same color as target to prevent black flash on first transition
+    const previousColorRef = useRef(new THREE.Color(
+        enableColorCycle ? AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)] : initialColor
+    ));
     const colorTransitionProgress = useRef(1); // 0 = old color, 1 = new color (complete)
     const isColorTransitioning = useRef(false);
     const holoShaderMaterialsRef = useRef<THREE.ShaderMaterial[]>([]);
@@ -344,7 +423,9 @@ const ProductModel = ({
                     if (m.material) {
                         const mat = m.material as THREE.MeshStandardMaterial;
                         const newMat = mat.clone();
-                        newMat.color.set(initialColor);
+                        // Use random color for cycling products, initialColor for others
+                        const startColor = enableColorCycle ? targetColorRef.current : new THREE.Color(initialColor);
+                        newMat.color.copy(startColor);
 
                         // For products with Color Cycle (Hoodie, T-shirt): Inject holographic transition
                         if (enableColorCycle) {
@@ -352,13 +433,16 @@ const ProductModel = ({
                             newMat.map = null;
 
                             // Add custom uniforms for the transition
+                            // Extend bounds slightly beyond model to prevent edge artifacts
+                            const extendedHeight = modelHeight * 1.2;
+                            const extendedMinY = minY - (modelHeight * 0.1);
                             newMat.userData.uniforms = {
                                 uRevealProgress: { value: 1.0 },
-                                uOldColor: { value: new THREE.Color(initialColor) },
-                                uNewColor: { value: new THREE.Color(initialColor) },
+                                uOldColor: { value: new THREE.Color(targetColorRef.current) },
+                                uNewColor: { value: new THREE.Color(targetColorRef.current) },
                                 uTime: { value: 0 },
-                                uModelHeight: { value: modelHeight },
-                                uModelMinY: { value: minY }
+                                uModelHeight: { value: extendedHeight },
+                                uModelMinY: { value: extendedMinY }
                             };
 
                             // Inject shader code into MeshStandardMaterial
@@ -627,7 +711,7 @@ const ProductModel = ({
 
     // Sync target color with prop - trigger holographic transition for hoodie
     useEffect(() => {
-        if (color) {
+        if (color && (hasUserInteracted || !enableColorCycle)) {
             const newColor = new THREE.Color(color);
 
             // For products with color cycle: Trigger holographic swipe transition
@@ -662,7 +746,7 @@ const ProductModel = ({
                 }
             }
         }
-    }, [color, isCustomizing, label]);
+    }, [color, isCustomizing, label, hasUserInteracted, enableColorCycle]);
 
     // Track previous designs to detect changes
     const previousDesignsRef = useRef<{ front?: string; back?: string }>({});
@@ -717,8 +801,7 @@ const ProductModel = ({
     // Load textures for Front and Back
     // Logic update: Only show cycle design if in showcase mode OR if this product is active.
     // Unselected products in customizing mode should have NO design.
-    // Resolve Cycle Designs
-    const isCycling = enableDesignCycle && (mode === 'showcase' || isActive);
+    // isCycling is defined via useMemo above
 
     // Front Cycle
     const frontCycleList = cycleDesignsFront || allDesigns;
@@ -743,15 +826,15 @@ const ProductModel = ({
     }, [isCustomizing, label, color, colorToLogoMap]);
 
     // Resolve Front URL: Strict pairing for Hoodie
-    const strictHoodieFront = (label === 'HOODICA' && isCustomizing && isActive && colorToLogoMap) ? colorToLogoMap[color] : null;
+    const strictHoodieFront = (label === 'HOODICA' && isCustomizing && isActive && colorToLogoMap && hasUserInteracted) ? colorToLogoMap[color] : null;
 
     const frontUrl = (isCustomizing && !isActive) ? null :
-        (strictHoodieFront || ((isCustomizing && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
+        (strictHoodieFront || ((isCustomizing && hasUserInteracted && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
 
     // Resolve Back URL: Custom Back OR Cycle
     // Update: If customizing but NOT active (background), show NO design.
     const backUrl = (isCustomizing && !isActive) ? null :
-        ((isCustomizing && designs?.back) ? designs.back : backCycleUrl);
+        ((isCustomizing && hasUserInteracted && designs?.back) ? designs.back : backCycleUrl);
 
     const safeFrontUrl = frontUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
     const safeBackUrl = backUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -862,8 +945,7 @@ const ProductModel = ({
 
     // Combined Cycle Trigger Logic: Changes BOTH color AND design together
     useEffect(() => {
-        const shouldCycle = enableDesignCycle && (mode === 'showcase' || (isActive && !isCustomizing));
-        if (!shouldCycle) return;
+        if (!isCycling) return;
 
         const interval = setInterval(() => {
             // Change design index
@@ -874,12 +956,62 @@ const ProductModel = ({
             // Only trigger Color Swipe if enableColorCycle is true
 
             if (enableColorCycle) {
-                // Pick a new random color (different from current)
+                // Universal Color Validation Logic
+                const nextIndex = (designIndexRef.current + 1);
+                let validColorsSet = new Set(AUTO_CYCLE_COLORS);
+
+                // 1. Check Front Design Constraint (if not overridden by Color->Logo map)
+                if (cycleDesignsFront && !colorToLogoMap) {
+                    const url = cycleDesignsFront[nextIndex % cycleDesignsFront.length];
+                    if (url) {
+                        const filename = url.split('/').pop()?.split('?')[0] || '';
+                        const mapped = DESIGN_COLOR_MAP[filename];
+                        if (mapped && mapped.length > 0) {
+                            // Intersect
+                            const currentList = Array.from(validColorsSet);
+                            validColorsSet = new Set(mapped.filter(c => currentList.includes(c)));
+                        }
+                    }
+                }
+
+                // 2. Check Back Design Constraint
+                if (cycleDesignsBack) {
+                    const url = cycleDesignsBack[nextIndex % cycleDesignsBack.length];
+                    if (url) {
+                        const filename = url.split('/').pop()?.split('?')[0] || '';
+                        const mapped = DESIGN_COLOR_MAP[filename];
+                        if (mapped && mapped.length > 0) {
+                            // Intersect
+                            const currentList = Array.from(validColorsSet);
+                            validColorsSet = new Set(mapped.filter(c => currentList.includes(c)));
+                        }
+                    }
+                }
+
+                // 3. Check Color->Logo Map Constraint (Hoodie Front)
+                if (colorToLogoMap) {
+                    const keys = Object.keys(colorToLogoMap);
+                    if (keys.length > 0) {
+                        const currentList = Array.from(validColorsSet);
+                        validColorsSet = new Set(keys.filter(c => currentList.includes(c)));
+                    }
+                }
+
+                let allowedColors = Array.from(validColorsSet);
+                // Fallback to avoid crash if intersection is empty
+                if (allowedColors.length === 0) {
+                    allowedColors = AUTO_CYCLE_COLORS;
+                }
+
+                // Pick a new random color from Allowed List
                 const currentColorHex = targetColorRef.current.getHexString();
-                let newColor = AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)];
-                // Ensure different color
-                while (newColor.replace('#', '') === currentColorHex && AUTO_CYCLE_COLORS.length > 1) {
-                    newColor = AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)];
+                let newColor = allowedColors[Math.floor(Math.random() * allowedColors.length)];
+
+                // Ensure different color (retry logic)
+                let attempts = 0;
+                while (newColor.replace('#', '') === currentColorHex && allowedColors.length > 1 && attempts < 5) {
+                    newColor = allowedColors[Math.floor(Math.random() * allowedColors.length)];
+                    attempts++;
                 }
 
                 // Trigger COLOR swipe transition
@@ -900,12 +1032,9 @@ const ProductModel = ({
                 // Update color matched front design if map exists
                 if (colorToLogoMap) {
                     const logo = colorToLogoMap[newColor];
-                    // console.log('Auto-Cycle:', { product: label, newColor, foundLogo: !!logo, mapSize: Object.keys(colorToLogoMap).length });
                     if (logo) {
                         setColorMatchedFrontDesign(logo);
                     } else {
-                        // Fallback to cycle list if no match found (or keep previous?)
-                        // Better to null it so it uses cycle list if no match
                         setColorMatchedFrontDesign(null);
                     }
                 }
@@ -915,6 +1044,10 @@ const ProductModel = ({
             designTransitionProgress.current = 0;
             isDesignTransitioning.current = true;
             designTransitionTimeRef.current = 0;
+
+            // Enable glitch for both zones during auto-cycle
+            isGlitchingFront.current = true;
+            isGlitchingBack.current = true;
 
             frontMaterialsRef.current.forEach(mat => {
                 if (mat.userData?.uniforms) {
@@ -931,7 +1064,7 @@ const ProductModel = ({
         }, 4000); // 4 seconds between cycles
 
         return () => clearInterval(interval);
-    }, [enableDesignCycle, isCustomizing, isActive, mode, label, colorToLogoMap]);
+    }, [isCycling]); // ONLY depend on isCycling - other values accessed via refs
 
     // Update State Ref on every render to ensure useFrame has latest values
     stateRef.current = {
@@ -942,7 +1075,9 @@ const ProductModel = ({
         label,
         activeZone,
         mode,
-        designTransitionProgress: designTransitionProgress.current
+        designTransitionProgress: designTransitionProgress.current,
+        hasUserInteracted,
+        isCycling
     };
 
     // Animation Loop
@@ -1210,7 +1345,8 @@ const ProductModel = ({
         // 4. Fade Logic (Only applies to FRONT materials for now if cycling)
         if (frontMaterialsRef.current.length > 0) {
             let fadeFactor = 1;
-            const shouldCycle = enableDesignCycle && (mode === 'showcase' || (isActive && !isCustomizing));
+            // Use stateRef.isCycling as single source of truth
+            const shouldCycle = stateRef.current.isCycling;
 
             if (shouldCycle) {
                 if (fadeState === 'fade-out') {
@@ -1311,9 +1447,10 @@ interface ShopSceneProps {
     isFullscreen?: boolean;
     products?: any; // Start receiving product data
     colorToLogoMap?: Record<string, string>;
+    hasUserInteracted?: boolean;
 }
 
-export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, selectedColor, designs, selectedDesign, activeZone, mode = 'customizing', isFullscreen = false, products: productData = {}, colorToLogoMap }: ShopSceneProps) => {
+export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, selectedColor, designs, selectedDesign, activeZone, mode = 'customizing', isFullscreen = false, products: productData = {}, colorToLogoMap, hasUserInteracted = false }: ShopSceneProps) => {
 
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
@@ -1482,11 +1619,11 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                     )}
 
                     {(() => {
-                        const logoList = Object.values(logoDesigns as Record<string, string>);
-                        const hoodieBackList = [
+                        const logoList = filterHiddenDesigns(Object.values(logoDesigns as Record<string, string>));
+                        const hoodieBackList = filterHiddenDesigns([
                             ...Object.values(streetDesigns as Record<string, string>),
                             ...Object.values(vintageDesigns as Record<string, string>)
-                        ];
+                        ]);
 
                         return (
                             <group position={[0, -1.0, 0]}>
@@ -1518,6 +1655,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 textYOffset={0.4}
                                                 isLoaded={isModelLoaded('cap')}
                                                 onLoadComplete={() => handleModelLoaded('cap')}
+                                                hasUserInteracted={hasUserInteracted}
                                             />
                                         );
                                     })()}
@@ -1550,6 +1688,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 isFullscreen={isFullscreen}
                                                 isLoaded={isModelLoaded('bottle')}
                                                 onLoadComplete={() => handleModelLoaded('bottle')}
+                                                hasUserInteracted={hasUserInteracted}
                                             />
                                         );
                                     })()}
@@ -1583,6 +1722,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 isLoaded={isModelLoaded('tshirt')}
                                                 onLoadComplete={() => handleModelLoaded('tshirt')}
                                                 colorToLogoMap={colorToLogoMap}
+                                                hasUserInteracted={hasUserInteracted}
                                             />
                                         );
                                     })()}
@@ -1617,6 +1757,7 @@ export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, sel
                                                 isLoaded={isModelLoaded('hoodie')}
                                                 onLoadComplete={() => handleModelLoaded('hoodie')}
                                                 colorToLogoMap={colorToLogoMap}
+                                                hasUserInteracted={hasUserInteracted}
                                             />
                                         );
                                     })()}

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Hero } from "@/components/Hero";
 import { Partners } from "@/components/Partners";
 import { Gallery } from "@/components/Gallery";
@@ -12,10 +12,18 @@ import cloudsTopVideo from "@/assets/clouds-top-video.svg";
 import cloudsBottomVideo from "@/assets/clouds-bottom-video.svg";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { AboutHeader, AboutVideoSlider } from "@/components/AboutSection";
+import { AboutHeader, AboutVideoSlider, AboutDescription, features } from "@/components/AboutSection";
 
 const Index = () => {
   const generatorRef = useRef<HTMLDivElement>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % features.length);
+    }, 9000);
+    return () => clearInterval(timer);
+  }, []);
 
   const scrollToGenerator = () => {
     generatorRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,7 +56,10 @@ const Index = () => {
         </video>
 
         {/* Text Overlay Slider */}
-        <AboutVideoSlider />
+        <AboutVideoSlider
+          currentIndex={currentIndex}
+          onDotClick={setCurrentIndex}
+        />
 
         {/* Bottom Clouds Overlay */}
         <img
@@ -57,6 +68,9 @@ const Index = () => {
           className="absolute bottom-0 left-0 min-w-[101%] w-[101%] -ml-[1px] z-30 -mb-1"
         />
       </div>
+
+      {/* Description Slider (Below Video) */}
+      <AboutDescription currentIndex={currentIndex} />
 
       {/* Shop CTA Section */}
       <div ref={generatorRef} className="w-full bg-white relative z-40">
