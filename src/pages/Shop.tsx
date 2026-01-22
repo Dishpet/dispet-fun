@@ -39,26 +39,7 @@ Object.keys(colorCodedLogos).forEach(path => {
     }
 });
 
-const sortDesigns = (globResult: Record<string, unknown>) => {
-    return Object.keys(globResult)
-        .sort((a, b) => {
-            // Extract filename from path for proper numeric sorting
-            const nameA = a.split('/').pop() || a;
-            const nameB = b.split('/').pop() || b;
-
-            // Check if it's a badge image
-            const isBadgeA = nameA.toUpperCase().includes('BADGE');
-            const isBadgeB = nameB.toUpperCase().includes('BADGE');
-
-            // If one is a badge and the other isn't, put badge at the end
-            if (isBadgeA && !isBadgeB) return 1;
-            if (!isBadgeA && isBadgeB) return -1;
-
-            // Otherwise sort normally (numeric)
-            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-        })
-        .map(key => globResult[key] as string);
-};
+const URL_TO_FILENAME: Record<string, string> = {};
 
 // Designs to hide from the shop
 const HIDDEN_DESIGNS = [
@@ -76,17 +57,36 @@ const HIDDEN_DESIGNS = [
     'street-8.png'
 ];
 
-const filterHiddenDesigns = (designs: string[]) => {
-    return designs.filter(designUrl => {
-        const filename = designUrl.split('/').pop()?.split('?')[0] || '';
-        return !HIDDEN_DESIGNS.includes(filename);
+// Helper to populate the map and filter/sort
+const processDesigns = (globResult: Record<string, unknown>) => {
+    // Populate URL map first
+    Object.keys(globResult).forEach(path => {
+        const url = globResult[path] as string;
+        const filename = path.split('/').pop() || '';
+        if (filename) URL_TO_FILENAME[url] = filename;
     });
+
+    return Object.keys(globResult)
+        .filter(path => {
+            const filename = path.split('/').pop() || '';
+            return !HIDDEN_DESIGNS.includes(filename);
+        })
+        .sort((a, b) => {
+            const nameA = a.split('/').pop() || a;
+            const nameB = b.split('/').pop() || b;
+            const isBadgeA = nameA.toUpperCase().includes('BADGE');
+            const isBadgeB = nameB.toUpperCase().includes('BADGE');
+            if (isBadgeA && !isBadgeB) return 1;
+            if (!isBadgeA && isBadgeB) return -1;
+            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+        })
+        .map(key => globResult[key] as string);
 };
 
 const DESIGN_COLLECTIONS: Record<string, string[]> = {
-    'Ulična Moda': filterHiddenDesigns(sortDesigns(streetDesigns)),
-    'Vintage Stil': filterHiddenDesigns(sortDesigns(vintageDesigns)),
-    'Logotip': filterHiddenDesigns(sortDesigns(logoDesigns)),
+    'Ulična Moda': processDesigns(streetDesigns),
+    'Vintage Stil': processDesigns(vintageDesigns),
+    'Logotip': processDesigns(logoDesigns),
 };
 
 // Flatten for initial random selection
@@ -155,8 +155,8 @@ const DESIGN_COLOR_MAP: Record<string, string[]> = {
 const getAvailableColorsForDesign = (designUrl: string | null): typeof SHARED_COLORS => {
     if (!designUrl) return SHARED_COLORS;
 
-    // Extract filename from URL (handles both full paths and imported URLs)
-    const filename = designUrl.split('/').pop()?.split('?')[0] || '';
+    // Use our map to get the original filename from the hashed URL
+    const filename = URL_TO_FILENAME[designUrl] || designUrl.split('/').pop()?.split('?')[0] || '';
 
     // Check if we have a mapping for this design
     const allowedHexCodes = DESIGN_COLOR_MAP[filename];
