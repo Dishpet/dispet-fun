@@ -114,16 +114,12 @@ export const AboutCards = () => (
     </section>
 );
 
-export const AboutVideoSlider = () => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+interface AboutVideoSliderProps {
+    currentIndex: number;
+    onDotClick: (index: number) => void;
+}
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % features.length);
-        }, 9000);
-        return () => clearInterval(timer);
-    }, []);
-
+export const AboutVideoSlider = ({ currentIndex, onDotClick }: AboutVideoSliderProps) => {
     return (
         <>
             {/* Dark Overlay */}
@@ -149,16 +145,6 @@ export const AboutVideoSlider = () => {
                         >
                             {features[currentIndex].title}
                         </motion.h3>
-
-                        {/* Paragraph - Bottom Right */}
-                        <motion.p
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                            className="absolute bottom-8 left-4 right-4 md:bottom-64 md:left-12 md:right-12 text-xs md:text-2xl font-medium text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] leading-tight text-right"
-                        >
-                            {features[currentIndex].description}
-                        </motion.p>
                     </motion.div>
                 </AnimatePresence>
 
@@ -167,7 +153,7 @@ export const AboutVideoSlider = () => {
                     {features.map((_, idx) => (
                         <button
                             key={idx}
-                            onClick={() => setCurrentIndex(idx)}
+                            onClick={() => onDotClick(idx)}
                             className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${idx === currentIndex
                                 ? "bg-[#43bfe6] scale-125"
                                 : "bg-white/50 hover:bg-white/80"
@@ -178,6 +164,27 @@ export const AboutVideoSlider = () => {
                 </div>
             </div>
         </>
+    );
+};
+
+export const AboutDescription = ({ currentIndex }: { currentIndex: number }) => {
+    return (
+        <div className="relative z-40 bg-white -mt-2 pb-8">
+            <div className="container mx-auto px-4">
+                <AnimatePresence mode="wait">
+                    <motion.p
+                        key={currentIndex}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-center text-lg md:text-2xl font-medium text-gray-600 leading-relaxed max-w-4xl mx-auto drop-shadow-sm"
+                    >
+                        {features[currentIndex].description}
+                    </motion.p>
+                </AnimatePresence>
+            </div>
+        </div>
     );
 };
 
