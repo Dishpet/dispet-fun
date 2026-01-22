@@ -1,0 +1,1631 @@
+import React, { useRef, useState, useEffect, Suspense, useMemo, useCallback } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+
+import { useGLTF, useTexture, Text, Environment, Float, OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
+
+// Model loading order: smallest to largest file size
+const MODEL_LOAD_ORDER: { id: 'cap' | 'bottle' | 'tshirt' | 'hoodie'; url: string }[] = [
+    { id: 'cap', url: '/models/cap_webshop.glb' },
+    { id: 'bottle', url: '/models/bottle-webshop.glb' },
+    { id: 'tshirt', url: '/models/tshirt_webshop.glb' },
+    { id: 'hoodie', url: '/models/hoodie-webshop.glb' },
+];
+
+const CameraHandler = ({ isFullscreen }: { isFullscreen: boolean }) => {
+    const { camera } = useThree();
+
+    useEffect(() => {
+        if (!isFullscreen) {
+            camera.position.set(0, 0, 10);
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+        }
+    }, [isFullscreen, camera]);
+    return null;
+};
+
+// Import all textures
+// @ts-ignore
+const streetDesigns = import.meta.glob('/src/assets/design-collections/street/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
+// @ts-ignore
+const vintageDesigns = import.meta.glob('/src/assets/design-collections/vintage/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
+// @ts-ignore
+const logoDesigns = import.meta.glob('/src/assets/design-collections/logo/*.{png,jpg,jpeg,webp}', { eager: true, as: 'url' });
+
+// Colors aligned with Shop.tsx and logo filenames for auto-cycling
+const AUTO_CYCLE_COLORS = [
+    '#231f20', // Black
+    '#d1d5db', // Grey
+    '#00ab98', // Teal
+    '#00aeef', // Cyan
+    '#387bbf', // Blue
+    '#8358a4', // Purple
+    '#ffffff', // White
+    '#e78fab', // Pink
+    '#a1d7c0'  // Mint
+];
+
+// Helper to sort designs numerically by filename
+const sortDesigns = (globResult: Record<string, unknown>) => {
+    return Object.keys(globResult)
+        .sort((a, b) => {
+            // Extract filename from path for proper numeric sorting
+            const nameA = a.split('/').pop() || a;
+            const nameB = b.split('/').pop() || b;
+
+            // Check if it's a badge image
+            const isBadgeA = nameA.toUpperCase().includes('BADGE');
+            const isBadgeB = nameB.toUpperCase().includes('BADGE');
+
+            // If one is a badge and the other isn't, put badge at the end
+            if (isBadgeA && !isBadgeB) return 1;
+            if (!isBadgeA && isBadgeB) return -1;
+
+            // Otherwise sort normally (numeric)
+            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+        })
+        .map(key => globResult[key] as string);
+};
+
+const allDesigns = [
+    ...sortDesigns(streetDesigns),
+    ...sortDesigns(logoDesigns)
+];
+
+
+
+const SHARED_COLORS = [
+    '#1a1a1a', // Black
+    '#cccccc', // Grey
+    '#4db6ac', // Teal
+    '#00bcd4', // Cyan
+    '#1976d2', // Blue
+    '#7b1fa2', // Purple
+    '#ffffff', // White
+    '#f48fb1', // Pink
+    '#69f0ae'  // Mint
+];
+
+// Holographic Swipe Transition Shader
+const holographicSwipeVertexShader = `
+    varying vec2 vUv;
+    varying vec3 vLocalPosition;
+    varying vec3 vWorldPosition;
+    varying vec3 vNormal;
+    
+    void main() {
+        vUv = uv;
+        vLocalPosition = position; // Use local/model-space position for bounds
+        vNormal = normalize(normalMatrix * normal);
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPos.xyz;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+    }
+`;
+
+const holographicSwipeFragmentShader = `
+    uniform float uRevealProgress;
+    uniform vec3 uOldColor;
+    uniform vec3 uNewColor;
+    uniform float uTime;
+    uniform float uModelHeight;
+    uniform float uModelMinY;
+    
+    varying vec2 vUv;
+    varying vec3 vLocalPosition;
+    varying vec3 vWorldPosition;
+    varying vec3 vNormal;
+    
+    // HSL to RGB conversion for rainbow effect
+    vec3 hsl2rgb(float h, float s, float l) {
+        vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+        return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+    }
+    
+    void main() {
+        // Use LOCAL Z position for vertical swipe (model's up axis is Z)
+        float normalizedY = (vLocalPosition.z - uModelMinY) / uModelHeight;
+        normalizedY = clamp(normalizedY, 0.0, 1.0);
+        // Invert for bottom-to-top direction
+        normalizedY = 1.0 - normalizedY;
+        
+        // Edge width for the transition
+        float edgeWidth = 0.12;
+        
+        // Calculate the transition cutoff with smooth gradient
+        float cutoff = uRevealProgress;
+        
+        // Smooth edge blend
+        float blend = smoothstep(cutoff - edgeWidth, cutoff + edgeWidth * 0.2, normalizedY);
+        
+        // Mix between new (revealed from bottom) and old (disappearing at top)
+        vec3 baseColor = mix(uNewColor, uOldColor, blend);
+        
+        // Holographic edge effect - rainbow glow at transition line
+        float edgeDist = abs(normalizedY - cutoff);
+        float edgeIntensity = 0.0;
+        
+        if (edgeDist < edgeWidth && uRevealProgress > 0.01 && uRevealProgress < 0.99) {
+            edgeIntensity = 1.0 - (edgeDist / edgeWidth);
+            edgeIntensity = pow(edgeIntensity, 1.5); // Sharpen the glow
+            
+            // Rainbow hue based on position and time
+            float hue = fract(normalizedY * 2.0 + uTime * 0.5);
+            vec3 rainbow = hsl2rgb(hue, 1.0, 0.6);
+            
+            // Scanline effect - digital aesthetic
+            float scanline = sin(normalizedY * 80.0 + uTime * 10.0) * 0.5 + 0.5;
+            scanline = pow(scanline, 4.0);
+            
+            // Combine rainbow glow with scanlines
+            vec3 holoEffect = rainbow * edgeIntensity * 0.7;
+            holoEffect += vec3(1.0, 1.0, 1.0) * scanline * edgeIntensity * 0.3;
+            
+            baseColor += holoEffect;
+        }
+        
+        // Fresnel rim lighting for extra holographic feel during transition
+        if (uRevealProgress > 0.01 && uRevealProgress < 0.99) {
+            float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
+            baseColor += vec3(0.2, 0.5, 1.0) * fresnel * 0.15 * (1.0 - abs(uRevealProgress - 0.5) * 2.0);
+        }
+        
+        gl_FragColor = vec4(baseColor, 1.0);
+    }
+`;
+
+
+interface ProductModelProps {
+    modelUrl: string;
+    position: [number, number, number];
+    scale: number;
+    onClick: () => void;
+    label: string;
+    price?: number;
+    enableDesignCycle?: boolean;
+    enableColorCycle?: boolean;
+    initialColor?: string;
+    rotationOffset?: number;
+    isActive: boolean;
+    isCustomizing: boolean;
+    color?: string;
+    designs?: { front: string; back: string };
+    activeZone?: 'front' | 'back';
+    mode?: 'showcase' | 'customizing';
+    isFullscreen?: boolean;
+
+    cycleDesignsFront?: string[];
+    cycleDesignsBack?: string[];
+    textYOffset?: number;
+    colorToLogoMap?: Record<string, string>;
+}
+
+// Helper for bottle specific logic
+const isBottle = (label: string) => label === 'BOCA';
+const isCap = (label: string) => label === 'KAPA';
+const isHoodie = (label: string) => label === 'HOODICA';
+
+const ProductModel = ({
+    modelUrl,
+    position,
+    scale,
+    onClick,
+    label,
+    price,
+    isActive,
+    isCustomizing,
+    enableDesignCycle = false,
+    enableColorCycle = false,
+    initialColor = "#1a1a1a",
+    rotationOffset = 0,
+    color,
+    designs,
+    activeZone,
+    mode = 'customizing',
+    isFullscreen = false,
+    cycleDesignsFront,
+    cycleDesignsBack,
+    textYOffset = 1.2,
+    isLoaded = true,
+    onLoadComplete,
+    colorToLogoMap
+}: ProductModelProps & { isLoaded?: boolean; onLoadComplete?: () => void }) => {
+    const groupRef = useRef<THREE.Group>(null);
+    const [hovered, setHovered] = useState(false);
+    const { scene } = useGLTF(modelUrl);
+
+    // Entrance animation state
+    const entranceProgress = useRef(0);
+    const [hasAnimatedIn, setHasAnimatedIn] = useState(false);
+
+    // Notify parent when model is loaded
+    useEffect(() => {
+        if (scene && onLoadComplete) {
+            onLoadComplete();
+        }
+    }, [scene, onLoadComplete]);
+
+    // State
+    const [currentDesignIndex, setCurrentDesignIndex] = useState(() =>
+        enableDesignCycle ? Math.floor(Math.random() * (cycleDesignsFront?.length || allDesigns.length || 10)) : 0
+    );
+    const [fadeState, setFadeState] = useState<'display' | 'fade-out' | 'fade-in'>('display');
+
+    // Lerp Refs
+    const currentPosition = useRef(new THREE.Vector3(...position));
+    const currentScale = useRef(0); // Start at 0 for entrance animation
+    const currentOpacity = useRef(mode === 'showcase' ? 1 : (isActive ? 1 : 0.05));
+
+    // Refs for smooth transitions
+    // State Ref to prevent Stale Closures in useFrame
+    const stateRef = useRef({
+        isActive,
+        isCustomizing,
+        frontUrl: null as string | null,
+        backUrl: null as string | null,
+        label,
+        activeZone,
+        mode,
+        designTransitionProgress: 0
+    });
+    const bodyMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+
+    // Separate refs for Front and Back generic print areas
+    const frontMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+    const backMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+
+    const targetColorRef = useRef(new THREE.Color(
+        enableColorCycle ? SHARED_COLORS[Math.floor(Math.random() * SHARED_COLORS.length)] : initialColor
+    ));
+
+    // Holographic Swipe Transition State (only for Hoodie)
+    const previousColorRef = useRef(new THREE.Color(initialColor));
+    const colorTransitionProgress = useRef(1); // 0 = old color, 1 = new color (complete)
+    const isColorTransitioning = useRef(false);
+    const holoShaderMaterialsRef = useRef<THREE.ShaderMaterial[]>([]);
+    const modelBoundsRef = useRef({ minY: -1, maxY: 1, height: 2 });
+    const colorTransitionTimeRef = useRef(0);
+
+    // Separate transition state for DESIGN changes (independent from color)
+    const designTransitionProgress = useRef(1);
+    const isDesignTransitioning = useRef(false);
+    const designTransitionTimeRef = useRef(0);
+    const isGlitchingFront = useRef(false);
+    const isGlitchingBack = useRef(false);
+
+    // Clone scene
+    const clonedScene = useMemo(() => scene.clone(), [scene]);
+
+    // Setup Meshes & Materials
+    useEffect(() => {
+        bodyMaterialsRef.current = [];
+        frontMaterialsRef.current = [];
+        backMaterialsRef.current = [];
+        holoShaderMaterialsRef.current = [];
+
+        console.log(`Analyzing model: ${modelUrl}`);
+
+        // Calculate model bounds
+        const verticalAxis = label === 'HOODICA' ? 'z' : 'y';
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        // Pass 1: Calculate Bounds
+        clonedScene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const m = child as THREE.Mesh;
+                if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+                if (m.geometry.boundingBox) {
+                    minY = Math.min(minY, m.geometry.boundingBox.min[verticalAxis]);
+                    maxY = Math.max(maxY, m.geometry.boundingBox.max[verticalAxis]);
+                }
+            }
+        });
+
+        // Ensure valid bounds if mesh empty (fallback)
+        if (minY === Infinity) { minY = -1; maxY = 1; }
+        const modelHeight = maxY - minY;
+
+        console.log(`Model Bounds (${label}): ${minY} to ${maxY}, Height: ${modelHeight}, Axis: ${verticalAxis}`);
+
+        // Pass 2: Setup Materials
+        clonedScene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const m = child as THREE.Mesh;
+                const name = m.name.toLowerCase();
+
+                // Generic "Print Area" detection
+                const isPrintArea = name.includes("print") || m.userData.is_print_area;
+
+                if (!isPrintArea) {
+                    // Body part logic
+                    m.renderOrder = 0;
+                    if (m.material) {
+                        const mat = m.material as THREE.MeshStandardMaterial;
+                        const newMat = mat.clone();
+                        newMat.color.set(initialColor);
+
+                        // For products with Color Cycle (Hoodie, T-shirt): Inject holographic transition
+                        if (enableColorCycle) {
+                            // Remove fabric texture to allow clean color if desired
+                            newMat.map = null;
+
+                            // Add custom uniforms for the transition
+                            newMat.userData.uniforms = {
+                                uRevealProgress: { value: 1.0 },
+                                uOldColor: { value: new THREE.Color(initialColor) },
+                                uNewColor: { value: new THREE.Color(initialColor) },
+                                uTime: { value: 0 },
+                                uModelHeight: { value: modelHeight },
+                                uModelMinY: { value: minY }
+                            };
+
+                            // Inject shader code into MeshStandardMaterial
+                            newMat.onBeforeCompile = (shader) => {
+                                // Add our uniforms
+                                shader.uniforms.uRevealProgress = newMat.userData.uniforms.uRevealProgress;
+                                shader.uniforms.uOldColor = newMat.userData.uniforms.uOldColor;
+                                shader.uniforms.uNewColor = newMat.userData.uniforms.uNewColor;
+                                shader.uniforms.uTime = newMat.userData.uniforms.uTime;
+                                shader.uniforms.uModelHeight = newMat.userData.uniforms.uModelHeight;
+                                shader.uniforms.uModelMinY = newMat.userData.uniforms.uModelMinY;
+
+                                // Inject varying into vertex shader
+                                shader.vertexShader = shader.vertexShader.replace(
+                                    '#include <common>',
+                                    `#include <common>
+                                    varying vec3 vLocalPos;`
+                                );
+                                shader.vertexShader = shader.vertexShader.replace(
+                                    '#include <begin_vertex>',
+                                    `#include <begin_vertex>
+                                    vLocalPos = position;`
+                                );
+
+                                // Inject uniforms and HSL function into fragment shader
+                                shader.fragmentShader = shader.fragmentShader.replace(
+                                    '#include <common>',
+                                    `#include <common>
+                                    uniform float uRevealProgress;
+                                    uniform vec3 uOldColor;
+                                    uniform vec3 uNewColor;
+                                    uniform float uTime;
+                                    uniform float uModelHeight;
+                                    uniform float uModelMinY;
+                                    varying vec3 vLocalPos;
+                                    
+                                    vec3 hsl2rgb_holo(float h, float s, float l) {
+                                        vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+                                        return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+                                    }`
+                                );
+
+                                // Inject color transition into the diffuseColor
+                                shader.fragmentShader = shader.fragmentShader.replace(
+                                    '#include <color_fragment>',
+                                    `#include <color_fragment>
+                                    
+                                    // Holographic swipe transition
+                                    float normalizedY = (vLocalPos.${verticalAxis} - uModelMinY) / uModelHeight;
+                                    normalizedY = clamp(normalizedY, 0.0, 1.0);
+                                    normalizedY = 1.0 - normalizedY; // Invert: T-shirt (Top-to-Bottom), Hoodie (Bottom-to-Top)
+                                    
+                                    float edgeWidth = 0.12;
+                                    float cutoff = uRevealProgress;
+                                    float blend = smoothstep(cutoff - edgeWidth, cutoff + edgeWidth * 0.2, normalizedY);
+                                    
+                                    // Mix colors based on transition progress
+                                    vec3 transitionColor = mix(uNewColor, uOldColor, blend);
+                                    diffuseColor.rgb = transitionColor;
+                                    
+                                    // Holographic edge glow
+                                    float edgeDist = abs(normalizedY - cutoff);
+                                    if (edgeDist < edgeWidth && uRevealProgress > 0.01 && uRevealProgress < 0.99) {
+                                        float edgeIntensity = 1.0 - (edgeDist / edgeWidth);
+                                        edgeIntensity = pow(edgeIntensity, 1.5);
+                                        float hue = fract(normalizedY * 2.0 + uTime * 0.5);
+                                        vec3 rainbow = hsl2rgb_holo(hue, 1.0, 0.6);
+                                        float scanline = sin(normalizedY * 80.0 + uTime * 10.0) * 0.5 + 0.5;
+                                        scanline = pow(scanline, 4.0);
+                                        diffuseColor.rgb += rainbow * edgeIntensity * 0.5;
+                                        diffuseColor.rgb += vec3(1.0) * scanline * edgeIntensity * 0.2;
+                                    }`
+                                );
+
+                                // Store shader reference for updating uniforms
+                                newMat.userData.shader = shader;
+                            };
+
+                            m.material = newMat;
+                            bodyMaterialsRef.current.push(newMat);
+                            holoShaderMaterialsRef.current.push(newMat as any); // Store for uniform updates
+                        } else {
+                            // Standard material for non-hoodie products
+                            if (mat.map || mat.alphaMap) {
+                                newMat.alphaTest = 0.5;
+                                newMat.transparent = false;
+                            } else {
+                                newMat.transparent = true;
+                            }
+
+                            m.material = newMat;
+                            bodyMaterialsRef.current.push(newMat);
+                        }
+                    }
+                } else {
+                    m.renderOrder = 1;
+                    const isBack = name.includes("back") || m.userData.print_location === 'back';
+
+                    const setupPrintMat = () => {
+                        m.visible = true;
+                        const mat = m.material as THREE.MeshStandardMaterial;
+                        if (mat) {
+                            const newMat = mat.clone();
+                            newMat.color.set('#ffffff');
+                            newMat.transparent = true;
+                            newMat.opacity = 1;
+                            newMat.toneMapped = false;
+                            newMat.roughness = 1;
+                            newMat.metalness = 0;
+                            newMat.polygonOffset = true;
+                            newMat.polygonOffsetFactor = -1;
+                            newMat.polygonOffsetUnits = -1;
+
+                            // For ALL print areas: Add digital glitch transition
+                            if (true) {
+                                // Store uniforms for transition
+                                newMat.userData.uniforms = {
+                                    uRevealProgress: { value: 1.0 },
+                                    uTime: { value: 0 },
+                                    uGlitchIntensity: { value: 0 }
+                                };
+
+                                // Inject digital glitch/flicker effect for print areas
+                                newMat.onBeforeCompile = (shader) => {
+                                    shader.uniforms.uRevealProgress = newMat.userData.uniforms.uRevealProgress;
+                                    shader.uniforms.uTime = newMat.userData.uniforms.uTime;
+                                    shader.uniforms.uGlitchIntensity = newMat.userData.uniforms.uGlitchIntensity;
+
+                                    // Add UV varying to vertex shader
+                                    shader.vertexShader = shader.vertexShader.replace(
+                                        '#include <common>',
+                                        `#include <common>
+                                        varying vec2 vGlitchUv;`
+                                    );
+                                    shader.vertexShader = shader.vertexShader.replace(
+                                        '#include <uv_vertex>',
+                                        `#include <uv_vertex>
+                                        vGlitchUv = uv;`
+                                    );
+
+                                    // Add uniforms to fragment shader with glitch functions
+                                    shader.fragmentShader = shader.fragmentShader.replace(
+                                        '#include <common>',
+                                        `#include <common>
+                                        uniform float uRevealProgress;
+                                        uniform float uTime;
+                                        uniform float uGlitchIntensity;
+                                        varying vec2 vGlitchUv;
+                                        
+                                        // Random hash function for glitch
+                                        float glitchHash(float n) {
+                                            return fract(sin(n) * 43758.5453123);
+                                        }
+                                        
+                                        float glitchHash2D(vec2 p) {
+                                            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                                        }`
+                                    );
+
+                                    // Apply glitch effect to the diffuse color
+                                    shader.fragmentShader = shader.fragmentShader.replace(
+                                        '#include <color_fragment>',
+                                        `#include <color_fragment>
+                                        
+                                        // Digital glitch/flicker effect for design transition
+                                        if (uGlitchIntensity > 0.01) {
+                                            // Random flicker - modulated by time
+                                            float flickerSpeed = 35.0; // Slightly faster flicker
+                                            float flicker = glitchHash(floor(uTime * flickerSpeed));
+                                            
+                                            // Horizontal glitch lines
+                                            float lineNoise = glitchHash(floor(vGlitchUv.y * 35.0 + uTime * 20.0));
+                                            float glitchLine = step(0.88, lineNoise) * uGlitchIntensity;
+                                            
+                                            // Digital noise overlay
+                                            float noise = glitchHash2D(vGlitchUv * 80.0 + uTime * 6.0);
+                                            float digitalNoise = step(0.75, noise) * uGlitchIntensity;
+                                            
+                                            // Random block glitches
+                                            vec2 blockUV = floor(vGlitchUv * 6.0);
+                                            float blockNoise = glitchHash2D(blockUV + floor(uTime * 10.0));
+                                            float blockGlitch = step(0.85, blockNoise) * uGlitchIntensity;
+                                            
+                                            // FADE OUT / FADE IN based on reveal progress
+                                            // Sharper curve to ensuring full fade-out at midpoint
+                                            float fadeAlpha = abs(uRevealProgress * 2.0 - 1.0); // 1 -> 0 -> 1
+                                            fadeAlpha = pow(fadeAlpha, 0.8); // Sharper fade curve
+                                            
+                                            // Enhanced flicker on alpha during transition
+                                            // At peak glitch (midpoint), flicker more intensely
+                                            float flickerAlpha = mix(fadeAlpha, flicker * fadeAlpha, uGlitchIntensity * 0.6);
+                                            
+                                            // Holographic color shift
+                                            vec3 holoColor = vec3(
+                                                0.4 + 0.6 * sin(uTime * 6.0),
+                                                0.4 + 0.6 * sin(uTime * 6.0 + 2.094),
+                                                0.4 + 0.6 * sin(uTime * 6.0 + 4.189)
+                                            );
+                                            
+                                            // Combine effects
+                                            float totalGlitch = glitchLine + digitalNoise + blockGlitch;
+                                            diffuseColor.rgb += holoColor * totalGlitch * 0.8;
+                                            diffuseColor.rgb = mix(diffuseColor.rgb, holoColor, blockGlitch * 0.4);
+                                            
+                                            // RGB shift/chromatic aberration
+                                            float shift = sin(uTime * 40.0) * uGlitchIntensity * 0.12; // Slightly more shift
+                                            diffuseColor.r += shift;
+                                            diffuseColor.b -= shift;
+                                            
+                                            // Apply fade alpha
+                                            diffuseColor.a *= flickerAlpha;
+                                            
+                                            // Scanline effect
+                                            float scanline = sin(vGlitchUv.y * 120.0 + uTime * 12.0) * 0.5 + 0.5;
+                                            scanline = pow(scanline, 2.0);
+                                            diffuseColor.rgb += vec3(0.15, 0.4, 0.8) * scanline * uGlitchIntensity * 0.3;
+                                            
+                                            // White flash at peak intensity
+                                            if (uGlitchIntensity > 0.92) {
+                                                diffuseColor.rgb += vec3(1.0) * (uGlitchIntensity - 0.92) * 2.0;
+                                            }
+                                        }`
+                                    );
+
+                                    newMat.userData.shader = shader;
+                                };
+                            }
+
+                            m.material = newMat;
+                            return newMat;
+                        }
+                        return null;
+                    };
+
+                    const newMat = setupPrintMat();
+                    if (newMat) {
+                        if (isBack) {
+                            console.log(`-> Assigned to BACK print area: ${name}`);
+                            backMaterialsRef.current.push(newMat);
+                        } else {
+                            console.log(`-> Assigned to FRONT print area: ${name}`);
+                            frontMaterialsRef.current.push(newMat);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Store model bounds for hoodie
+        if (label === 'HOODICA' && minY !== Infinity) {
+            modelBoundsRef.current = {
+                minY: minY,
+                maxY: maxY,
+                height: maxY - minY
+            };
+            // Update shader uniforms with bounds (via userData for MeshStandardMaterial)
+            // Body materials only - print materials use glitch effect without bounds
+            holoShaderMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms?.uModelHeight && mat.userData?.uniforms?.uModelMinY) {
+                    mat.userData.uniforms.uModelHeight.value = modelBoundsRef.current.height;
+                    mat.userData.uniforms.uModelMinY.value = modelBoundsRef.current.minY;
+                }
+            });
+        }
+    }, [clonedScene, initialColor, enableDesignCycle, label]);
+
+    // Sync target color with prop - trigger holographic transition for hoodie
+    useEffect(() => {
+        if (color) {
+            const newColor = new THREE.Color(color);
+
+            // For products with color cycle: Trigger holographic swipe transition
+            if (enableColorCycle && holoShaderMaterialsRef.current.length > 0) {
+                // Only trigger if color actually changed
+                const currentColor = targetColorRef.current;
+                if (!currentColor.equals(newColor)) {
+                    // Store old color and start transition
+                    previousColorRef.current.copy(currentColor);
+                    targetColorRef.current.copy(newColor);
+                    colorTransitionProgress.current = 0; // Reset to start swipe
+                    isColorTransitioning.current = true;
+                    colorTransitionTimeRef.current = 0;
+
+                    // Update shader uniforms with colors (via userData for MeshStandardMaterial)
+                    holoShaderMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uOldColor.value.copy(previousColorRef.current);
+                            mat.userData.uniforms.uNewColor.value.copy(newColor);
+                            mat.userData.uniforms.uRevealProgress.value = 0;
+                        }
+                    });
+                }
+            } else {
+                // Standard color update for other products
+                targetColorRef.current.copy(newColor);
+
+                if (isCustomizing) {
+                    bodyMaterialsRef.current.forEach(mat => {
+                        mat.color.copy(newColor);
+                    });
+                }
+            }
+        }
+    }, [color, isCustomizing, label]);
+
+    // Track previous designs to detect changes
+    const previousDesignsRef = useRef<{ front?: string; back?: string }>({});
+    const hasInitializedDesigns = useRef(false);
+
+    // Trigger digital glitch transition when BACK design changes (user selection)
+    // Front design changes automatically with color sync - that shouldn't trigger glitch
+    useEffect(() => {
+        if (designs) {
+            const prevBack = previousDesignsRef.current.back;
+            const prevFront = previousDesignsRef.current.front;
+
+            let designChanged = false;
+
+            // Split design change detection
+            const frontChanged = designs.front && prevFront && designs.front !== prevFront;
+            const backChanged = designs.back && prevBack && designs.back !== prevBack;
+
+            if (hasInitializedDesigns.current && (frontChanged || backChanged) &&
+                (frontMaterialsRef.current.length > 0 || backMaterialsRef.current.length > 0)) {
+
+                // Start digital glitch transition
+                designTransitionProgress.current = 0;
+                isDesignTransitioning.current = true;
+                designTransitionTimeRef.current = 0;
+
+                // Activate flags for relevant zones
+                isGlitchingFront.current = !!frontChanged;
+                isGlitchingBack.current = !!backChanged;
+
+                // Reset intensity conditionally
+                if (frontChanged) {
+                    frontMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                    });
+                }
+                if (backChanged) {
+                    backMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                    });
+                }
+            }
+
+
+
+            // Update previous designs ref and mark as initialized
+            previousDesignsRef.current = { front: designs.front, back: designs.back };
+            hasInitializedDesigns.current = true;
+        }
+    }, [designs, label]); // Watch all design changes
+
+    // Load textures for Front and Back
+    // Logic update: Only show cycle design if in showcase mode OR if this product is active.
+    // Unselected products in customizing mode should have NO design.
+    // Resolve Cycle Designs
+    const isCycling = enableDesignCycle && (mode === 'showcase' || isActive);
+
+    // Front Cycle
+    const frontCycleList = cycleDesignsFront || allDesigns;
+    const frontCycleUrl = isCycling ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
+
+    // Back Cycle
+    const backCycleList = cycleDesignsBack || null;
+    const backCycleUrl = isCycling && backCycleList ? backCycleList[currentDesignIndex % backCycleList.length] : null;
+
+    // Resolve Front URL: Custom Front OR Cycle
+    // Hoodie always shows logo (3) on front in customizing mode per user request
+    // State for color-matched front design (Hoodie/T-shirt auto-cycle)
+    // State for color-matched front design (Hoodie/T-shirt auto-cycle)
+    const [colorMatchedFrontDesign, setColorMatchedFrontDesign] = useState<string | null>(null);
+
+    // Sync pairing on re-entry to showcase (prevents stale design)
+    useEffect(() => {
+        if (!isCustomizing && label === 'HOODICA' && colorToLogoMap && color) {
+            const logo = colorToLogoMap[color];
+            if (logo) setColorMatchedFrontDesign(logo);
+        }
+    }, [isCustomizing, label, color, colorToLogoMap]);
+
+    // Resolve Front URL: Strict pairing for Hoodie
+    const strictHoodieFront = (label === 'HOODICA' && isCustomizing && isActive && colorToLogoMap) ? colorToLogoMap[color] : null;
+
+    const frontUrl = (isCustomizing && !isActive) ? null :
+        (strictHoodieFront || ((isCustomizing && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
+
+    // Resolve Back URL: Custom Back OR Cycle
+    // Update: If customizing but NOT active (background), show NO design.
+    const backUrl = (isCustomizing && !isActive) ? null :
+        ((isCustomizing && designs?.back) ? designs.back : backCycleUrl);
+
+    const safeFrontUrl = frontUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    const safeBackUrl = backUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+    const frontTextureBase = useTexture(safeFrontUrl) as THREE.Texture;
+    const backTextureBase = useTexture(safeBackUrl) as THREE.Texture;
+
+    // Clone textures so each ProductModel can have unique repeat/offset/flipY settings
+    const frontTexture = useMemo(() => {
+        const t = frontTextureBase.clone();
+        t.needsUpdate = true;
+        return t;
+    }, [frontTextureBase]);
+
+    const backTexture = useMemo(() => {
+        const t = backTextureBase.clone();
+        t.needsUpdate = true;
+        return t;
+    }, [backTextureBase]);
+
+    // Apply Textures
+    useEffect(() => {
+        // Front Texture - Configuration
+        frontTexture.colorSpace = THREE.SRGBColorSpace;
+        frontTexture.center.set(0.5, 0.5);
+
+        // Product Specific Tuning for Front
+        if (label === 'HOODICA') {
+            frontTexture.flipY = false; // Flip Vertically (relative to valid UVs)
+            frontTexture.wrapS = THREE.RepeatWrapping;
+            frontTexture.wrapT = THREE.RepeatWrapping;
+            frontTexture.repeat.set(20, 20); // Scale down 10% more (18 -> 20)
+            frontTexture.offset.set(0.15, -0.05); // Set Y to -0.05
+        } else if (label === 'KAPA') {
+            frontTexture.flipY = false; // Fix upside down
+            frontTexture.wrapS = THREE.ClampToEdgeWrapping; // Big spacing (no repeat)
+            frontTexture.wrapT = THREE.ClampToEdgeWrapping;
+            frontTexture.repeat.set(6, 6); // Scale down 10% (5.5 -> 6)
+            frontTexture.offset.set(0, 0.6); // Keep position
+        } else {
+            // Default
+            frontTexture.flipY = true;
+            frontTexture.wrapS = THREE.RepeatWrapping;
+            frontTexture.wrapT = THREE.RepeatWrapping;
+            frontTexture.repeat.set(-1, 1);
+            frontTexture.offset.set(0, 0);
+        }
+
+        // Bottle Specific Tuning
+        if (isBottle(label)) {
+            frontTexture.flipY = false; // Blender cylinder project usually correct orientation
+            frontTexture.wrapS = THREE.ClampToEdgeWrapping;
+            frontTexture.wrapT = THREE.ClampToEdgeWrapping;
+            frontTexture.center.set(0.5, 0.5);
+            frontTexture.repeat.set(6.25, 6.25); // Scaled down 20% (5.0 -> 6.25)
+            frontTexture.offset.set(-0.3, 0); // Moved to -0.3
+        }
+
+        frontTexture.needsUpdate = true;
+
+        // Back Texture - Configuration
+        backTexture.flipY = false;
+        backTexture.colorSpace = THREE.SRGBColorSpace;
+        backTexture.wrapS = THREE.ClampToEdgeWrapping;
+        backTexture.wrapT = THREE.ClampToEdgeWrapping;
+        backTexture.center.set(0.5, 0.5);
+
+        // Product Specific Tuning for Back
+        if (label === 'HOODICA') {
+            backTexture.repeat.set(-8.4, 8.4); // Scale down 15% (7.1 -> 8.4)
+            backTexture.offset.set(-0.3, 2.2); // Move Up 0.2 (2.0->2.2), Left 0.1 (-0.2->-0.3)
+        } else {
+            backTexture.repeat.set(-1, 1);
+            backTexture.offset.set(0, 0);
+        }
+        backTexture.needsUpdate = true;
+
+        // Apply Front
+        if (frontMaterialsRef.current.length > 0) {
+            frontMaterialsRef.current.forEach(mat => {
+                mat.map = frontTexture;
+                // Fix transparency/z-fighting
+                mat.transparent = true;
+                mat.depthWrite = false;
+                mat.polygonOffset = true;
+                mat.polygonOffsetFactor = -1;
+
+                mat.needsUpdate = true;
+                mat.visible = !!frontUrl;
+            });
+        }
+
+        // Apply Back
+        if (backMaterialsRef.current.length > 0) {
+            backMaterialsRef.current.forEach(mat => {
+                mat.map = backTexture;
+                // Fix transparency/z-fighting
+                mat.transparent = true;
+                mat.depthWrite = false;
+                mat.polygonOffset = true;
+                mat.polygonOffsetFactor = -1;
+
+                mat.needsUpdate = true;
+                mat.visible = !!backUrl;
+            });
+        }
+    }, [frontTexture, backTexture, enableDesignCycle, isCustomizing, frontUrl, backUrl, label]);
+
+    // Combined Cycle Trigger Logic: Changes BOTH color AND design together
+    useEffect(() => {
+        const shouldCycle = enableDesignCycle && (mode === 'showcase' || (isActive && !isCustomizing));
+        if (!shouldCycle) return;
+
+        const interval = setInterval(() => {
+            // Change design index
+            setCurrentDesignIndex(prev => prev + 1);
+
+            // For ALL models: Trigger transitions
+            // Always trigger Design Glitch
+            // Only trigger Color Swipe if enableColorCycle is true
+
+            if (enableColorCycle) {
+                // Pick a new random color (different from current)
+                const currentColorHex = targetColorRef.current.getHexString();
+                let newColor = AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)];
+                // Ensure different color
+                while (newColor.replace('#', '') === currentColorHex && AUTO_CYCLE_COLORS.length > 1) {
+                    newColor = AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)];
+                }
+
+                // Trigger COLOR swipe transition
+                previousColorRef.current.copy(targetColorRef.current);
+                targetColorRef.current.set(newColor);
+                colorTransitionProgress.current = 0;
+                isColorTransitioning.current = true;
+                colorTransitionTimeRef.current = 0;
+
+                holoShaderMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) {
+                        mat.userData.uniforms.uOldColor.value.copy(previousColorRef.current);
+                        mat.userData.uniforms.uNewColor.value.set(newColor);
+                        mat.userData.uniforms.uRevealProgress.value = 0;
+                    }
+                });
+
+                // Update color matched front design if map exists
+                if (colorToLogoMap) {
+                    const logo = colorToLogoMap[newColor];
+                    // console.log('Auto-Cycle:', { product: label, newColor, foundLogo: !!logo, mapSize: Object.keys(colorToLogoMap).length });
+                    if (logo) {
+                        setColorMatchedFrontDesign(logo);
+                    } else {
+                        // Fallback to cycle list if no match found (or keep previous?)
+                        // Better to null it so it uses cycle list if no match
+                        setColorMatchedFrontDesign(null);
+                    }
+                }
+            }
+
+            // Trigger DESIGN glitch transition (Always)
+            designTransitionProgress.current = 0;
+            isDesignTransitioning.current = true;
+            designTransitionTimeRef.current = 0;
+
+            frontMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    mat.userData.uniforms.uGlitchIntensity.value = 0;
+                }
+            });
+            backMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    mat.userData.uniforms.uGlitchIntensity.value = 0;
+                }
+            });
+
+            setFadeState('fade-out');
+        }, 4000); // 4 seconds between cycles
+
+        return () => clearInterval(interval);
+    }, [enableDesignCycle, isCustomizing, isActive, mode, label, colorToLogoMap]);
+
+    // Update State Ref on every render to ensure useFrame has latest values
+    stateRef.current = {
+        isActive,
+        isCustomizing,
+        frontUrl,
+        backUrl,
+        label,
+        activeZone,
+        mode,
+        designTransitionProgress: designTransitionProgress.current
+    };
+
+    // Animation Loop
+    useFrame((state, delta) => {
+        if (!groupRef.current) return;
+
+        // Destructure from ref to avoid stale closures
+        const {
+            isActive,
+            isCustomizing,
+            frontUrl,
+            backUrl,
+            label,
+            activeZone,
+            mode
+        } = stateRef.current;
+
+        // SAFETY OVERRIDE: Enforce suppression in animation loop
+        // This guarantees background products stay hidden regardless of frontUrl glitches
+        const shouldHide = isCustomizing && !isActive;
+        const effectiveFrontUrl = shouldHide ? null : frontUrl;
+        const effectiveBackUrl = shouldHide ? null : backUrl;
+
+        // Clamp delta to prevent huge jumps on lag spikes
+        const clampedDelta = Math.min(delta, 0.1);
+
+        // ENTRANCE ANIMATION: Spring-like pop-in effect
+        if (!hasAnimatedIn && isLoaded) {
+            entranceProgress.current += clampedDelta * 3.5; // Speed of entrance
+            if (entranceProgress.current >= 1) {
+                entranceProgress.current = 1;
+                setHasAnimatedIn(true);
+            }
+        }
+
+        // Elastic ease-out for bouncy pop-in effect
+        const elasticEase = (t: number) => {
+            if (t === 0 || t === 1) return t;
+            const p = 0.3;
+            return Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+        };
+        const entranceMultiplier = isLoaded ? elasticEase(entranceProgress.current) : 0;
+
+        // 1. POSITION & SCALE INTERPOLATION
+        const targetPosition = new THREE.Vector3(...position);
+        currentPosition.current.lerp(targetPosition, clampedDelta * 3.0);
+        groupRef.current.position.copy(currentPosition.current);
+
+        // Uniform scale with entrance animation
+        const targetScale = scale * entranceMultiplier;
+        currentScale.current = THREE.MathUtils.lerp(currentScale.current, targetScale, clampedDelta * 4.0);
+        groupRef.current.scale.set(
+            currentScale.current,
+            currentScale.current,
+            currentScale.current
+        );
+
+        // 2. Rotation logic
+        let targetRotation = rotationOffset;
+
+        if (isFullscreen) {
+            targetRotation = 0;
+
+            // Robust Shortest Path Rotation
+            let diff = (targetRotation - groupRef.current.rotation.y) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            groupRef.current.rotation.y += diff * clampedDelta * 2;
+
+            // Auto-rotate the model if user is customizing 'back' so they see it?
+            // Or let them rotate manually.
+            if (activeZone === 'back' && isActive) {
+                // Perhaps rotate 180?
+                // Let's NOT force rotation logic here to keep it simple, user has OrbitControls.
+                // But usually UX expects camera or model to flip.
+                // Given "isFuulScreen", user has control.
+            }
+
+        } else if (mode === 'showcase') {
+            // HOVER ROTATION: If hovered, stop spinning and face camera (rotation Y = 0)
+            if (hovered) {
+                const targetY = 0;
+                let diff = (targetY - groupRef.current.rotation.y) % (Math.PI * 2);
+                if (diff < -Math.PI) diff += Math.PI * 2;
+                if (diff > Math.PI) diff -= Math.PI * 2;
+                groupRef.current.rotation.y += diff * clampedDelta * 4;
+            } else {
+                // Continue auto-rotation
+                groupRef.current.rotation.y += 0.5 * clampedDelta;
+            }
+        } else if (isActive) {
+            // ACTIVE in carousel/customizer view: Stop spinning, face the print area (based on activeZone)
+            if (activeZone === 'back') {
+                targetRotation = Math.PI; // 180 degrees to show back
+            } else {
+                targetRotation = 0; // Front-facing to show main print area
+            }
+
+            let diff = (targetRotation - groupRef.current.rotation.y) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            groupRef.current.rotation.y += diff * clampedDelta * 4;
+        } else {
+            // Fallback (inactive others)
+            let diff = (rotationOffset - groupRef.current.rotation.y) % (Math.PI * 2);
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            groupRef.current.rotation.y += diff * clampedDelta * 4;
+        }
+
+        // 2. Smooth Color Transition
+        if (isActive || enableColorCycle || mode === 'showcase') {
+            // Standard lerp for non-hoodie products
+            bodyMaterialsRef.current.forEach(mat => {
+                const speed = isCustomizing ? 10 : 5;
+                mat.color.lerp(targetColorRef.current, speed * clampedDelta);
+            });
+        }
+
+        // 2b. Holographic Swipe Animation - COLOR TRANSITION (Cycle-enabled products)
+        if (enableColorCycle && holoShaderMaterialsRef.current.length > 0) {
+            // Update time uniform for scanline animation on body materials
+            colorTransitionTimeRef.current += clampedDelta;
+
+            holoShaderMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    mat.userData.uniforms.uTime.value = colorTransitionTimeRef.current;
+                }
+            });
+
+            // Animate COLOR transition (body materials only)
+            if (isColorTransitioning.current && colorTransitionProgress.current < 1) {
+                const transitionSpeed = 1.2;
+                colorTransitionProgress.current += clampedDelta * transitionSpeed;
+
+                const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+                const easedProgress = easeOut(Math.min(colorTransitionProgress.current, 1));
+
+                // Update body materials ONLY
+                holoShaderMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) {
+                        mat.userData.uniforms.uRevealProgress.value = easedProgress;
+                    }
+                });
+
+                // Color transition complete
+                if (colorTransitionProgress.current >= 1) {
+                    colorTransitionProgress.current = 1;
+                    isColorTransitioning.current = false;
+
+                    holoShaderMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uOldColor.value.copy(targetColorRef.current);
+                            mat.userData.uniforms.uRevealProgress.value = 1;
+                        }
+                    });
+                }
+            }
+        }
+
+        // 2c. Digital Glitch Animation - DESIGN TRANSITION (print materials only)
+        if (frontMaterialsRef.current.length > 0 || backMaterialsRef.current.length > 0) {
+            // Update time uniform for print materials (continues running for ambient effects)
+            designTransitionTimeRef.current += clampedDelta;
+
+            frontMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    mat.userData.uniforms.uTime.value = designTransitionTimeRef.current;
+                }
+            });
+            backMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    mat.userData.uniforms.uTime.value = designTransitionTimeRef.current;
+                }
+            });
+
+            // Animate DESIGN transition with glitch effect (print materials only)
+            if (isDesignTransitioning.current && designTransitionProgress.current < 1) {
+                // Slower transition for more visible glitch effect
+                const transitionSpeed = 1.5;
+                designTransitionProgress.current += clampedDelta * transitionSpeed;
+
+                // Bell curve for glitch intensity: peaks at 0.5, zero at 0 and 1
+                const progress = Math.min(designTransitionProgress.current, 1);
+                // Using a sine wave to create smooth ramp up/down
+                const glitchIntensity = Math.sin(progress * Math.PI);
+
+                // Update print materials with glitch intensity AND reveal progress
+                // Conditionally apply based on which zone triggered the glitch
+                if (isGlitchingFront.current) {
+                    frontMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
+                            mat.userData.uniforms.uRevealProgress.value = progress;
+                        }
+                    });
+                }
+
+                if (isGlitchingBack.current) {
+                    backMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
+                            mat.userData.uniforms.uRevealProgress.value = progress;
+                        }
+                    });
+                }
+
+                // Design transition complete
+                if (designTransitionProgress.current >= 1) {
+                    designTransitionProgress.current = 1;
+                    isDesignTransitioning.current = false;
+
+                    // Reset glitch intensity and set reveal to complete
+                    frontMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uGlitchIntensity.value = 0;
+                            mat.userData.uniforms.uRevealProgress.value = 1;
+                        }
+                    });
+                    backMaterialsRef.current.forEach(mat => {
+                        if (mat.userData?.uniforms) {
+                            mat.userData.uniforms.uGlitchIntensity.value = 0;
+                            mat.userData.uniforms.uRevealProgress.value = 1;
+                        }
+                    });
+                }
+            }
+        }
+
+        // 3. Hover Glow & Base Opacity
+        const targetEmissive = (hovered || isActive) && !isCustomizing ? new THREE.Color(0x222222) : new THREE.Color(0x000000);
+        const targetOp = mode === 'showcase' || isActive ? 1 : 0.05;
+        // Slower transition for smoothness
+        currentOpacity.current = THREE.MathUtils.lerp(currentOpacity.current, targetOp, clampedDelta * 2.5);
+
+        bodyMaterialsRef.current.forEach(mat => {
+            mat.emissive.lerp(targetEmissive, 5 * clampedDelta);
+            mat.opacity = currentOpacity.current;
+
+            // Logic:
+            // 1. If nearly opaque (> 0.99), treat as SOLID (transparent=false) for correct Z-buffer.
+            // 2. If fading/ghost (< 0.99), treat as TRANSPARENT (transparent=true).
+            //    - Keep depthWrite=true to ensure the model looks "solid" while fading.
+            //    - Disable alphaTest so "Net" and cutouts fade smoothly.
+
+            if (mat.opacity >= 0.99) {
+                // Active / Opaque Mode
+                mat.transparent = false;
+                mat.depthWrite = true;
+
+                // Restore alphaTest for mapped materials like the Cap Net
+                if (mat.map || mat.alphaMap) {
+                    mat.alphaTest = 0.5;
+                } else {
+                    mat.alphaTest = 0;
+                }
+            } else {
+                // Fading / Ghost Mode
+                mat.transparent = true;
+                mat.depthWrite = true; // Keep depth write for stable fade
+                mat.alphaTest = 0;     // smooth alpha blending
+            }
+        });
+
+        // 4. Fade Logic (Only applies to FRONT materials for now if cycling)
+        if (frontMaterialsRef.current.length > 0) {
+            let fadeFactor = 1;
+            const shouldCycle = enableDesignCycle && (mode === 'showcase' || (isActive && !isCustomizing));
+
+            if (shouldCycle) {
+                if (fadeState === 'fade-out') {
+                    fadeFactor = Math.max(0, frontMaterialsRef.current[0].opacity - clampedDelta * 2);
+                    if (fadeFactor === 0) {
+                        const cycleLen = (cycleDesignsFront || allDesigns).length;
+                        const nextIndex = (currentDesignIndex + 1) % cycleLen;
+                        setCurrentDesignIndex(nextIndex);
+                        setFadeState('fade-in');
+                    }
+                } else if (fadeState === 'fade-in') {
+                    fadeFactor = Math.min(1, frontMaterialsRef.current[0].opacity + clampedDelta * 2);
+                    if (fadeFactor === 1) setFadeState('display');
+                }
+
+                // Apply factor to both front and back
+                frontMaterialsRef.current.forEach(mat => {
+                    // For ALL models, keep opacity at 1 so glitch shader is visible
+                    // We now use glitch shader for everyone
+                    mat.opacity = 1;
+                    mat.visible = true;
+                });
+                backMaterialsRef.current.forEach(mat => {
+                    mat.opacity = 1;
+                    mat.visible = true;
+                });
+            } else {
+                // Ensure opacity is 1 when not cycling
+                frontMaterialsRef.current.forEach(mat => {
+                    mat.opacity = 1;
+                    mat.visible = !!effectiveFrontUrl;
+                });
+                backMaterialsRef.current.forEach(mat => {
+                    mat.opacity = 1;
+                    mat.visible = !!effectiveBackUrl;
+                });
+            }
+        }
+    });
+
+    return (
+        <group
+            ref={groupRef}
+            onClick={onClick}
+            onPointerOver={() => { document.body.style.cursor = 'pointer'; setHovered(true); }}
+            onPointerOut={() => { document.body.style.cursor = 'auto'; setHovered(false); }}
+        >
+            <Float
+                speed={isActive || mode === 'showcase' ? 1 : 0.5}
+                rotationIntensity={isActive || mode === 'showcase' ? 0.2 : 0.1}
+                floatIntensity={(isActive || mode === 'showcase' ? 2.0 : 1.0) / (scale || 1)}
+            >
+                {/* Scale handled in parent group via useFrame */}
+                <primitive object={clonedScene} />
+            </Float>
+
+            {/* Hover Labels - Product Name and Price (Showcase mode only) */}
+            {mode === 'showcase' && hovered && (
+                <group position={[0, textYOffset / (scale || 1), 2.0 / (scale || 1)]}>
+                    {/* Product Name */}
+                    <Text
+                        font="/fonts/DynaPuff-Bold.ttf"
+                        fontSize={0.25 / (scale || 1)}
+                        color="#ffffff"
+                        anchorX="center"
+                        anchorY="bottom"
+                    >
+                        {label}
+                    </Text>
+                    {/* Product Price */}
+                    {price && (
+                        <Text
+                            font="/fonts/DynaPuff-Bold.ttf"
+                            fontSize={0.2 / (scale || 1)}
+                            color="#ffffff"
+                            anchorX="center"
+                            anchorY="top"
+                            position={[0, -0.05 / (scale || 1), 0]}
+                        >
+                            {price.toFixed(2)}€
+                        </Text>
+                    )}
+                </group>
+            )}
+        </group>
+    );
+};
+
+interface ShopSceneProps {
+    onSelectProduct: (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => void;
+    selectedProduct: 'hoodie' | 'tshirt' | 'cap' | 'bottle' | null;
+    isCustomizing: boolean;
+    selectedColor: string;
+    designs?: { front: string; back: string };
+    selectedDesign?: string; // Legacy support
+    activeZone?: 'front' | 'back';
+    mode?: 'showcase' | 'customizing';
+    isFullscreen?: boolean;
+    products?: any; // Start receiving product data
+    colorToLogoMap?: Record<string, string>;
+}
+
+export const ShopScene = ({ onSelectProduct, selectedProduct, isCustomizing, selectedColor, designs, selectedDesign, activeZone, mode = 'customizing', isFullscreen = false, products: productData = {}, colorToLogoMap }: ShopSceneProps) => {
+
+    // Compatibility shim
+    const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
+
+    // Always default to tshirt if null, but parent should handle this.
+    const activeId = selectedProduct || 'tshirt';
+
+    // Sequential Loading State: Track which models are ready to render
+    // Order: cap (smallest) -> bottle -> tshirt -> hoodie (largest)
+    const [loadedModels, setLoadedModels] = useState<Set<string>>(new Set());
+    const [currentLoadIndex, setCurrentLoadIndex] = useState(0);
+
+    // Callback when a model finishes loading - trigger next model load
+    const handleModelLoaded = useCallback((modelId: string) => {
+        setLoadedModels(prev => {
+            const newSet = new Set(prev);
+            newSet.add(modelId);
+            return newSet;
+        });
+        // Move to next model in queue
+        setCurrentLoadIndex(prev => Math.min(prev + 1, MODEL_LOAD_ORDER.length));
+    }, []);
+
+    // Check if a specific model should render (is allowed to load)
+    const shouldRenderModel = useCallback((modelId: string) => {
+        const modelIndex = MODEL_LOAD_ORDER.findIndex(m => m.id === modelId);
+        return modelIndex <= currentLoadIndex;
+    }, [currentLoadIndex]);
+
+    // Check if a model has finished loading (for entrance animation)
+    const isModelLoaded = useCallback((modelId: string) => {
+        return loadedModels.has(modelId);
+    }, [loadedModels]);
+
+    // Define products order
+    const products: ('hoodie' | 'tshirt' | 'cap' | 'bottle')[] = ['hoodie', 'tshirt', 'cap', 'bottle'];
+
+    const getProductState = (productId: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+        // Carousel Index Math
+        const activeIndex = products.indexOf(activeId);
+        const myIndex = products.indexOf(productId);
+
+        // Calculate steps from active (0 to 3) circular
+        const diff = (myIndex - activeIndex + 4) % 4;
+
+        // Base Scale Config
+        let scale = 1;
+        if (productId === 'hoodie') scale = isMobile ? 4.0 : 5.0;
+        if (productId === 'tshirt') scale = isMobile ? 4.8 : 5.5;
+        if (productId === 'cap') scale = isMobile ? 1.0 : 1.2;
+        if (productId === 'bottle') scale = isMobile ? 9.0 : 12.0;
+
+        // Base Y Position
+        let yPos = 0;
+        if (productId === 'hoodie') yPos = isMobile ? -1.0 : -1.2;
+        if (productId === 'tshirt') yPos = isMobile ? -1.0 : -1.2;
+        if (productId === 'cap') yPos = isMobile ? 0.3 : 0.5;
+        if (productId === 'bottle') yPos = isMobile ? 0.2 : -0.5;
+
+        let pos: [number, number, number] = [0, 0, 0];
+
+        if (isFullscreen) {
+            if (diff === 0) {
+                // Active in Fullscreen
+                pos = [0, yPos, 0];
+                // Specific Adjustments
+                if (productId === 'hoodie') pos = [0, -1, 0];
+                if (productId === 'tshirt') pos = [0, -1, 0];
+                if (productId === 'cap' && !isMobile) pos = [0, 0.5, 0];
+                if (productId === 'bottle') pos = [0, -0.5, 0]; // Adjusted for new center origin
+            } else {
+                pos = [0, 100, 0]; // Hide offscreen
+                scale = 0;
+            }
+        } else if (mode === 'showcase') {
+            // Intro Scene: Linear Display
+            if (isMobile) {
+                // Mobile Showcase - Compact 2x2 Grid that fits screen
+                if (productId === 'tshirt') {
+                    pos = [-0.8, 1.5, -2]; scale = 3.0; // Top Left
+                } else if (productId === 'hoodie') {
+                    pos = [0.8, -1.2, -1]; scale = 2.8; // Bottom Right
+                } else if (productId === 'bottle') {
+                    pos = [-0.8, -1.2, 0]; scale = 6.5; // Bottom Left (Raised)
+                } else if (productId === 'cap') {
+                    pos = [1.0, 2.6, -2]; scale = 0.58; // Top Right (Left/Up adjustment)
+                }
+            } else {
+                // Desktop Showcase - Linear but slightly tighter to center
+                if (productId === 'bottle') {
+                    pos = [-4.5, -0.2, 0];
+                    scale = 10.0;
+                } else if (productId === 'tshirt') {
+                    pos = [-1.5, -1.5, 1];
+                    scale = 4.5;
+                } else if (productId === 'hoodie') {
+                    pos = [1.5, -1.2, 1];
+                    scale = 4.0;
+                } else if (productId === 'cap') {
+                    pos = [4.5, 0.5, 0];
+                    scale = 1.0;
+                }
+            }
+        } else {
+            // Carousel Layout (Customizing)
+            if (diff === 0) {
+                // ACTIVE (Front)
+                pos = [0, yPos, 2];
+            } else if (diff === 1) {
+                // RIGHT (+1 step)
+                // Tightened X from 3.5 to 2.8 to keep on screen
+                pos = [2.8, 0, -4];
+                scale *= 0.6; // Smaller side items
+            } else if (diff === 2) {
+                // BACK (+2 steps, opposite) - Hide or fade far back
+                // Moving back behind everything
+                pos = [0, 1, -8];
+                scale *= 0.4;
+            } else if (diff === 3) {
+                // LEFT (+3 steps, aka -1 step)
+                // Tightened X from -3.5 to -2.8
+                pos = [-2.8, 0, -4];
+                scale *= 0.6; // Smaller side items
+            }
+
+            // Mobile Adjustments for Carousel
+            if (isMobile) {
+                if (diff === 1) { // Right
+                    pos = [1.5, 0, -5];
+                    scale *= 0.5;
+                } else if (diff === 3) { // Left
+                    pos = [-1.5, 0, -5];
+                    scale *= 0.5;
+                } else if (diff === 2) { // Back
+                    pos = [0, 2, -10]; // Push further back
+                    scale *= 0.3;
+                }
+            }
+        }
+
+        return { pos, scale, isActive: diff === 0 || mode === 'showcase' };
+    };
+
+    return (
+        <div className="w-full h-full absolute inset-0">
+            <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
+                <CameraHandler isFullscreen={isFullscreen} />
+                <Suspense fallback={null}>
+                    <ambientLight intensity={0.8} />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
+                    <Environment preset="city" />
+
+                    {isFullscreen && (
+                        <OrbitControls
+                            makeDefault
+                            enableZoom={true}
+                            minDistance={5}
+                            maxDistance={20}
+                            enableDamping
+                            dampingFactor={0.05}
+                            rotateSpeed={0.5}
+                            target={[0, activeId === 'bottle' ? 0 : 0.5, 0]}
+                        />
+                    )}
+
+                    {(() => {
+                        const logoList = Object.values(logoDesigns as Record<string, string>);
+                        const hoodieBackList = [
+                            ...Object.values(streetDesigns as Record<string, string>),
+                            ...Object.values(vintageDesigns as Record<string, string>)
+                        ];
+
+                        return (
+                            <group position={[0, -1.0, 0]}>
+                                {/* Cap - Loads FIRST (smallest) */}
+                                <Suspense fallback={null}>
+                                    {shouldRenderModel('cap') && (() => {
+                                        const { pos, scale, isActive } = getProductState('cap');
+                                        return (
+                                            <ProductModel
+                                                key="cap"
+                                                modelUrl="/models/cap_webshop.glb"
+                                                position={pos}
+                                                scale={scale}
+                                                label="KAPA"
+                                                price={productData.cap?.price || 25}
+                                                onClick={() => onSelectProduct('cap')}
+                                                enableDesignCycle={true}
+                                                enableColorCycle={false}
+                                                cycleDesignsFront={logoList}
+                                                isActive={isActive}
+                                                isCustomizing={isCustomizing}
+                                                initialColor="#231f20"
+                                                rotationOffset={0}
+                                                color={isActive && activeId === 'cap' ? selectedColor : undefined}
+                                                designs={isActive && activeId === 'cap' ? effectiveDesigns : undefined}
+                                                activeZone={activeZone}
+                                                mode={mode}
+                                                isFullscreen={isFullscreen}
+                                                textYOffset={0.4}
+                                                isLoaded={isModelLoaded('cap')}
+                                                onLoadComplete={() => handleModelLoaded('cap')}
+                                            />
+                                        );
+                                    })()}
+                                </Suspense>
+
+                                {/* Bottle - Loads SECOND */}
+                                <Suspense fallback={null}>
+                                    {shouldRenderModel('bottle') && (() => {
+                                        const { pos, scale, isActive } = getProductState('bottle');
+                                        return (
+                                            <ProductModel
+                                                key="bottle"
+                                                modelUrl="/models/bottle-webshop.glb"
+                                                position={pos}
+                                                scale={scale}
+                                                label="BOCA"
+                                                price={productData.bottle?.price || 20}
+                                                onClick={() => onSelectProduct('bottle')}
+                                                enableDesignCycle={true}
+                                                enableColorCycle={false}
+                                                cycleDesignsFront={logoList}
+                                                isActive={isActive}
+                                                isCustomizing={isCustomizing}
+                                                initialColor="#ffffff"
+                                                rotationOffset={0}
+                                                color={undefined}
+                                                designs={isActive && activeId === 'bottle' ? effectiveDesigns : undefined}
+                                                activeZone={activeZone}
+                                                mode={mode}
+                                                isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('bottle')}
+                                                onLoadComplete={() => handleModelLoaded('bottle')}
+                                            />
+                                        );
+                                    })()}
+                                </Suspense>
+
+                                {/* T-Shirt - Loads THIRD */}
+                                <Suspense fallback={null}>
+                                    {shouldRenderModel('tshirt') && (() => {
+                                        const { pos, scale, isActive } = getProductState('tshirt');
+                                        return (
+                                            <ProductModel
+                                                key="tshirt"
+                                                modelUrl="/models/tshirt_webshop.glb"
+                                                position={pos}
+                                                scale={scale}
+                                                label="MAJICA"
+                                                price={productData.tshirt?.price || 35}
+                                                onClick={() => onSelectProduct('tshirt')}
+                                                enableDesignCycle={true}
+                                                enableColorCycle={true}
+                                                cycleDesignsFront={logoList}
+                                                isActive={isActive}
+                                                isCustomizing={isCustomizing}
+                                                initialColor="#231f20"
+                                                rotationOffset={0}
+                                                color={isActive && activeId === 'tshirt' ? selectedColor : undefined}
+                                                designs={isActive && activeId === 'tshirt' ? effectiveDesigns : undefined}
+                                                activeZone={activeZone}
+                                                mode={mode}
+                                                isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('tshirt')}
+                                                onLoadComplete={() => handleModelLoaded('tshirt')}
+                                                colorToLogoMap={colorToLogoMap}
+                                            />
+                                        );
+                                    })()}
+                                </Suspense>
+
+                                {/* Hoodie - Loads LAST (largest) */}
+                                <Suspense fallback={null}>
+                                    {shouldRenderModel('hoodie') && (() => {
+                                        const { pos, scale, isActive } = getProductState('hoodie');
+                                        return (
+                                            <ProductModel
+                                                key="hoodie"
+                                                modelUrl="/models/hoodie-webshop.glb"
+                                                position={pos}
+                                                scale={scale}
+                                                label="HOODICA"
+                                                price={productData.hoodie?.price || 50}
+                                                onClick={() => onSelectProduct('hoodie')}
+                                                enableDesignCycle={true}
+                                                enableColorCycle={true}
+                                                cycleDesignsFront={logoList}
+                                                cycleDesignsBack={hoodieBackList}
+                                                isActive={isActive}
+                                                isCustomizing={isCustomizing}
+                                                initialColor="#231f20"
+                                                rotationOffset={Math.PI / 8}
+                                                color={isActive && activeId === 'hoodie' ? selectedColor : undefined}
+                                                designs={isActive && activeId === 'hoodie' ? effectiveDesigns : undefined}
+                                                activeZone={activeZone}
+                                                mode={mode}
+                                                isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('hoodie')}
+                                                onLoadComplete={() => handleModelLoaded('hoodie')}
+                                                colorToLogoMap={colorToLogoMap}
+                                            />
+                                        );
+                                    })()}
+                                </Suspense>
+                            </group>
+                        );
+                    })()}
+                </Suspense>
+            </Canvas>
+        </div>
+    );
+};
