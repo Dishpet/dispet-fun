@@ -817,14 +817,22 @@ const ProductModel = ({
             frontTexture.flipY = false; // Flip Vertically (relative to valid UVs)
             frontTexture.wrapS = THREE.RepeatWrapping;
             frontTexture.wrapT = THREE.RepeatWrapping;
-            frontTexture.repeat.set(20, 20); // Scale down 10% more (18 -> 20)
-            frontTexture.offset.set(0.15, -0.05); // Set Y to -0.05
+            frontTexture.repeat.set(24.4, 24.4); // Scale UP 5% (25.6 -> 24.4)
+            frontTexture.offset.set(0.21, -0.37); // Left (0.23->0.21)
         } else if (label === 'KAPA') {
             frontTexture.flipY = false; // Fix upside down
             frontTexture.wrapS = THREE.ClampToEdgeWrapping; // Big spacing (no repeat)
             frontTexture.wrapT = THREE.ClampToEdgeWrapping;
             frontTexture.repeat.set(6, 6); // Scale down 10% (5.5 -> 6)
             frontTexture.offset.set(0, 0.6); // Keep position
+        } else if (label === 'MAJICA') {
+            // T-shirt Front: Flip horizontally and vertically
+            frontTexture.flipY = true;
+            frontTexture.wrapS = THREE.RepeatWrapping;
+            frontTexture.wrapT = THREE.RepeatWrapping;
+            frontTexture.repeat.set(3.4, -3.4); // Scale UP (decrease repeat)
+            // Nudge Down (+y)
+            frontTexture.offset.set(-1.05, 3.00);
         } else {
             // Default
             frontTexture.flipY = true;
@@ -855,8 +863,12 @@ const ProductModel = ({
 
         // Product Specific Tuning for Back
         if (label === 'HOODICA') {
-            backTexture.repeat.set(-8.4, 8.4); // Scale down 15% (7.1 -> 8.4)
-            backTexture.offset.set(-0.3, 2.2); // Move Up 0.2 (2.0->2.2), Left 0.1 (-0.2->-0.3)
+            backTexture.repeat.set(-6.6, 6.6); // Scale DOWN 10% (6.0 -> 6.6)
+            backTexture.offset.set(-0.23, 1.7); // Move Left (-0.2 -> -0.23)
+        } else if (label === 'MAJICA') {
+            // T-shirt Back: Scale down 50% again (total 25% of original)
+            backTexture.repeat.set(4.6, 4.6);  // Flip horizontally (-4.6 -> 4.6), size reduced 15%
+            backTexture.offset.set(-0.17, 0); // Move right (adjust X offset)
         } else {
             backTexture.repeat.set(-1, 1);
             backTexture.offset.set(0, 0);
@@ -1683,6 +1695,7 @@ export const ShopScene = ({
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
                                                 cycleDesignsFront={cycleLogoList}
+                                                cycleDesignsBack={cycleBackList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"

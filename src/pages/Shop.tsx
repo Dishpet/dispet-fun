@@ -382,9 +382,9 @@ const Shop = () => {
         return () => window.removeEventListener('reset-shop-view', handleReset);
     }, [setSearchParams]);
 
-    // Sync Hoodie Front Logo with Color
+    // Sync Hoodie/T-shirt Front Logo with Color
     useEffect(() => {
-        if (selectedProduct === 'hoodie') {
+        if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
             const logo = COLOR_TO_LOGO_MAP[selectedColor];
             if (logo) {
                 setDesigns(prev => ({
@@ -457,8 +457,8 @@ const Shop = () => {
 
 
     const handleDesignSelect = (designUrl: string) => {
-        if (selectedProduct === 'hoodie') {
-            // Hoodie Logic: Selection applies to Back. Front is managed by color sync.
+        if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
+            // Hoodie/T-shirt Logic: Selection applies to Back. Front is managed by color sync.
             setDesigns(prev => ({
                 ...prev,
                 back: designUrl
@@ -606,7 +606,7 @@ const Shop = () => {
                             {/* 2. Collection Toggles (Tabs) with side buttons */}
                             <div className="flex items-center justify-center gap-2 md:gap-4 w-full">
                                 {/* Zone Toggle - Left side, icon only, visible on all screens */}
-                                {selectedProduct === 'hoodie' && (
+                                {(selectedProduct === 'hoodie' || selectedProduct === 'tshirt') && (
                                     <button
                                         onClick={() => setActiveZone(activeZone === 'front' ? 'back' : 'front')}
                                         className="bg-black/80 hover:bg-black backdrop-blur-md p-2.5 rounded-full text-white transition-all shadow-lg border border-white/10 group pointer-events-auto"
