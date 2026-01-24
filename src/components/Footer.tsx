@@ -19,7 +19,7 @@ export const Footer = () => {
             isProductPage ? "pb-20 md:pb-0" : ""
         )}>
             {/* Clouds SVG Layer */}
-            <img src={cloudsSvg} alt="" className="absolute top-0 left-0 min-w-[101%] w-[101%] -ml-[1px] h-auto z-0" />
+            <img src={cloudsSvg} alt="" className="absolute top-0 left-0 min-w-[101%] w-[101%] -ml-[1px] -mt-[2px] h-auto z-0" />
 
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 relative z-10 min-h-[650px] flex flex-col justify-end">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 items-center">

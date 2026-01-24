@@ -7,7 +7,8 @@ import { ShoppingBag, Palette, Ruler, ChevronLeft, ChevronRight, Box, X, Star, C
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
 import cloudsTopSvg from '@/assets/clouds-top.svg';
-import bannerImage from '@/assets/banner-image.jpg';
+import bannerImage from '@/assets/banner-image.webp';
+import mobileBannerImage from '@/assets/boce-kape.webp';
 import bannerVideo from '@/assets/banner-video.webm';
 import { getProducts } from '@/integrations/wordpress/woocommerce';
 
@@ -776,7 +777,7 @@ const Shop = () => {
                 <img
                     src={cloudsTopSvg}
                     alt=""
-                    className="absolute bottom-0 left-0 min-w-[101%] w-[101%] -ml-[1px] h-auto z-30 pointer-events-none"
+                    className="absolute bottom-0 left-0 min-w-[101%] w-[101%] -ml-[1px] -mb-[2px] h-auto z-30 pointer-events-none"
                 />
             </motion.div>
 
@@ -788,11 +789,14 @@ const Shop = () => {
 
                     {/* Banner Image */}
                     <div className="w-full h-auto">
-                        <img
-                            src={bannerImage}
-                            alt="Shop Banner"
-                            className="w-full h-full object-cover block"
-                        />
+                        <picture>
+                            <source media="(max-width: 768px)" srcSet={mobileBannerImage} />
+                            <img
+                                src={bannerImage}
+                                alt="Shop Banner"
+                                className="w-full h-full object-cover block"
+                            />
+                        </picture>
                     </div>
 
                     <div className="container mx-auto px-4 py-8 md:py-16 relative z-50 text-center pointer-events-none">

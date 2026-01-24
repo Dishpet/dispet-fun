@@ -3,7 +3,8 @@ import { Hero } from "@/components/Hero";
 import { Partners } from "@/components/Partners";
 import { Gallery } from "@/components/Gallery";
 import { BlogSection } from "@/components/BlogSection";
-import bannerImage from "@/assets/banner-image.jpg";
+import bannerImage from "@/assets/banner-image.webp";
+import mobileBannerImage from "@/assets/boce-kape.webp";
 import bannerVideo from "@/assets/banner-video.webm";
 import dispetLoop from "@/assets/dispet-loop.mp4";
 import cloudsTopSvg from "@/assets/clouds-top.svg";
@@ -112,11 +113,14 @@ const Index = () => {
 
         {/* Banner Image */}
         <div className="w-full h-auto">
-          <img
-            src={bannerImage}
-            alt="Shop Banner"
-            className="w-full h-full object-cover block"
-          />
+          <picture>
+            <source media="(max-width: 768px)" srcSet={mobileBannerImage} />
+            <img
+              src={bannerImage}
+              alt="Shop Banner"
+              className="w-full h-full object-cover block"
+            />
+          </picture>
         </div>
       </div>
 

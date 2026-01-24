@@ -21,7 +21,7 @@ export const Hero = ({ onCreateClick }: HeroProps) => {
   return (
     <section className="relative min-h-screen md:min-h-[calc(100vh-100px)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#ad00e9] to-[#0044bf] pt-0 -mt-32">
       {/* Clouds SVG Layer - aligned to bottom */}
-      <img src={cloudsTopSvg} alt="" className="absolute bottom-32 md:bottom-0 left-0 min-w-[101%] w-[101%] -ml-[1px] h-auto z-0" />
+      <img src={cloudsTopSvg} alt="" className="absolute bottom-32 md:bottom-0 left-0 min-w-[101%] w-[101%] -ml-[1px] -mb-[2px] h-auto z-0" />
 
       <div className="container relative z-10 px-4 pt-12 pb-0 md:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12 items-center max-w-7xl mx-auto">
