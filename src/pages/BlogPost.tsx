@@ -62,7 +62,7 @@ const BlogPost = () => {
                         <ArrowLeft className="w-4 h-4 mr-2" /> Natrag na blog
                     </Button>
 
-                    <article className="prose prose-lg max-w-none text-center mx-auto">
+                    <article className="prose prose-lg !max-w-none w-full text-left mx-auto">
                         <div className="flex items-center justify-center gap-2 text-muted-foreground mb-6">
                             <Calendar className="w-5 h-5" />
                             {format(new Date(post.date), 'd. MMMM yyyy.', { locale: hr })}
@@ -76,7 +76,10 @@ const BlogPost = () => {
                             />
                         )}
 
-                        <div dangerouslySetInnerHTML={{ __html: post.content.rendered }} />
+                        <div
+                            className="w-full [&_*]:!max-w-none [&_*]:w-full [&_p]:!max-w-none [&_p]:w-full"
+                            dangerouslySetInnerHTML={{ __html: post.content.rendered }}
+                        />
                     </article>
                 </div>
             </section>

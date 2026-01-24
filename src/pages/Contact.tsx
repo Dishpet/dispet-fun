@@ -140,7 +140,7 @@ const Contact = () => {
                                         <label htmlFor="name" className="text-sm font-bold text-foreground ml-1">Ime i prezime <span className="text-destructive">*</span></label>
                                         <Input
                                             id="name"
-                                            className="bg-card rounded-2xl h-12 shadow-soft focus:border-primary transition-all"
+                                            className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
                                     </div>
 
@@ -149,7 +149,7 @@ const Contact = () => {
                                         <Input
                                             id="phone"
                                             type="tel"
-                                            className="bg-card rounded-2xl h-12 shadow-soft focus:border-primary transition-all"
+                                            className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
                                     </div>
 
@@ -158,7 +158,7 @@ const Contact = () => {
                                         <Input
                                             id="email"
                                             type="email"
-                                            className="bg-card rounded-2xl h-12 shadow-soft focus:border-primary transition-all"
+                                            className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
                                     </div>
 
@@ -166,7 +166,7 @@ const Contact = () => {
                                         <label htmlFor="message" className="text-sm font-bold text-foreground ml-1">Vaša poruka <span className="text-destructive">*</span></label>
                                         <Textarea
                                             id="message"
-                                            className="min-h-[150px] bg-card rounded-2xl shadow-soft focus:border-primary p-4 transition-all"
+                                            className="min-h-[150px] bg-card rounded-3xl border-2 focus:border-primary p-4 transition-all"
                                         />
                                     </div>
                                     <Button

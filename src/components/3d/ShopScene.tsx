@@ -211,6 +211,15 @@ interface ProductModelProps {
     hasUserInteracted?: boolean;
     designColorMap?: Record<string, string[]>;
     urlToFilename?: Record<string, string>;
+    cycleDuration?: number;
+    cycleOffset?: number;
+    swipeDirection?: 'up' | 'down';
+    swipeAxis?: 'x' | 'y' | 'z';
+
+    allowedCycleColors?: string[];
+    productId?: string;
+    activeColorsRef?: React.MutableRefObject<Record<string, string>>;
+    onDesignsUpdate?: (designs: { front: string; back: string }) => void;
 }
 
 // Helper for bottle specific logic
@@ -244,7 +253,15 @@ const ProductModel = ({
     colorToLogoMap,
     hasUserInteracted = false,
     designColorMap,
-    urlToFilename
+    urlToFilename,
+    cycleDuration = 6000, // Default 6 seconds
+    cycleOffset = 0,
+    swipeDirection = 'down', // Default Top-to-Bottom
+    swipeAxis = 'y',
+    allowedCycleColors,
+    productId,
+    activeColorsRef,
+    onDesignsUpdate
 }: ProductModelProps & { isLoaded?: boolean; onLoadComplete?: () => void }) => {
     const groupRef = useRef<THREE.Group>(null);
     const [hovered, setHovered] = useState(false);
@@ -303,13 +320,17 @@ const ProductModel = ({
     const backMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
 
     const targetColorRef = useRef(new THREE.Color(
-        enableColorCycle ? AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)] : initialColor
+        enableColorCycle
+            ? (allowedCycleColors || AUTO_CYCLE_COLORS)[Math.floor(Math.random() * (allowedCycleColors || AUTO_CYCLE_COLORS).length)]
+            : initialColor
     ));
 
     // Holographic Swipe Transition State (only for Hoodie)
     // Initialize to same color as target to prevent black flash on first transition
     const previousColorRef = useRef(new THREE.Color(
-        enableColorCycle ? AUTO_CYCLE_COLORS[Math.floor(Math.random() * AUTO_CYCLE_COLORS.length)] : initialColor
+        enableColorCycle
+            ? (allowedCycleColors || AUTO_CYCLE_COLORS)[Math.floor(Math.random() * (allowedCycleColors || AUTO_CYCLE_COLORS).length)]
+            : initialColor
     ));
     const colorTransitionProgress = useRef(1); // 0 = old color, 1 = new color (complete)
     const isColorTransitioning = useRef(false);
@@ -324,8 +345,9 @@ const ProductModel = ({
     const isGlitchingFront = useRef(false);
     const isGlitchingBack = useRef(false);
 
-    // Clone scene
-    const clonedScene = useMemo(() => scene.clone(), [scene]);
+    // Clone scene - Depend on config to ensure fresh state when switching modes/axes
+    // Added initialColor and swipeAxis to deps to prevent "stacking" modifications on the same clone
+    const clonedScene = useMemo(() => scene.clone(), [scene, enableDesignCycle, enableColorCycle, label, swipeDirection, swipeAxis, initialColor]);
 
     // Setup Meshes & Materials
     useEffect(() => {
@@ -336,28 +358,48 @@ const ProductModel = ({
 
         console.log(`Analyzing model: ${modelUrl}`);
 
-        // Calculate model bounds
-        const verticalAxis = label === 'HOODICA' ? 'z' : 'y';
-        let minY = Infinity;
-        let maxY = -Infinity;
+        // Calculate model bounds (STABLE WORLD SPACE)
+        // We calculate bounds as if the model is at (0,0,0) World, but keeping its Rotation/Scale.
+        // This coordinates with the shader logic that subtracts translation.
+        let stableMinY = Infinity;
+        let stableMaxY = -Infinity;
 
-        // Pass 1: Calculate Bounds
+        // Ensure matrices are updated
+        clonedScene.updateMatrixWorld(true);
+
         clonedScene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const m = child as THREE.Mesh;
                 if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+
                 if (m.geometry.boundingBox) {
-                    minY = Math.min(minY, m.geometry.boundingBox.min[verticalAxis]);
-                    maxY = Math.max(maxY, m.geometry.boundingBox.max[verticalAxis]);
+                    // Create OBB (Oriented Bounding Box) logic effectively
+                    const bbox = m.geometry.boundingBox!;
+
+                    // Let's use the "Tallest Axis" logic to define Min/Max/Height of the model itself.
+                    // This approximates the "Visual Height" without needing complex matrix decompose here.
+                    const dx = bbox.max.x - bbox.min.x;
+                    const dy = bbox.max.y - bbox.min.y;
+                    const dz = bbox.max.z - bbox.min.z;
+
+                    // Assume the main axis is the longest one (Hoodie/Bottle/Tshirt are tall).
+                    let min, max;
+                    // Determine dominant local axis
+                    if (dy >= dx && dy >= dz) { min = bbox.min.y; max = bbox.max.y; } // Y is height
+                    else if (dx >= dy && dx >= dz) { min = bbox.min.x; max = bbox.max.x; } // X is height
+                    else { min = bbox.min.z; max = bbox.max.z; } // Z is height
+
+                    stableMinY = Math.min(stableMinY, min);
+                    stableMaxY = Math.max(stableMaxY, max);
                 }
             }
         });
 
-        // Ensure valid bounds if mesh empty (fallback)
-        if (minY === Infinity) { minY = -1; maxY = 1; }
-        const modelHeight = maxY - minY;
+        // If Model is centered, Min is roughly -Height/2 and Max is Height/2.
+        if (stableMinY === Infinity) { stableMinY = -1; stableMaxY = 1; }
+        const worldHeight = stableMaxY - stableMinY;
 
-        console.log(`Model Bounds (${label}): ${minY} to ${maxY}, Height: ${modelHeight}, Axis: ${verticalAxis}`);
+        console.log(`Stable Bounds estimate: ${stableMinY} to ${stableMaxY} (Height: ${worldHeight})`);
 
         // Pass 2: Setup Materials
         clonedScene.traverse((child) => {
@@ -371,8 +413,30 @@ const ProductModel = ({
                 if (!isPrintArea) {
                     // Body part logic
                     m.renderOrder = 0;
-                    if (m.material) {
-                        const mat = m.material as THREE.MeshStandardMaterial;
+
+                    // Helper to process a single material
+                    const processBodyMaterial = (material: THREE.Material) => {
+                        const mat = material as THREE.MeshStandardMaterial;
+                        const matName = mat.name.toLowerCase();
+
+                        // Special Case for Bottle: BlackRing should NEVER change color
+                        // BUT it should be transparent like the rest when ghosted
+                        if (matName.includes('blackring')) {
+                            const ringMat = mat.clone();
+                            ringMat.color.set('#000000'); // Always black
+                            ringMat.roughness = 0.5;
+                            ringMat.metalness = 0;
+                            ringMat.transparent = true;
+                            ringMat.opacity = 1; // Will be controlled by animation loop
+                            bodyMaterialsRef.current.push(ringMat); // Include in body materials for opacity control
+                            return ringMat;
+                        }
+
+                        // For BodyColor (or any other generic body part), allow color cycling
+                        // If we have specific named materials, only target "BodyColor" or fallback to everything else
+                        // that isn't the ring.
+                        if (matName.includes('blackring')) return mat; // Should remain caught above, but safety
+
                         const newMat = mat.clone();
                         // Use random color for cycling products, initialColor for others
                         const startColor = enableColorCycle ? targetColorRef.current : new THREE.Color(initialColor);
@@ -384,16 +448,14 @@ const ProductModel = ({
                             newMat.map = null;
 
                             // Add custom uniforms for the transition
-                            // Extend bounds slightly beyond model to prevent edge artifacts
-                            const extendedHeight = modelHeight * 1.2;
-                            const extendedMinY = minY - (modelHeight * 0.1);
                             newMat.userData.uniforms = {
                                 uRevealProgress: { value: 1.0 },
                                 uOldColor: { value: new THREE.Color(targetColorRef.current) },
                                 uNewColor: { value: new THREE.Color(targetColorRef.current) },
                                 uTime: { value: 0 },
-                                uModelHeight: { value: extendedHeight },
-                                uModelMinY: { value: extendedMinY }
+
+                                uModelHeight: { value: worldHeight * 1.05 },
+                                uModelMinY: { value: stableMinY - (worldHeight * 0.025) }
                             };
 
                             // Inject shader code into MeshStandardMaterial
@@ -406,17 +468,24 @@ const ProductModel = ({
                                 shader.uniforms.uModelHeight = newMat.userData.uniforms.uModelHeight;
                                 shader.uniforms.uModelMinY = newMat.userData.uniforms.uModelMinY;
 
-                                // Inject varying into vertex shader
+                                // Inject WORLD POSITION varying
                                 shader.vertexShader = shader.vertexShader.replace(
                                     '#include <common>',
                                     `#include <common>
-                                    varying vec3 vLocalPos;`
+                                    varying vec3 vWorldPos;`
                                 );
                                 shader.vertexShader = shader.vertexShader.replace(
                                     '#include <begin_vertex>',
                                     `#include <begin_vertex>
-                                    vLocalPos = position;`
+                                    // Calculate world position
+                                    vec4 worldP = modelMatrix * vec4(position, 1.0);
+                                    vWorldPos = worldP.xyz;`
                                 );
+
+                                // Fix: Check if vLocalPos.y needs to be flipped or axis swapped?
+                                // If scanAxis was 'y', we use .y.
+                                // If model is rotated 90deg X in object mode?
+                                // Assuming standard Y-up geometry.
 
                                 // Inject uniforms and HSL function into fragment shader
                                 shader.fragmentShader = shader.fragmentShader.replace(
@@ -428,7 +497,7 @@ const ProductModel = ({
                                     uniform float uTime;
                                     uniform float uModelHeight;
                                     uniform float uModelMinY;
-                                    varying vec3 vLocalPos;
+                                    varying vec3 vWorldPos;
                                     
                                     vec3 hsl2rgb_holo(float h, float s, float l) {
                                         vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
@@ -441,10 +510,22 @@ const ProductModel = ({
                                     '#include <color_fragment>',
                                     `#include <color_fragment>
                                     
-                                    // Holographic swipe transition
-                                    float normalizedY = (vLocalPos.${verticalAxis} - uModelMinY) / uModelHeight;
+                                    // Holographic swipe transition (WORLD SPACE)
+                                    // Using vWorldPos.y guarantees vertical swipe relative to the scene floor.
+                                    // We update uModelMinY/Height every frame to account for Floating, preventing texture slip.
+                                    
+                                    float normalizedY = (vWorldPos.y - uModelMinY) / uModelHeight;
                                     normalizedY = clamp(normalizedY, 0.0, 1.0);
-                                    normalizedY = 1.0 - normalizedY; // Invert: T-shirt (Top-to-Bottom), Hoodie (Bottom-to-Top)
+                                    
+                                    // Direction Logic:
+                                    // Default (normalizedY) is 0 at Bottom, 1 at Top.
+                                    // smoothstep(cutoff...) where cutoff goes 0->1.
+                                    // If normalizedY < cutoff, we get 'NewColor'.
+                                    // So normalizedY (Bottom) is < cutoff first. So Bottom->Top reveals New Color.
+                                    // If we want Top->Bottom ('down'), we need invert normalizedY so Top is 0.
+                                    
+                                    ${swipeDirection === 'down' ? 'normalizedY = 1.0 - normalizedY;' : ''}
+                                     // Invert if 'down' (Top-to-Bottom), otherwise 'up' (Bottom-to-Top)
                                     
                                     float edgeWidth = 0.12;
                                     float cutoff = uRevealProgress;
@@ -472,21 +553,35 @@ const ProductModel = ({
                                 newMat.userData.shader = shader;
                             };
 
-                            m.material = newMat;
                             bodyMaterialsRef.current.push(newMat);
                             holoShaderMaterialsRef.current.push(newMat as any); // Store for uniform updates
+                            return newMat;
                         } else {
-                            // Standard material for non-hoodie products
-                            if (mat.map || mat.alphaMap) {
-                                newMat.alphaTest = 0.5;
-                                newMat.transparent = false;
-                            } else {
-                                newMat.transparent = true;
-                            }
+                            // Standard material for non-hoodie products + Bottle Body logic
+                            // Fix: Ensure solid materials (BodyColor) are NOT set to transparent
+                            // Exception: For Bottle, BlackRing material should be transparent
+                            const isBottlePart = label === 'BOCA';
+                            const isBlackRing = mat.name === 'BlackRing';
 
-                            m.material = newMat;
+                            if (isBottlePart && isBlackRing) {
+                                // BlackRing material: Make it transparent like the rest of the bottle
+                                newMat.transparent = true;
+                                newMat.opacity = 0.3; // Match the ghosted look
+                                newMat.depthWrite = false; // Helps with transparent rendering
+                            } else {
+                                newMat.transparent = false;
+                            }
+                            newMat.needsUpdate = true;
+
                             bodyMaterialsRef.current.push(newMat);
+                            return newMat;
                         }
+                    };
+
+                    if (Array.isArray(m.material)) {
+                        m.material = m.material.map(mat => processBodyMaterial(mat));
+                    } else if (m.material) {
+                        m.material = processBodyMaterial(m.material);
                     }
                 } else {
                     m.renderOrder = 1;
@@ -642,12 +737,12 @@ const ProductModel = ({
             }
         });
 
-        // Store model bounds for hoodie
-        if (label === 'HOODICA' && minY !== Infinity) {
+        // Store model bounds for hoodie and bottle (for swipe effect)
+        if ((label === 'HOODICA' || label === 'BOCA' || label === 'MAJICA') && stableMinY !== Infinity) {
             modelBoundsRef.current = {
-                minY: minY,
-                maxY: maxY,
-                height: maxY - minY
+                minY: stableMinY,
+                maxY: stableMaxY,
+                height: worldHeight
             };
             // Update shader uniforms with bounds (via userData for MeshStandardMaterial)
             // Body materials only - print materials use glitch effect without bounds
@@ -658,7 +753,8 @@ const ProductModel = ({
                 }
             });
         }
-    }, [clonedScene, initialColor, enableDesignCycle, label]);
+
+    }, [clonedScene, initialColor, enableDesignCycle, label, swipeDirection, swipeAxis]);
 
     // Sync target color with prop - trigger holographic transition for hoodie
     useEffect(() => {
@@ -770,21 +866,26 @@ const ProductModel = ({
 
     // Sync pairing on re-entry to showcase (prevents stale design)
     useEffect(() => {
-        if (!isCustomizing && label === 'HOODICA' && colorToLogoMap && color) {
+        if (!isCustomizing && (label === 'HOODICA' || label === 'MAJICA') && colorToLogoMap && color) {
             const logo = colorToLogoMap[color];
             if (logo) setColorMatchedFrontDesign(logo);
         }
     }, [isCustomizing, label, color, colorToLogoMap]);
 
-    // Resolve Front URL: Strict pairing for Hoodie
-    const strictHoodieFront = (label === 'HOODICA' && isCustomizing && isActive && colorToLogoMap && hasUserInteracted) ? colorToLogoMap[color] : null;
+    // Resolve Front URL: Strict pairing for Hoodie AND T-Shirt
+    // Also use this logic if NOT customizing (showcase) but auto-cycling, to ensure match.
+    // CRITICAL: If we're in customizing mode and NOT active, force null (no design visible)
+    const shouldHideDesigns = isCustomizing && !isActive;
 
-    const frontUrl = (isCustomizing && !isActive) ? null :
-        (strictHoodieFront || ((isCustomizing && hasUserInteracted && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
+    const strictColorSyncFront = !shouldHideDesigns && ((label === 'HOODICA' || label === 'MAJICA') && colorToLogoMap) ?
+        colorToLogoMap[isCustomizing && hasUserInteracted && color ? color : ('#' + targetColorRef.current.getHexString())] : null;
+
+    const frontUrl = shouldHideDesigns ? null :
+        (strictColorSyncFront || ((isCustomizing && hasUserInteracted && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
 
     // Resolve Back URL: Custom Back OR Cycle
     // Update: If customizing but NOT active (background), show NO design.
-    const backUrl = (isCustomizing && !isActive) ? null :
+    const backUrl = shouldHideDesigns ? null :
         ((isCustomizing && hasUserInteracted && designs?.back) ? designs.back : backCycleUrl);
 
     const safeFrontUrl = frontUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -823,8 +924,8 @@ const ProductModel = ({
             frontTexture.flipY = false; // Fix upside down
             frontTexture.wrapS = THREE.ClampToEdgeWrapping; // Big spacing (no repeat)
             frontTexture.wrapT = THREE.ClampToEdgeWrapping;
-            frontTexture.repeat.set(6, 6); // Scale down 10% (5.5 -> 6)
-            frontTexture.offset.set(0, 0.6); // Keep position
+            frontTexture.repeat.set(7.28, 7.28); // Scale down 5% more (6.93 -> 7.28)
+            frontTexture.offset.set(0, 0.78); // Move Up (0.75 -> 0.78)
         } else if (label === 'MAJICA') {
             // T-shirt Front: Flip horizontally and vertically
             frontTexture.flipY = true;
@@ -849,7 +950,7 @@ const ProductModel = ({
             frontTexture.wrapT = THREE.ClampToEdgeWrapping;
             frontTexture.center.set(0.5, 0.5);
             frontTexture.repeat.set(6.25, 6.25); // Scaled down 20% (5.0 -> 6.25)
-            frontTexture.offset.set(-0.3, 0); // Moved to -0.3
+            frontTexture.offset.set(-0.3, 0.18); // Moved to -0.3, Moved Up (0.1 -> 0.18)
         }
 
         frontTexture.needsUpdate = true;
@@ -863,12 +964,12 @@ const ProductModel = ({
 
         // Product Specific Tuning for Back
         if (label === 'HOODICA') {
-            backTexture.repeat.set(-6.6, 6.6); // Scale DOWN 10% (6.0 -> 6.6)
-            backTexture.offset.set(-0.23, 1.7); // Move Left (-0.2 -> -0.23)
+            backTexture.repeat.set(-7.26, 7.26); // Scale DOWN 10% (6.6 -> 7.26)
+            backTexture.offset.set(-0.28, 1.90); // Move Right (-0.28), Move Down correction (1.90)
         } else if (label === 'MAJICA') {
-            // T-shirt Back: Scale down 50% again (total 25% of original)
-            backTexture.repeat.set(4.6, 4.6);  // Flip horizontally (-4.6 -> 4.6), size reduced 15%
-            backTexture.offset.set(-0.17, 0); // Move right (adjust X offset)
+            // T-shirt Back: Scaled down 5% more (5.06 -> 5.31)
+            backTexture.repeat.set(5.31, 5.31);
+            backTexture.offset.set(-0.25, 0.15); // Move Right (-0.25), Move Up correction (0.15)
         } else {
             backTexture.repeat.set(-1, 1);
             backTexture.offset.set(0, 0);
@@ -877,6 +978,7 @@ const ProductModel = ({
 
         // Apply Front
         if (frontMaterialsRef.current.length > 0) {
+            const hideDesigns = isCustomizing && !isActive;
             frontMaterialsRef.current.forEach(mat => {
                 mat.map = frontTexture;
                 // Fix transparency/z-fighting
@@ -886,12 +988,13 @@ const ProductModel = ({
                 mat.polygonOffsetFactor = -1;
 
                 mat.needsUpdate = true;
-                mat.visible = !!frontUrl;
+                mat.visible = !hideDesigns && !!frontUrl;
             });
         }
 
         // Apply Back
         if (backMaterialsRef.current.length > 0) {
+            const hideDesigns = isCustomizing && !isActive;
             backMaterialsRef.current.forEach(mat => {
                 mat.map = backTexture;
                 // Fix transparency/z-fighting
@@ -901,18 +1004,28 @@ const ProductModel = ({
                 mat.polygonOffsetFactor = -1;
 
                 mat.needsUpdate = true;
-                mat.visible = !!backUrl;
+                mat.visible = !hideDesigns && !!backUrl;
             });
         }
-    }, [frontTexture, backTexture, enableDesignCycle, isCustomizing, frontUrl, backUrl, label]);
+    }, [frontTexture, backTexture, enableDesignCycle, isCustomizing, isActive, frontUrl, backUrl, label]);
 
     // Combined Cycle Trigger Logic: Changes BOTH color AND design together
     useEffect(() => {
         if (!isCycling) return;
 
-        const interval = setInterval(() => {
+        const runCycle = () => {
+            // Determine random next index
+            const len = cycleDesignsFront?.length || 1;
+            let nextIndex = Math.floor(Math.random() * len);
+
+            // Ensure we don't pick the same index if possible
+            const currentIndex = designIndexRef.current; // Use ref to get current value
+            if (len > 1 && nextIndex === currentIndex % len) {
+                nextIndex = (nextIndex + 1) % len;
+            }
+
             // Change design index
-            setCurrentDesignIndex(prev => prev + 1);
+            setCurrentDesignIndex(nextIndex);
 
             // For ALL models: Trigger transitions
             // Always trigger Design Glitch
@@ -920,8 +1033,10 @@ const ProductModel = ({
 
             if (enableColorCycle) {
                 // Universal Color Validation Logic
-                const nextIndex = (designIndexRef.current + 1);
-                let validColorsSet = new Set(AUTO_CYCLE_COLORS);
+                // Use the PRE-CALCULATED random nextIndex for validation
+
+                // Use allowedCycleColors if provided, otherwise default to full palette
+                let validColorsSet = new Set(allowedCycleColors || AUTO_CYCLE_COLORS);
 
                 // 1. Check Front Design Constraint (if not overridden by Color->Logo map)
                 if (cycleDesignsFront && !colorToLogoMap) {
@@ -966,9 +1081,26 @@ const ProductModel = ({
                     allowedColors = AUTO_CYCLE_COLORS;
                 }
 
+                // Filtering based on GLOBAL Active Colors (prevent collisions)
+                if (activeColorsRef && productId) {
+                    const currentlyUsedColors = Object.values(activeColorsRef.current);
+                    // Filter allowedColors to remove those already in use (except by self, though self is about to change)
+                    const availableUnique = allowedColors.filter(c => !currentlyUsedColors.includes(c));
+
+                    // If we have unique options, use them. Otherwise fallback to allowedColors (better to duplicate than crash)
+                    if (availableUnique.length > 0) {
+                        allowedColors = availableUnique;
+                    }
+                }
+
                 // Pick a new random color from Allowed List
                 const currentColorHex = targetColorRef.current.getHexString();
                 let newColor = allowedColors[Math.floor(Math.random() * allowedColors.length)];
+
+                // Update the global ref with my new color
+                if (activeColorsRef && productId) {
+                    activeColorsRef.current[productId] = newColor;
+                }
 
                 // Ensure different color (retry logic)
                 let attempts = 0;
@@ -1024,10 +1156,35 @@ const ProductModel = ({
             });
 
             setFadeState('fade-out');
-        }, 4000); // 4 seconds between cycles
+        };
 
-        return () => clearInterval(interval);
-    }, [isCycling]); // ONLY depend on isCycling - other values accessed via refs
+        // Staggered Start Logic
+        let intervalId: NodeJS.Timeout;
+        const initialDelay = cycleOffset || 0;
+
+        const timeoutId = setTimeout(() => {
+            runCycle(); // Run immediate first cycle after offset
+            intervalId = setInterval(runCycle, cycleDuration);
+        }, initialDelay);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [isCycling, cycleDuration, cycleOffset, enableColorCycle, cycleDesignsFront, cycleDesignsBack, colorToLogoMap, designColorMap, urlToFilename]);
+
+    // Sync Cycle State with Parent
+    // This ensures that when the user starts interacting, the React state matches the last cycled design
+    useEffect(() => {
+        if (isActive && !hasUserInteracted && onDesignsUpdate) {
+            const currentFront = (strictColorSyncFront || colorMatchedFrontDesign || frontCycleUrl || designs?.front || '');
+            const currentBack = (backCycleUrl || designs?.back || '');
+
+            // Debounce or check for change to avoid infinite loops?
+            // Since this runs on cycle update (frontCycleUrl changes), it's fine.
+            onDesignsUpdate({ front: currentFront, back: currentBack });
+        }
+    }, [isActive, hasUserInteracted, frontCycleUrl, backCycleUrl, strictColorSyncFront, colorMatchedFrontDesign, designs?.front, designs?.back, onDesignsUpdate]);
 
     // Update State Ref on every render to ensure useFrame has latest values
     stateRef.current = {
@@ -1063,6 +1220,13 @@ const ProductModel = ({
         const shouldHide = isCustomizing && !isActive;
         const effectiveFrontUrl = shouldHide ? null : frontUrl;
         const effectiveBackUrl = shouldHide ? null : backUrl;
+
+        // IMMEDIATE FORCE: If shouldHide, forcefully hide all print materials NOW
+        // This runs at the very start of every frame to guarantee suppression
+        if (shouldHide) {
+            frontMaterialsRef.current.forEach(mat => { mat.visible = false; });
+            backMaterialsRef.current.forEach(mat => { mat.visible = false; });
+        }
 
         // Clamp delta to prevent huge jumps on lag spikes
         const clampedDelta = Math.min(delta, 0.1);
@@ -1160,6 +1324,28 @@ const ProductModel = ({
             });
         }
 
+        // 2a. DYNAMIC BOUNDS UPDATE (Stable World Space) 
+        // We recalculate the World Bounding Box every frame to ensure the holographic lines 
+        // "stick" to the model even when it floats or animates.
+        if (holoShaderMaterialsRef.current.length > 0 && clonedScene) {
+            // FIX: Force matrix update to ensure we capture the latest position from Float/Animations
+            // This prevents the "swimming/wobble" of the texture effectively.
+            clonedScene.updateMatrixWorld(true);
+
+            // Calculate current World AABB
+            // We use clonedScene (the model) specifically to avoid including Text/UI elements in the group.
+            const bbox = new THREE.Box3().setFromObject(clonedScene);
+            const worldH = bbox.max.y - bbox.min.y;
+            const worldMin = bbox.min.y;
+
+            holoShaderMaterialsRef.current.forEach(mat => {
+                if (mat.userData?.uniforms) {
+                    if (mat.userData.uniforms.uModelHeight) mat.userData.uniforms.uModelHeight.value = worldH;
+                    if (mat.userData.uniforms.uModelMinY) mat.userData.uniforms.uModelMinY.value = worldMin;
+                }
+            });
+        }
+
         // 2b. Holographic Swipe Animation - COLOR TRANSITION (Cycle-enabled products)
         if (enableColorCycle && holoShaderMaterialsRef.current.length > 0) {
             // Update time uniform for scanline animation on body materials
@@ -1176,8 +1362,8 @@ const ProductModel = ({
                 const transitionSpeed = 1.2;
                 colorTransitionProgress.current += clampedDelta * transitionSpeed;
 
-                const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-                const easedProgress = easeOut(Math.min(colorTransitionProgress.current, 1));
+                // Removed easeOut as per user request to fix "flicker/lag" at end
+                const easedProgress = Math.min(colorTransitionProgress.current, 1);
 
                 // Update body materials ONLY
                 holoShaderMaterialsRef.current.forEach(mat => {
@@ -1330,11 +1516,11 @@ const ProductModel = ({
                     // For ALL models, keep opacity at 1 so glitch shader is visible
                     // We now use glitch shader for everyone
                     mat.opacity = 1;
-                    mat.visible = true;
+                    mat.visible = !shouldHide; // Fix: Hide if in customization mode and not active
                 });
                 backMaterialsRef.current.forEach(mat => {
                     mat.opacity = 1;
-                    mat.visible = true;
+                    mat.visible = !shouldHide; // Fix: Hide if in customization mode and not active
                 });
             } else {
                 // Ensure opacity is 1 when not cycling
@@ -1394,6 +1580,7 @@ const ProductModel = ({
                     )}
                 </group>
             )}
+
         </group>
     );
 };
@@ -1413,8 +1600,11 @@ interface ShopSceneProps {
     hasUserInteracted?: boolean;
     logoList?: string[];
     hoodieBackList?: string[];
+    vintageList?: string[];
+    allDesignsList?: string[];
     designColorMap?: Record<string, string[]>;
     urlToFilename?: Record<string, string>;
+    onCycleDesignUpdate?: (designs: { front: string; back: string }) => void;
 }
 
 export const ShopScene = ({
@@ -1432,9 +1622,21 @@ export const ShopScene = ({
     hasUserInteracted = false,
     logoList,
     hoodieBackList,
+    vintageList,
+    allDesignsList,
     designColorMap,
-    urlToFilename
+    urlToFilename,
+    onCycleDesignUpdate
 }: ShopSceneProps) => {
+
+
+    // Memoize the clean list for Cap to prevent rapid re-renders/cycling
+    const capCleanList = useMemo(() => {
+        return (allDesignsList || logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return fname !== 'street-5.png';
+        });
+    }, [allDesignsList, logoList, urlToFilename]);
 
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
@@ -1494,7 +1696,7 @@ export const ShopScene = ({
         if (productId === 'hoodie') yPos = isMobile ? -1.0 : -1.2;
         if (productId === 'tshirt') yPos = isMobile ? -1.0 : -1.2;
         if (productId === 'cap') yPos = isMobile ? 0.3 : 0.5;
-        if (productId === 'bottle') yPos = isMobile ? 0.2 : -0.5;
+        if (productId === 'bottle') yPos = isMobile ? 0.2 : -0.2;
 
         let pos: [number, number, number] = [0, 0, 0];
 
@@ -1530,7 +1732,7 @@ export const ShopScene = ({
                     pos = [-4.5, -0.2, 0];
                     scale = 10.0;
                 } else if (productId === 'tshirt') {
-                    pos = [-1.5, -1.5, 1];
+                    pos = [-1.5, -1.2, 1];
                     scale = 4.5;
                 } else if (productId === 'hoodie') {
                     pos = [1.5, -1.2, 1];
@@ -1605,6 +1807,7 @@ export const ShopScene = ({
                     {(() => {
                         const cycleLogoList = logoList || [];
                         const cycleBackList = hoodieBackList || [];
+                        const activeColorsRef = useRef<Record<string, string>>({}); // Shared state for collision detection
 
                         return (
                             <group position={[0, -1.0, 0]}>
@@ -1623,7 +1826,8 @@ export const ShopScene = ({
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={false}
-                                                cycleDesignsFront={cycleLogoList}
+                                                // Cap uses all designs (filtered)
+                                                cycleDesignsFront={capCleanList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -1639,6 +1843,11 @@ export const ShopScene = ({
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
+                                                cycleDuration={6000}
+                                                cycleOffset={0}
+                                                productId="cap"
+                                                activeColorsRef={activeColorsRef}
+                                                onDesignsUpdate={onCycleDesignUpdate}
                                             />
                                         );
                                     })()}
@@ -1658,13 +1867,14 @@ export const ShopScene = ({
                                                 price={productData.bottle?.price || 20}
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
-                                                enableColorCycle={false}
-                                                cycleDesignsFront={cycleLogoList}
+                                                enableColorCycle={true}
+                                                // Bottle uses all designs
+                                                cycleDesignsFront={allDesignsList || cycleLogoList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#ffffff"
                                                 rotationOffset={0}
-                                                color={undefined}
+                                                color={isActive && activeId === 'bottle' ? selectedColor : undefined}
                                                 designs={isActive && activeId === 'bottle' ? effectiveDesigns : undefined}
                                                 activeZone={activeZone}
                                                 mode={mode}
@@ -1674,6 +1884,14 @@ export const ShopScene = ({
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
+                                                cycleDuration={6000}
+                                                cycleOffset={4000}
+                                                swipeDirection="down"
+                                                swipeAxis="y" // Reset to Y (Vertical)
+                                                allowedCycleColors={['#231f20', '#ffffff']}
+                                                productId="bottle"
+                                                activeColorsRef={activeColorsRef}
+                                                onDesignsUpdate={onCycleDesignUpdate}
                                             />
                                         );
                                     })()}
@@ -1695,7 +1913,8 @@ export const ShopScene = ({
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
                                                 cycleDesignsFront={cycleLogoList}
-                                                cycleDesignsBack={cycleBackList}
+                                                // T-shirt uses Vintage
+                                                cycleDesignsBack={vintageList || cycleBackList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -1707,10 +1926,17 @@ export const ShopScene = ({
                                                 isFullscreen={isFullscreen}
                                                 isLoaded={isModelLoaded('tshirt')}
                                                 onLoadComplete={() => handleModelLoaded('tshirt')}
-                                                colorToLogoMap={colorToLogoMap}
+                                                colorToLogoMap={colorToLogoMap} // Pass map for strict sync
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
+                                                cycleDuration={6000}
+                                                cycleOffset={2000}
+                                                swipeDirection="down"
+                                                swipeAxis="y" // Reset to Y (Vertical)
+                                                productId="tshirt"
+                                                activeColorsRef={activeColorsRef}
+                                                onDesignsUpdate={onCycleDesignUpdate}
                                             />
                                         );
                                     })()}
@@ -1748,6 +1974,13 @@ export const ShopScene = ({
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
+                                                cycleDuration={6000}
+                                                cycleOffset={0}
+                                                swipeDirection="down"
+                                                swipeAxis="y" // Retrying Y (Standard) - Suspect "Horizontal" report meant "Horizontal Line" (Correct)
+                                                productId="hoodie"
+                                                activeColorsRef={activeColorsRef}
+                                                onDesignsUpdate={onCycleDesignUpdate}
                                             />
                                         );
                                     })()}

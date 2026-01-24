@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ShopScene } from '../components/3d/ShopScene';
@@ -56,6 +56,11 @@ const HIDDEN_DESIGNS = [
     'street-4.png',
     'street-8.png'
 ];
+
+// Designs to hide for specific products
+const PRODUCT_RESTRICTED_DESIGNS: Record<string, string[]> = {
+    cap: ['street-5.png']
+};
 
 // Helper to populate the map and filter/sort
 const processDesigns = (globResult: Record<string, unknown>) => {
@@ -210,7 +215,10 @@ const INITIAL_PRODUCTS = {
         name: 'Dišpet termosica',
         price: 20.00,
         description: 'Termo boca od nehrđajućeg čelika.',
-        colors: [{ name: 'Bijela', hex: '#ffffff' }], // Single color for now per request logic
+        colors: [
+            { name: 'Crna', hex: '#231f20' },
+            { name: 'Bijela', hex: '#ffffff' }
+        ],
         stockStatus: 'instock',
         averageRating: 0,
         ratingCount: 0,
@@ -227,14 +235,13 @@ const Shop = () => {
     const [isCustomizing, setIsCustomizing] = useState(false);
 
     // Customization State
-    const [selectedColor, setSelectedColor] = useState<string>('#1a1a1a');
+    const [selectedColor, setSelectedColor] = useState<string>(() => {
+        return SHARED_COLORS[Math.floor(Math.random() * SHARED_COLORS.length)].hex;
+    });
     const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-    // Dual-zone state
-    const [designs, setDesigns] = useState<{ front: string; back: string }>({
-        front: ALL_DESIGNS[0],
-        back: ALL_DESIGNS[0] // or generic logic to support empty back initially
-    });
+    // Dual-zone state - Initialize empty, let Cycle sync populate it initially
+    const [designs, setDesigns] = useState<{ front: string; back: string }>({ front: '', back: '' });
     const [activeZone, setActiveZone] = useState<'front' | 'back'>('front');
 
     const [selectedSize, setSelectedSize] = useState<string>('L');
@@ -327,42 +334,16 @@ const Shop = () => {
     // Reset defaults when product changes
     useEffect(() => {
         if (selectedProduct) {
-            // Check if colors exist and have length before accessing [0]
-            const productColors = products[selectedProduct].colors;
-            if (productColors && productColors.length > 0) {
-                setSelectedColor(productColors[0].hex);
-            }
+            // REMOVE default color override to keep cycle or random previous state
 
             if (selectedProduct === 'cap') {
                 setActiveZone('front');
-                setExpandedCollection('Logotip');
-                setDesigns({
-                    front: DESIGN_COLLECTIONS['Logotip'][0],
-                    back: DESIGN_COLLECTIONS['Logotip'][0]
-                });
             } else if (selectedProduct === 'bottle') {
                 setActiveZone('front');
-                setExpandedCollection('Logotip');
-                setDesigns({
-                    front: DESIGN_COLLECTIONS['Logotip'][0],
-                    back: DESIGN_COLLECTIONS['Logotip'][0]
-                });
-            } else if (selectedProduct === 'hoodie') {
+            } else if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
                 setActiveZone('back');
-                setExpandedCollection('Logotip');
-                // Resolve correct logo for the initial color (usually black #231f20)
-                const defaultColor = productColors && productColors.length > 0 ? productColors[0].hex : '#231f20';
-                setDesigns({
-                    front: COLOR_TO_LOGO_MAP[defaultColor] || PLACEHOLDER_FRONT_DESIGN,
-                    back: DESIGN_COLLECTIONS['Ulična Moda'][0]
-                });
             } else {
                 setActiveZone('front');
-                setExpandedCollection('Logotip');
-                setDesigns({
-                    front: DESIGN_COLLECTIONS['Ulična Moda'][0],
-                    back: DESIGN_COLLECTIONS['Ulična Moda'][0]
-                });
             }
         }
     }, [selectedProduct]);
@@ -413,9 +394,27 @@ const Shop = () => {
     }, [searchParams]);
 
     const handleProductSelect = (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
+        const isSameProduct = selectedProduct === product && viewMode === 'customizing';
+
         setSelectedProduct(product);
-        setIsCustomizing(false); // Reset interaction state
-        setHasUserInteracted(false);
+        // Only reset isCustomizing if we're coming FROM showcase mode
+        // If already customizing, keep it true to prevent background products from briefly showing designs
+        if (viewMode !== 'customizing') {
+            setIsCustomizing(false);
+        }
+
+        // Only reset interaction if we are switching products or modes
+        // Clicking the SAME product in customization mode should NOT reset interaction (prevents cycle restart)
+        if (!isSameProduct) {
+            setHasUserInteracted(false);
+        }
+
+        // Set activeZone synchronously to avoid first-render issue
+        if (product === 'hoodie' || product === 'tshirt') {
+            setActiveZone('back');
+        } else {
+            setActiveZone('front');
+        }
 
         setSearchParams(prev => {
             const newParams = new URLSearchParams(prev);
@@ -429,6 +428,20 @@ const Shop = () => {
     const handleInteraction = () => {
         if (!isCustomizing) setIsCustomizing(true);
         setHasUserInteracted(true);
+    };
+
+    // Handler to sync Cycle state to Parent state WITHOUT triggering interaction
+    // This keeps the "designs" state warm with whatever is currently visible in the cycle
+    // so when the user DOES interact, there's no visual jump.
+    const handleCycleDesignUpdate = (newDesigns: { front: string; back: string }) => {
+        // Only update if we haven't interacted yet (otherwise user changes would be overwritten)
+        if (!hasUserInteracted && viewMode === 'customizing') {
+            setDesigns(prev => {
+                // Prevent unnecessary rerenders if identical
+                if (prev.front === newDesigns.front && prev.back === newDesigns.back) return prev;
+                return newDesigns;
+            });
+        }
     };
 
     const handleAddToCart = () => {
@@ -474,6 +487,52 @@ const Shop = () => {
     };
 
     const currentDesign = designs[activeZone];
+
+    // Smart Color Selection with Design Reconciliation
+    const handleColorSelect = (newHex: string) => {
+        setSelectedColor(newHex);
+        handleInteraction();
+
+        // Check if current design works with new color
+        const availableForCurrent = getAvailableColorsForDesign(currentDesign);
+        const isCompatible = availableForCurrent.some(c => c.hex === newHex);
+
+        if (!isCompatible) {
+            // Design clash! Find a better design in the CURRENT collection
+            // 1. Identify current collection
+            let currentCollectionName = expandedCollection;
+
+            // Fallback: If expandedCollection is null (intro mode), try to guess or default
+            if (!currentCollectionName) {
+                // Heuristic: check where current design exists
+                if (DESIGN_COLLECTIONS['Ulična Moda'].includes(currentDesign)) currentCollectionName = 'Ulična Moda';
+                else if (DESIGN_COLLECTIONS['Vintage Stil'].includes(currentDesign)) currentCollectionName = 'Vintage Stil';
+                else currentCollectionName = 'Logotip';
+            }
+
+            const collectionDesigns = DESIGN_COLLECTIONS[currentCollectionName] || [];
+
+            // 2. Find first design in this collection that SUPPORTS the new color
+            const compatibleDesign = collectionDesigns.find(d => {
+                // Check restrictions first
+                const filename = URL_TO_FILENAME[d] || d.split('/').pop()?.split('?')[0] || '';
+                const restricted = PRODUCT_RESTRICTED_DESIGNS[selectedProduct];
+                if (restricted && restricted.includes(filename)) return false;
+
+                const allowed = getAvailableColorsForDesign(d);
+                return allowed.some(c => c.hex === newHex);
+            });
+
+            if (compatibleDesign) {
+                // Switch to the compatible design
+                if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
+                    setDesigns(prev => ({ ...prev, back: compatibleDesign }));
+                } else {
+                    setDesigns(prev => ({ ...prev, [activeZone]: compatibleDesign }));
+                }
+            }
+        }
+    };
 
     const PRODUCT_KEYS: ('hoodie' | 'tshirt' | 'cap' | 'bottle')[] = ['hoodie', 'tshirt', 'cap', 'bottle'];
 
@@ -533,10 +592,18 @@ const Shop = () => {
                             colorToLogoMap={COLOR_TO_LOGO_MAP}
                             hasUserInteracted={hasUserInteracted}
                             logoList={DESIGN_COLLECTIONS['Logotip']}
-                            hoodieBackList={[
+                            hoodieBackList={useMemo(() => [
+                                ...DESIGN_COLLECTIONS['Ulična Moda']
+                            ], [])}
+                            vintageList={useMemo(() => [
+                                ...DESIGN_COLLECTIONS['Vintage Stil']
+                            ], [])}
+                            allDesignsList={useMemo(() => [
+                                ...DESIGN_COLLECTIONS['Logotip'],
                                 ...DESIGN_COLLECTIONS['Ulična Moda'],
                                 ...DESIGN_COLLECTIONS['Vintage Stil']
-                            ]}
+                            ], [])}
+                            onCycleDesignUpdate={handleCycleDesignUpdate}
                         />
 
                     </div>
@@ -583,14 +650,21 @@ const Shop = () => {
 
 
                             {/* 1. Color Picker (Top) - Style matched to Design Bar */}
-                            {selectedProduct !== 'cap' && selectedProduct !== 'bottle' && (() => {
-                                const availableColors = getAvailableColorsForDesign(currentDesign);
+                            {selectedProduct !== 'cap' && (() => {
+                                const designColors = getAvailableColorsForDesign(currentDesign);
+                                const productColors = activeProductData.colors || SHARED_COLORS;
+
+                                // Intersect: Only show colors that are BOTH in design rules AND product rules
+                                const availableColors = designColors.filter(dc =>
+                                    productColors.some(pc => pc.hex === dc.hex)
+                                );
+
                                 return availableColors.length > 0 ? (
                                     <div className="flex gap-2 bg-white/5 backdrop-blur-sm p-3 rounded-full border border-white/10 shadow-2xl mb-1">
                                         {availableColors.map((c) => (
                                             <button
                                                 key={c.name}
-                                                onClick={() => { setSelectedColor(c.hex); handleInteraction(); }}
+                                                onClick={() => handleColorSelect(c.hex)}
                                                 className={`w-6 h-6 md:w-8 md:h-8 rounded-full border border-white/20 transition-transform hover:scale-110 ${selectedColor === c.hex
                                                     ? 'ring-2 ring-white scale-110 shadow-md'
                                                     : 'opacity-80 hover:opacity-100'
@@ -618,7 +692,6 @@ const Shop = () => {
 
                                 <div className="flex justify-center md:gap-4 bg-black/80 backdrop-blur-md p-1.5 rounded-full shadow-xl border border-white/10 w-fit max-w-[60vw] md:max-w-none overflow-x-auto custom-scrollbar">
                                     {['Ulična Moda', 'Logotip', 'Vintage Stil']
-                                        .filter(name => (selectedProduct !== 'cap' && selectedProduct !== 'bottle') || name === 'Logotip')
                                         .map(name => (
                                             <button
                                                 key={name}
@@ -665,22 +738,29 @@ const Shop = () => {
                                     exit={{ opacity: 0, y: 10 }}
                                     className="flex justify-start flex-nowrap gap-2 p-2 bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl overflow-x-auto w-full max-w-full custom-scrollbar touch-pan-x"
                                 >
-                                    {DESIGN_COLLECTIONS[expandedCollection].map((design, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleDesignSelect(design)}
-                                            className={`w-20 h-20 md:w-28 md:h-28 flex-shrink-0 rounded-lg border-2 overflow-hidden bg-white transition-all transform hover:scale-105 ${currentDesign === design
-                                                ? 'border-black ring-2 ring-white scale-105 shadow-xl'
-                                                : 'border-transparent opacity-90 hover:opacity-100'
-                                                }`}
-                                        >
-                                            <img
-                                                src={design}
-                                                alt="Design"
-                                                className="w-full h-full object-contain p-2"
-                                            />
-                                        </button>
-                                    ))}
+                                    {DESIGN_COLLECTIONS[expandedCollection]
+                                        .filter(design => {
+                                            const filename = URL_TO_FILENAME[design] || design.split('/').pop()?.split('?')[0] || '';
+                                            const restricted = PRODUCT_RESTRICTED_DESIGNS[selectedProduct];
+                                            if (restricted && restricted.includes(filename)) return false;
+                                            return true;
+                                        })
+                                        .map((design, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleDesignSelect(design)}
+                                                className={`w-20 h-20 md:w-28 md:h-28 flex-shrink-0 rounded-lg border-2 overflow-hidden bg-white transition-all transform hover:scale-105 ${currentDesign === design
+                                                    ? 'border-black ring-2 ring-white scale-105 shadow-xl'
+                                                    : 'border-transparent opacity-90 hover:opacity-100'
+                                                    }`}
+                                            >
+                                                <img
+                                                    src={design}
+                                                    alt="Design"
+                                                    className="w-full h-full object-contain p-2"
+                                                />
+                                            </button>
+                                        ))}
                                 </motion.div>
                             </AnimatePresence>
 
@@ -902,10 +982,10 @@ const Shop = () => {
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 <div className="bg-gray-50 p-4 rounded-2xl text-center">
                                                     <div className="text-[#e83e70] font-black text-2xl mb-1">100%</div>
-                                                    <div className="text-gray-500 text-xs font-bold uppercase">Pamuk</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Poliester</div>
                                                 </div>
                                                 <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                    <div className="text-[#43bfe6] font-black text-2xl mb-1">HiQ</div>
+                                                    <div className="text-[#43bfe6] font-black text-2xl mb-1">DTF</div>
                                                     <div className="text-gray-500 text-xs font-bold uppercase">Print</div>
                                                 </div>
                                                 <div className="bg-gray-50 p-4 rounded-2xl text-center">
@@ -996,6 +1076,12 @@ const Shop = () => {
                                                     </div>
                                                     <span className="font-medium text-gray-700 text-lg">Stavlja na tržište: 021 d.o.o.</span>
                                                 </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
+                                                </li>
                                             </ul>
                                         ) : (
                                             <ul className="space-y-4">
@@ -1003,13 +1089,13 @@ const Shop = () => {
                                                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
                                                         <Check className="w-6 h-6" />
                                                     </div>
-                                                    <span className="font-medium text-gray-700 text-lg">100% Organski češljani pamuk</span>
+                                                    <span className="font-medium text-gray-700 text-lg">100% Poliester</span>
                                                 </li>
                                                 <li className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
                                                         <Check className="w-6 h-6" />
                                                     </div>
-                                                    <span className="font-medium text-gray-700 text-lg">Težina materijala: 320 g/m²</span>
+                                                    <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
                                                 </li>
                                             </ul>
                                         )}
