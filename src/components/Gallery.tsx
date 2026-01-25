@@ -103,7 +103,7 @@ const MarqueeRow = ({ items, direction = "left", speed = 40, onMediaClick }: { i
                 {duplicatedItems.map((item, idx) => (
                     <div
                         key={`${item.id}-${idx}`}
-                        className="relative w-[260px] h-[190px] md:w-[380px] md:h-[280px] flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105 group cursor-pointer border-4 border-transparent hover:border-[#e83e70]"
+                        className="relative w-[160px] h-[120px] md:w-[380px] md:h-[280px] flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105 group cursor-pointer border-4 border-transparent hover:border-[#e83e70]"
                         onClick={() => onMediaClick(item.id)}
                     >
                         <MediaElement item={item} />
