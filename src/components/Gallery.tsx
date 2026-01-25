@@ -246,11 +246,10 @@ export const Gallery = () => {
                     <MarqueeRow items={row2} direction="right" speed={200} onMediaClick={handleMediaClick} />
                     <MarqueeRow items={row3} direction="left" speed={160} onMediaClick={handleMediaClick} />
                 </div>
+                {/* Gradients Overlay for depth */}
+                <div className="absolute inset-y-0 left-0 w-24 md:w-64 bg-gradient-to-r from-white via-white/10 to-transparent z-20 pointer-events-none" />
+                <div className="absolute inset-y-0 right-0 w-24 md:w-64 bg-gradient-to-l from-white via-white/10 to-transparent z-20 pointer-events-none" />
             </div>
-
-            {/* Gradients Overlay for depth */}
-            <div className="absolute inset-y-0 left-0 w-24 md:w-64 bg-gradient-to-r from-white via-white/10 to-transparent z-20" />
-            <div className="absolute inset-y-0 right-0 w-24 md:w-64 bg-gradient-to-l from-white via-white/10 to-transparent z-20" />
 
             {/* Lightbox Overlay */}
             <AnimatePresence>
