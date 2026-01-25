@@ -87,23 +87,34 @@ export const Partners = () => {
                     <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
 
                     {/* Scrolling container */}
-                    <div className="flex gap-12 md:gap-16 py-8 animate-scroll">
-                        {loop.map((logo, index) => (
-                            <a
-                                key={`${logo.id}-${index}`}
-                                href={logo.link || "#"}
-                                target={logo.link ? "_blank" : undefined}
-                                rel="noopener noreferrer"
-                                className={`flex-shrink-0 w-48 h-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100 ${!logo.link ? 'cursor-default' : ''}`}
-                            >
-                                <img
-                                    src={logo.logoUrl}
-                                    alt={logo.name}
-                                    title={logo.name}
-                                    className="max-w-full max-h-full object-contain"
-                                />
-                            </a>
-                        ))}
+                    <div className="flex gap-12 md:gap-16 py-8 animate-scroll whitespace-nowrap">
+                        {loop.map((logo, index) => {
+                            const Content = (
+                                <div className="flex-shrink-0 w-48 h-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100 cursor-pointer">
+                                    <img
+                                        src={logo.logoUrl}
+                                        alt={logo.name}
+                                        title={logo.name}
+                                        className="max-w-[80%] max-h-[80%] object-contain"
+                                    />
+                                </div>
+                            );
+
+                            return logo.link ? (
+                                <a
+                                    key={`${logo.id}-${index}`}
+                                    href={logo.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    {Content}
+                                </a>
+                            ) : (
+                                <div key={`${logo.id}-${index}`} className="cursor-default">
+                                    {Content}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

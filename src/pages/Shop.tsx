@@ -226,7 +226,7 @@ const INITIAL_PRODUCTS = {
     }
 };
 
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const SIZES = ['6-8 Godina', '8-10 Godina', '10-12 Godina', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const Shop = () => {
     // State
@@ -837,12 +837,12 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex justify-center items-center gap-2 p-1.5 bg-white rounded-full border border-gray-100 shadow-sm h-[62px]">
-                                            {['S', 'M', 'L', 'XL'].map((size) => (
+                                        <div className="flex flex-wrap justify-center items-center gap-2 p-2 bg-white rounded-3xl border border-gray-100 shadow-sm min-h-[62px]">
+                                            {SIZES.map((size) => (
                                                 <button
                                                     key={size}
                                                     onClick={() => setSelectedSize(size)}
-                                                    className={`w-10 h-10 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                    className={`px-3 h-10 rounded-full font-bold text-xs md:text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
                                                         ? 'bg-black text-white shadow-md scale-100'
                                                         : 'text-gray-500 hover:bg-gray-50 hover:text-black hover:scale-110'
                                                         }`}
