@@ -837,14 +837,14 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex flex-nowrap justify-start md:justify-center items-center gap-1 md:gap-2 p-2 md:p-3 bg-white rounded-full border border-gray-100 shadow-sm min-h-[62px] overflow-x-auto custom-scrollbar whitespace-nowrap">
+                                        <div className="flex justify-center items-center gap-1.5 p-2 bg-white rounded-full border border-gray-100 shadow-sm min-h-[54px]">
                                             {SIZES.map((size) => (
                                                 <button
                                                     key={size}
                                                     onClick={() => setSelectedSize(size)}
-                                                    className={`px-2 md:px-3 h-10 rounded-full font-bold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] shrink-0 ${selectedSize === size
-                                                        ? 'bg-black text-white shadow-md scale-100'
-                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-black hover:scale-110'
+                                                    className={`px-2 py-2 rounded-full font-bold text-[11px] transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                        ? 'bg-black text-white shadow-md'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-black'
                                                         }`}
                                                 >
                                                     {size}
