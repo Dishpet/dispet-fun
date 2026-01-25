@@ -94,7 +94,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ title, content, triggerT
                     {triggerText}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[800px] h-[90vh] flex flex-col p-0">
+            <DialogContent className="max-w-[800px] h-[90vh] flex flex-col p-0 rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
                 <DialogHeader className="px-6 py-4 border-b">
                     <DialogTitle className="text-2xl font-bold font-heading text-[#0089cd]">{title}</DialogTitle>
                 </DialogHeader>

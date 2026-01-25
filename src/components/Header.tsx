@@ -210,7 +210,7 @@ export const Header = () => {
 
                     {/* Modal Content */}
                     <div className="md:hidden fixed inset-0 z-[220] flex items-center justify-center p-4 pointer-events-none">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 pointer-events-auto animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto relative">
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 pointer-events-auto animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto relative">
                             {/* Close Button */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(false)}

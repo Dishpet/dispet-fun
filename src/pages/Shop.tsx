@@ -837,7 +837,7 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex flex-wrap justify-center items-center gap-2 p-2 bg-white rounded-3xl border border-gray-100 shadow-sm min-h-[62px]">
+                                        <div className="flex flex-wrap justify-center items-center gap-2 p-3 bg-white rounded-full border border-gray-100 shadow-sm min-h-[62px]">
                                             {SIZES.map((size) => (
                                                 <button
                                                     key={size}
