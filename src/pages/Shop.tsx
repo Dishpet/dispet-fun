@@ -226,7 +226,7 @@ const INITIAL_PRODUCTS = {
     }
 };
 
-const SIZES = ['6-8 Godina', '8-10 Godina', '10-12 Godina', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const SIZES = ['6-8 god.', '8-10 god.', '10-12 god.', 'S', 'M', 'L', 'XL'];
 
 const Shop = () => {
     // State
