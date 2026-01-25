@@ -80,7 +80,7 @@ export const JoinModal = ({ isOpen, onClose }: JoinModalProps) => {
             />
 
             {/* Modal Content */}
-            <div className="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col md:flex-row max-h-[90vh]">
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col md:flex-row max-h-[90vh]">
 
                 {/* Close Button */}
                 <button
