@@ -6,35 +6,20 @@ import { WPPost } from "@/integrations/wordpress/types";
 import { useToast } from "@/hooks/use-toast";
 import { MediaPicker } from "@/components/admin/MediaPicker";
 
-// Default Images
-// Importing a batch to populate nicely
-import img1 from "@/assets/gallery/gallery (1).jpg";
-import img2 from "@/assets/gallery/gallery (2).jpg";
-import img3 from "@/assets/gallery/gallery (3).jpg";
-import img4 from "@/assets/gallery/gallery (4).jpg";
-import img5 from "@/assets/gallery/gallery (5).jpg";
-import img6 from "@/assets/gallery/gallery (6).jpg";
-import img7 from "@/assets/gallery/gallery (7).jpg";
-import img8 from "@/assets/gallery/gallery (8).jpg";
-import img9 from "@/assets/gallery/gallery (9).jpg";
-import img10 from "@/assets/gallery/gallery (10).jpg";
-import img11 from "@/assets/gallery/gallery (11).jpg";
-import img12 from "@/assets/gallery/gallery (12).jpg";
+// Import all gallery images (32 new webp images) as fallback
+const galleryImages = import.meta.glob("@/assets/gallery/dispet galerija (*).webp", { eager: true, import: 'default' });
 
-const DEFAULT_GALLERY = [
-    { id: "def-1", src: img1, alt: "Gallery 1" },
-    { id: "def-2", src: img2, alt: "Gallery 2" },
-    { id: "def-3", src: img3, alt: "Gallery 3" },
-    { id: "def-4", src: img4, alt: "Gallery 4" },
-    { id: "def-5", src: img5, alt: "Gallery 5" },
-    { id: "def-6", src: img6, alt: "Gallery 6" },
-    { id: "def-7", src: img7, alt: "Gallery 7" },
-    { id: "def-8", src: img8, alt: "Gallery 8" },
-    { id: "def-9", src: img9, alt: "Gallery 9" },
-    { id: "def-10", src: img10, alt: "Gallery 10" },
-    { id: "def-11", src: img11, alt: "Gallery 11" },
-    { id: "def-12", src: img12, alt: "Gallery 12" },
-];
+const DEFAULT_GALLERY = Object.entries(galleryImages)
+    .sort((a, b) => {
+        const numA = parseInt(a[0].match(/\((\d+)\)/)?.[1] || "0");
+        const numB = parseInt(b[0].match(/\((\d+)\)/)?.[1] || "0");
+        return numA - numB;
+    })
+    .map(([path, src], index) => ({
+        id: `def-${index + 1}`,
+        src: src as string,
+        alt: `Gallery image ${index + 1}`
+    }));
 
 const CONFIG_SLUG = "config-gallery";
 
@@ -118,17 +103,10 @@ export default function AdminGallery() {
     };
 
     const handleSelectMedia = (mediaList: any) => {
-        // mediaList can be array or single strings if using my messy MediaPicker.
-        // Wait, MediaPicker returns URLs if I passed `value={string[]}` and `multiple=true`.
-        // BUT `onSelectMedia` returns `WPMedia[]`.
-
-        // Assuming I updated MediaPicker to return WPMedia objects in `onSelectMedia`.
         const newItems: GalleryItem[] = [];
-
         const list = Array.isArray(mediaList) ? mediaList : [mediaList];
 
         list.forEach((m: any) => {
-            // Avoid duplicates by crude check? Or just allow them.
             newItems.push({
                 id: crypto.randomUUID(),
                 src: m.source_url,

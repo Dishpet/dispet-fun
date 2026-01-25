@@ -93,7 +93,7 @@ export const BlogSection = () => {
                         variant="outline"
                         size="lg"
                         onClick={() => navigate("/blog")}
-                        className="group border-primary text-primary hover:bg-primary hover:text-white transition-all duration-300"
+                        className="group border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all duration-300"
                     >
                         Sve novosti <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>

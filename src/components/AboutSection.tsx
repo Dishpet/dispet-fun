@@ -12,7 +12,7 @@ export const features = [
     {
         image: homeCard1,
         title: "Dobrodošli u srce Dišpeta...",
-        description: "...gdje se rađa strast prema sportu i radosti djetinjstva. Nismo samo organizatori događanja; mi smo zajednica koja dijeli istu želju - potaknuti djecu da vole sport kroz iskustvo koje će pamtiti cijeli život.",
+        description: "...gdje se rađa strast prema sportu i radosti djetinjstva. Mi smo zajednica koja dijeli istu želju - potaknuti djecu da vole sport kroz iskustvo koje će pamtiti cijeli život.",
         color: "bg-[#00aeef]/10",
         borderColor: "border-[#00aeef]/20",
         containerClass: "md:col-span-7 md:rotate-[-2deg] hover:rotate-0 transition-transform duration-500 hover:z-20",
@@ -21,7 +21,7 @@ export const features = [
     {
         image: homeCard2,
         title: "Čarobni svijet Dišpeta...",
-        description: "...specijalno dizajniranog događanja za djecu od 3 do 8 godina. Ovdje, svaki trenutak je isprepleten smijehom, igrom i sportskim užicima, stvarajući nezaboravne uspomene koje će vaša djeca nositi kroz cijeli život.",
+        description: "...specijalno dizajniranog događaja za djecu od 3 do 8 godina. Svaki trenutak ispunjen smijehom, igrom i sportskim užicima stvara nezaboravne uspomene koje će vaša djeca nositi kroz cijeli život.",
         color: "bg-[#ad00e9]/10",
         borderColor: "border-[#ad00e9]/20",
         containerClass: "md:col-span-5 md:mt-16 md:rotate-[3deg] hover:rotate-0 transition-transform duration-500 hover:z-20",
@@ -30,7 +30,7 @@ export const features = [
     {
         image: homeCard3,
         title: "Sport postaje igra...",
-        description: "...a igra postaje avantura! Naša događanja su posebno osmišljena kako bi potaknula ljubav prema tjelesnim aktivnostima kroz raznovrsne igre i profesionalne trenere, nudeći djeci priliku da istraže, uče i zabavljaju se na jedinstven način.",
+        description: "...a igra postaje avantura! Naša događanja potiću ljubav prema tjelesnim aktivnostima kroz raznovrsne igre i profesionalne trenere, nudeći djeci priliku da istraže, uče i zabavljaju se na jedinstven način.",
         color: "bg-[#00ab98]/10",
         borderColor: "border-[#00ab98]/20",
         containerClass: "md:col-span-5 md:mt-20 md:rotate-[-2deg] hover:rotate-0 transition-transform duration-500 hover:z-20",
@@ -39,7 +39,7 @@ export const features = [
     {
         image: homeCard4,
         title: "Dišpet ne poznaje dosadu!",
-        description: "Naša raznolika igrališta pružaju djeci prostor za istraživanje različitih sportova, razvijanje vještina i stvaranje trajnih prijateljstava. Ovdje, svako dijete ima priliku postati pravi mali heroj svoje priče.",
+        description: "Naša igrališta pružaju djeci prostor za istraživanje različitih sportova, razvijanje vještina i stvaranje prijateljstava, a svako dijete ima priliku postati pravi mali heroj svoje priče.",
         color: "bg-[#e78fab]/10",
         borderColor: "border-[#e78fab]/20",
         containerClass: "md:col-span-7 md:mt-8 md:rotate-[2deg] hover:rotate-0 transition-transform duration-500 hover:z-20",
@@ -55,7 +55,7 @@ export const AboutHeader = () => (
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="text-4xl md:text-6xl font-black text-[#43bfe6] font-['DynaPuff'] tracking-wide leading-tight"
+                    className="text-4xl md:text-6xl font-black text-[#e83e70] font-['DynaPuff'] tracking-wide leading-tight"
                 >
                     Upoznajte Dišpet...
                 </motion.h2>
@@ -123,7 +123,8 @@ export const AboutVideoSlider = ({ currentIndex, onDotClick }: AboutVideoSliderP
     return (
         <>
             {/* Dark Overlay */}
-            <div className="absolute inset-0 bg-black/30 z-10" />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0044bf]/40 to-[#ad00e9]/40 z-10" />
 
             {/* Content Container */}
             <div className="absolute inset-0 z-20 pointer-events-none">
@@ -145,6 +146,18 @@ export const AboutVideoSlider = ({ currentIndex, onDotClick }: AboutVideoSliderP
                         >
                             {features[currentIndex].title}
                         </motion.h3>
+
+                        {/* Description - Desktop Only - Boxed Overlay Bottom Right */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                            className="hidden md:block absolute bottom-64 right-12 max-w-[65%] pointer-events-auto text-right"
+                        >
+                            <span className="bg-white px-6 py-3 shadow-lg box-decoration-clone text-xl font-bold text-black leading-[3.5rem]">
+                                {features[currentIndex].description}
+                            </span>
+                        </motion.div>
                     </motion.div>
                 </AnimatePresence>
 
@@ -169,7 +182,7 @@ export const AboutVideoSlider = ({ currentIndex, onDotClick }: AboutVideoSliderP
 
 export const AboutDescription = ({ currentIndex }: { currentIndex: number }) => {
     return (
-        <div className="relative z-40 bg-white -mt-2 pb-8">
+        <div className="relative z-40 bg-white -mt-2 pb-8 md:hidden">
             <div className="container mx-auto px-4">
                 <AnimatePresence mode="wait">
                     <motion.p

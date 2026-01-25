@@ -65,7 +65,7 @@ const Blog = () => {
                                         <h3 className="text-xl font-heading font-bold mb-3 line-clamp-2" dangerouslySetInnerHTML={{ __html: post.title.rendered }} />
                                         <div className="text-muted-foreground mb-6 line-clamp-3 flex-grow" dangerouslySetInnerHTML={{ __html: post.excerpt.rendered }} />
 
-                                        <Button variant="outline" className="w-full group-hover:bg-primary group-hover:text-white transition-colors mt-auto">
+                                        <Button variant="outline" className="w-full border-2 group-hover:bg-primary group-hover:text-white transition-colors mt-auto">
                                             Pročitaj više <ArrowRight className="w-4 h-4 ml-2" />
                                         </Button>
                                     </div>
