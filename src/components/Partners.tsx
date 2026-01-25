@@ -94,7 +94,7 @@ export const Partners = () => {
                                 href={logo.link || "#"}
                                 target={logo.link ? "_blank" : undefined}
                                 rel="noopener noreferrer"
-                                className={`flex-shrink-0 w-48 h-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100 ${!logo.link ? 'cursor-default pointer-events-none' : ''}`}
+                                className={`flex-shrink-0 w-48 h-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100 ${!logo.link ? 'cursor-default' : ''}`}
                             >
                                 <img
                                     src={logo.logoUrl}
