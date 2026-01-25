@@ -837,12 +837,12 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex flex-wrap justify-center items-center gap-2 p-3 bg-white rounded-full border border-gray-100 shadow-sm min-h-[62px]">
+                                        <div className="flex flex-nowrap justify-start md:justify-center items-center gap-1 md:gap-2 p-2 md:p-3 bg-white rounded-full border border-gray-100 shadow-sm min-h-[62px] overflow-x-auto custom-scrollbar whitespace-nowrap">
                                             {SIZES.map((size) => (
                                                 <button
                                                     key={size}
                                                     onClick={() => setSelectedSize(size)}
-                                                    className={`px-3 h-10 rounded-full font-bold text-xs md:text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                    className={`px-2 md:px-3 h-10 rounded-full font-bold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] shrink-0 ${selectedSize === size
                                                         ? 'bg-black text-white shadow-md scale-100'
                                                         : 'text-gray-500 hover:bg-gray-50 hover:text-black hover:scale-110'
                                                         }`}
