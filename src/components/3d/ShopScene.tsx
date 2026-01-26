@@ -220,6 +220,7 @@ interface ProductModelProps {
     productId?: string;
     activeColorsRef?: React.MutableRefObject<Record<string, string>>;
     onDesignsUpdate?: (designs: { front: string; back: string }) => void;
+    designReplacements?: Record<string, string>;
 }
 
 // Helper for bottle specific logic
@@ -261,7 +262,8 @@ const ProductModel = ({
     allowedCycleColors,
     productId,
     activeColorsRef,
-    onDesignsUpdate
+    onDesignsUpdate,
+    designReplacements
 }: ProductModelProps & { isLoaded?: boolean; onLoadComplete?: () => void }) => {
     const groupRef = useRef<THREE.Group>(null);
     const [hovered, setHovered] = useState(false);
@@ -852,11 +854,27 @@ const ProductModel = ({
 
     // Front Cycle
     const frontCycleList = cycleDesignsFront || [];
-    const frontCycleUrl = isCycling ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
+    const baseFrontCycleUrl = isCycling ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
+
+    // Alt Swap Logic for Cycle
+    const getEffectiveUrl = (url: string | null) => {
+        if (!url || !designReplacements) return url;
+        const replacement = designReplacements[url];
+        if (replacement) {
+            // Check color condition (Pink, Mint, Cyan)
+            const hex = '#' + targetColorRef.current.getHexString();
+            const altColors = ['#e78fab', '#a1d7c0', '#00aeef'];
+            if (altColors.includes(hex)) return replacement;
+        }
+        return url;
+    };
+
+    const frontCycleUrl = getEffectiveUrl(baseFrontCycleUrl);
 
     // Back Cycle
     const backCycleList = cycleDesignsBack || null;
-    const backCycleUrl = isCycling && backCycleList ? backCycleList[currentDesignIndex % backCycleList.length] : null;
+    const baseBackCycleUrl = isCycling && backCycleList ? backCycleList[currentDesignIndex % backCycleList.length] : null;
+    const backCycleUrl = getEffectiveUrl(baseBackCycleUrl);
 
     // Resolve Front URL: Custom Front OR Cycle
     // Hoodie always shows logo (3) on front in customizing mode per user request
@@ -1605,6 +1623,7 @@ interface ShopSceneProps {
     designColorMap?: Record<string, string[]>;
     urlToFilename?: Record<string, string>;
     onCycleDesignUpdate?: (designs: { front: string; back: string }) => void;
+    designReplacements?: Record<string, string>;
 }
 
 export const ShopScene = ({
@@ -1626,7 +1645,8 @@ export const ShopScene = ({
     allDesignsList,
     designColorMap,
     urlToFilename,
-    onCycleDesignUpdate
+    onCycleDesignUpdate,
+    designReplacements
 }: ShopSceneProps) => {
 
 
@@ -1848,6 +1868,7 @@ export const ShopScene = ({
                                                 productId="cap"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
+                                                designReplacements={designReplacements}
                                             />
                                         );
                                     })()}
@@ -1892,6 +1913,7 @@ export const ShopScene = ({
                                                 productId="bottle"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
+                                                designReplacements={designReplacements}
                                             />
                                         );
                                     })()}
@@ -1937,6 +1959,7 @@ export const ShopScene = ({
                                                 productId="tshirt"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
+                                                designReplacements={designReplacements}
                                             />
                                         );
                                     })()}
@@ -1981,6 +2004,7 @@ export const ShopScene = ({
                                                 productId="hoodie"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
+                                                designReplacements={designReplacements}
                                             />
                                         );
                                     })()}

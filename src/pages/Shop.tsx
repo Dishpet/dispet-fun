@@ -637,6 +637,11 @@ const Shop = () => {
                                 ...DESIGN_COLLECTIONS['Ulična Moda'],
                                 ...DESIGN_COLLECTIONS['Vintage Stil']
                             ], [])}
+                            designReplacements={useMemo(() => {
+                                const s3 = streetDesigns['/src/assets/design-collections/street/street-3.png'] as string;
+                                const s3Alt = streetDesigns['/src/assets/design-collections/street/street-3-alt.png'] as string;
+                                return (s3 && s3Alt) ? { [s3]: s3Alt } : {};
+                            }, [])}
                             onCycleDesignUpdate={handleCycleDesignUpdate}
                         />
 
