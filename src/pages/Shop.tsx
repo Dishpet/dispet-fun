@@ -56,7 +56,8 @@ const HIDDEN_DESIGNS = [
     'VINTAGE-BADGE.png',
     'street-2.png',
     'street-4.png',
-    'street-8.png'
+    'street-8.png',
+    'street-3-alt.png'
 ];
 
 // Designs to hide for specific products
@@ -394,6 +395,37 @@ const Shop = () => {
     useEffect(() => {
         setIsFullScreen(searchParams.get('fullscreen') === 'true');
     }, [searchParams]);
+
+    // Logic to swap street-3 for street-3-alt on specific colors
+    useEffect(() => {
+        const street3Path = '/src/assets/design-collections/street/street-3.png';
+        const street3AltPath = '/src/assets/design-collections/street/street-3-alt.png';
+        const street3Url = streetDesigns[street3Path] as string;
+        const street3AltUrl = streetDesigns[street3AltPath] as string;
+
+        // Pink, Mint, Cyan (Light Blue)
+        const altColors = ['#e78fab', '#a1d7c0', '#00aeef'];
+
+        if (!street3Url || !street3AltUrl) return;
+
+        setDesigns(prev => {
+            let next = { ...prev };
+            let hasChanged = false;
+
+            (['front', 'back'] as const).forEach(zone => {
+                const current = prev[zone];
+                if (current === street3Url && altColors.includes(selectedColor)) {
+                    next[zone] = street3AltUrl;
+                    hasChanged = true;
+                } else if (current === street3AltUrl && !altColors.includes(selectedColor)) {
+                    next[zone] = street3Url;
+                    hasChanged = true;
+                }
+            });
+
+            return hasChanged ? next : prev;
+        });
+    }, [selectedColor, designs]);
 
     const handleProductSelect = (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
         const isSameProduct = selectedProduct === product && viewMode === 'customizing';
