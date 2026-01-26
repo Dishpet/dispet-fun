@@ -10,7 +10,7 @@ import cloudsTopSvg from '@/assets/clouds-top.svg';
 import bannerImage from '@/assets/banner-image.webp';
 import mobileBannerImage from '@/assets/boce-kape.webp';
 import bannerVideo from '@/assets/banner-video.webm';
-import logoVariationsVideo from '@/assets/logo-variations.mp4';
+import logoVariationsGif from '@/assets/logo-variations.gif';
 import { getProducts } from '@/integrations/wordpress/woocommerce';
 
 // Import all designs
@@ -808,17 +808,13 @@ const Shop = () => {
                             Sav prihod od prodaje ide organizaciji Dišpeta.
                         </p>
 
-                        {/* Logo Variations Video */}
+                        {/* Logo Variations GIF */}
                         <div className="w-full max-w-2xl mx-auto mt-8">
-                            <video
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
+                            <img
+                                src={logoVariationsGif}
+                                alt="Logo Variations"
                                 className="w-full h-auto block"
-                            >
-                                <source src={logoVariationsVideo} type="video/mp4" />
-                            </video>
+                            />
                         </div>
                     </div>
 
