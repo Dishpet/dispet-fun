@@ -660,7 +660,7 @@ const Shop = () => {
                                     key={`title-${selectedProduct}`}
                                     initial={{ opacity: 0, x: -50 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="text-3xl md:text-5xl font-black text-white drop-shadow-lg tracking-tight font-['DynaPuff'] w-[40%] leading-[0.9] md:leading-tight text-left break-words"
+                                    className="text-2xl md:text-5xl font-black text-white drop-shadow-lg tracking-tight font-['DynaPuff'] w-[40%] leading-[0.9] md:leading-tight text-left break-words"
                                 >
                                     {activeProductData.name}
                                 </motion.h2>
@@ -669,7 +669,7 @@ const Shop = () => {
                                     key={`price-${selectedProduct}`}
                                     initial={{ opacity: 0, x: 50 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="text-3xl md:text-5xl font-black text-white tracking-widest drop-shadow-md font-['DynaPuff'] text-right"
+                                    className="text-2xl md:text-5xl font-black text-white tracking-widest drop-shadow-md font-['DynaPuff'] text-right"
                                 >
                                     {activeProductData.price.toFixed(2)}€
                                 </motion.div>
