@@ -10,6 +10,7 @@ import cloudsTopSvg from '@/assets/clouds-top.svg';
 import bannerImage from '@/assets/banner-image.webp';
 import mobileBannerImage from '@/assets/boce-kape.webp';
 import bannerVideo from '@/assets/banner-video.webm';
+import logoVariationsVideo from '@/assets/logo-variations.mp4';
 import { getProducts } from '@/integrations/wordpress/woocommerce';
 
 // Import all designs
@@ -803,9 +804,22 @@ const Shop = () => {
                         <h2 className="text-4xl md:text-6xl font-black text-[#43bfe6] font-['DynaPuff'] tracking-wide mb-6 drop-shadow-sm">
                             Izaberi artikal i pronađi svoj stil
                         </h2>
-                        <p className="text-xl md:text-2xl font-medium text-gray-600 max-w-4xl mx-auto leading-relaxed">
-                            Sav prihod od prodaje ide organizaciji Dišpeta, dana zabave i sporta za djecu i odrasle.
+                        <p className="text-sm md:text-base font-medium text-gray-500 max-w-4xl mx-auto leading-relaxed">
+                            Sav prihod od prodaje ide organizaciji Dišpeta.
                         </p>
+
+                        {/* Logo Variations Video */}
+                        <div className="w-full max-w-2xl mx-auto mt-8">
+                            <video
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full h-auto block"
+                            >
+                                <source src={logoVariationsVideo} type="video/mp4" />
+                            </video>
+                        </div>
                     </div>
 
                     {/* Banner Video */}
