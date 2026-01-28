@@ -1,6 +1,9 @@
-export const WP_API_URL = import.meta.env.VITE_WP_API_URL || 'https://wp.dispet.fun/wp-json';
+// In development, we talk to the local proxy. In production, relative path /api handled by Nginx/Node.
+export const WP_API_URL = import.meta.env.DEV ? 'http://localhost:3000/api' : '/api';
 
 export const wpFetch = async (endpoint: string, options: RequestInit = {}) => {
+    // Endpoints in the secure proxy mirror the WP structure but under /api/wc/...
+    // The previous code mapped /wc/v3/products -> http://localhost:3000/api/wc/products
     const url = `${WP_API_URL}${endpoint}`;
 
     // Add timestamp to query params to bust cache for GET requests
@@ -12,45 +15,29 @@ export const wpFetch = async (endpoint: string, options: RequestInit = {}) => {
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            // 'Cache-Control': 'no-cache' is generally allowed, but removing strict ones to fix CORS
             ...options.headers,
         },
     });
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error(`WP Error [${response.status}]:`, errorText);
-        throw new Error(`WordPress API Error: ${response.status} ${response.statusText} - ${errorText.substring(0, 100)}`);
+        console.error(`API Error [${response.status}]:`, errorText);
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
     return response.json();
 };
 
-// Basic Auth helper for WooCommerce (requires HTTPS) or WP Application Passwords
 export const getAuthHeaders = () => {
-    // Priority 1: WordPress Application Password (ENV or LocalStorage)
-    const wpUser = import.meta.env.VITE_WP_USERNAME || localStorage.getItem('wp_username');
-    const wpPass = import.meta.env.VITE_WP_APP_PASSWORD || localStorage.getItem('wp_app_password');
+    // The PROXY server handles Admin/Store authentication now.
+    // We only need to pass headers if we are acting as a specific logged-in USER (Customer).
 
-    if (wpUser && wpPass) {
-        // Safe encoding for special characters (like 'š')
-        const hash = btoa(unescape(encodeURIComponent(`${wpUser}:${wpPass}`)));
+    const token = localStorage.getItem('token');
+    if (token) {
         return {
-            Authorization: `Basic ${hash}`,
+            Authorization: `Bearer ${token}`
         };
     }
 
-    // Priority 2: WooCommerce Consumer Keys (Fallback, mostly for WC endpoints)
-    const key = import.meta.env.VITE_WC_CONSUMER_KEY;
-    const secret = import.meta.env.VITE_WC_CONSUMER_SECRET;
-
-    if (!key || !secret) {
-        console.warn('WordPress/WooCommerce credentials missing');
-        return {};
-    }
-
-    const hash = btoa(`${key}:${secret}`);
-    return {
-        Authorization: `Basic ${hash}`,
-    };
+    return {};
 };

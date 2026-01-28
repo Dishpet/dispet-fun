@@ -38,7 +38,7 @@ export const Hero = ({ onCreateClick }: HeroProps) => {
           <div className="relative flex justify-center lg:justify-end animate-fade-in order-2 lg:order-2" style={{ animationDelay: '0.2s' }}>
             <img
               src={rokoWebGif}
-              alt="Roko the Donkey"
+              alt="Roko mascot"
               className="w-[80%] md:w-full max-w-md h-auto object-contain mt-0 md:mt-[100px] hover-scale"
             />
           </div>

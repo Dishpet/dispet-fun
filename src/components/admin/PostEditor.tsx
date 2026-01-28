@@ -11,6 +11,24 @@ import { MediaPicker } from "./MediaPicker";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
+// Quill modules for a better toolbar
+const quillModules = {
+    toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        ['link', 'image', 'code-block'],
+        ['clean']
+    ],
+};
+
+const quillFormats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'link', 'image', 'code-block'
+];
+
 interface PostEditorProps {
     post?: WPPost | null;
     onSuccess: () => void;
@@ -29,7 +47,15 @@ export const PostEditor = ({ post, onSuccess }: PostEditorProps) => {
         if (post) {
             setTitle(post.title.rendered);
             setContent(post.content.rendered);
-            setExcerpt(post.excerpt.rendered);
+
+            // Clean HTML from excerpt for better editing
+            const cleanExcerpt = post.excerpt.rendered
+                .replace(/<[^>]*>?/gm, '')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&hellip;/g, '...')
+                .trim();
+            setExcerpt(cleanExcerpt);
+
             setFeaturedMediaId(post.featured_media);
             const media = post._embedded?.['wp:featuredmedia']?.[0];
             if (media) setFeaturedMediaUrl(media.source_url);
@@ -76,52 +102,75 @@ export const PostEditor = ({ post, onSuccess }: PostEditorProps) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter post title"
-                    required
-                />
-            </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Content Area */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="title" className="text-sm font-semibold text-gray-700">Post Title</Label>
+                        <Input
+                            id="title"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. 5 Tips for Outdoor Training"
+                            required
+                            className="text-lg font-medium py-6 border-gray-200 focus:border-primary focus:ring-primary/20 transition-all"
+                        />
+                    </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
-                <div className="h-[300px] mb-12">
-                    <ReactQuill
-                        theme="snow"
-                        value={content}
-                        onChange={setContent}
-                        className="h-full"
-                    />
+                    <div className="space-y-2">
+                        <Label htmlFor="content" className="text-sm font-semibold text-gray-700">Body Content</Label>
+                        <div className="min-h-[400px] mb-14 lg:mb-12 border rounded-lg border-gray-200 overflow-hidden bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/10">
+                            <ReactQuill
+                                theme="snow"
+                                value={content}
+                                onChange={setContent}
+                                modules={quillModules}
+                                formats={quillFormats}
+                                className="h-full border-0"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sidebar area */}
+                <div className="space-y-8 lg:border-l lg:pl-8 border-gray-100 pb-10">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Label className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Featured Image</Label>
+                        </div>
+                        <div className="bg-gray-50/50 p-4 rounded-xl border border-dashed border-gray-300 transition-colors hover:bg-gray-50">
+                            <MediaPicker
+                                value={featuredMediaUrl}
+                                onChange={setFeaturedMediaUrl}
+                                onSelectMedia={(media) => setFeaturedMediaId(media.id)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label htmlFor="excerpt" className="text-sm font-semibold text-gray-700 uppercase tracking-wider text-xs">Excerpt / Summary</Label>
+                        <Textarea
+                            id="excerpt"
+                            value={excerpt}
+                            onChange={(e) => setExcerpt(e.target.value)}
+                            placeholder="A brief summary for cards and search engines..."
+                            className="min-h-[120px] resize-none border-gray-200 bg-white shadow-sm focus:border-primary focus:ring-primary/20"
+                        />
+                        <p className="text-[10px] text-gray-400">Short summary displayed on the blog listing page.</p>
+                    </div>
+
+                    <div className="pt-4 sticky bottom-0 bg-white/80 backdrop-blur-sm">
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-6 text-base font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        >
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : (post ? "Update & Sync Post" : "Publish New Post")}
+                        </Button>
+                    </div>
                 </div>
             </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="excerpt">Excerpt</Label>
-                <Textarea
-                    id="excerpt"
-                    value={excerpt}
-                    onChange={(e) => setExcerpt(e.target.value)}
-                    placeholder="Short summary..."
-                />
-            </div>
-
-            <div className="space-y-2">
-                <Label>Featured Image</Label>
-                <MediaPicker
-                    value={featuredMediaUrl}
-                    onChange={setFeaturedMediaUrl}
-                    onSelectMedia={(media) => setFeaturedMediaId(media.id)}
-                />
-            </div>
-
-            <Button type="submit" disabled={loading} className="w-full">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (post ? "Update Post" : "Create Post")}
-            </Button>
         </form>
     );
 };

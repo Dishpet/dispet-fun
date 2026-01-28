@@ -3,13 +3,17 @@ import { WCProduct } from "@/integrations/wordpress/types";
 
 export interface CartItem extends WCProduct {
     quantity: number;
+    cartId: string;
+    selectedDesigns?: { front: string; back: string };
+    selectedColor?: string;
+    selectedSize?: string;
 }
 
 interface CartContextType {
     cartItems: CartItem[];
-    addToCart: (product: WCProduct, quantity: number) => void;
-    removeFromCart: (productId: number) => void;
-    updateQuantity: (productId: number, quantity: number) => void;
+    addToCart: (product: WCProduct, quantity: number, options?: { selectedDesigns?: { front: string; back: string }; selectedColor?: string; selectedSize?: string }) => void;
+    removeFromCart: (cartId: string) => void;
+    updateQuantity: (cartId: string, quantity: number) => void;
     clearCart: () => void;
     cartSubtotal: number;
     shippingCost: number;
@@ -39,29 +43,43 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem("cart", JSON.stringify(cartItems));
     }, [cartItems]);
 
-    const addToCart = (product: WCProduct, quantity: number) => {
+    const addToCart = (product: WCProduct, quantity: number, options?: { selectedDesigns?: { front: string; back: string }; selectedColor?: string; selectedSize?: string }) => {
         setCartItems((prev) => {
-            const existingItem = prev.find((item) => item.id === product.id);
-            if (existingItem) {
-                return prev.map((item) =>
-                    item.id === product.id
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item
-                );
+            // Check if identical item exists
+            const existingItemIndex = prev.findIndex((item) =>
+                item.id === product.id &&
+                item.selectedColor === options?.selectedColor &&
+                item.selectedSize === options?.selectedSize &&
+                JSON.stringify(item.selectedDesigns) === JSON.stringify(options?.selectedDesigns)
+            );
+
+            if (existingItemIndex > -1) {
+                const newItems = [...prev];
+                newItems[existingItemIndex].quantity += quantity;
+                return newItems;
             }
-            return [...prev, { ...product, quantity }];
+
+            // Create new item with unique cartId
+            return [...prev, {
+                ...product,
+                quantity,
+                cartId: `${product.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                selectedDesigns: options?.selectedDesigns,
+                selectedColor: options?.selectedColor,
+                selectedSize: options?.selectedSize
+            }];
         });
     };
 
-    const removeFromCart = (productId: number) => {
-        setCartItems((prev) => prev.filter((item) => item.id !== productId));
+    const removeFromCart = (cartId: string) => {
+        setCartItems((prev) => prev.filter((item) => item.cartId !== cartId));
     };
 
-    const updateQuantity = (productId: number, quantity: number) => {
+    const updateQuantity = (cartId: string, quantity: number) => {
         if (quantity < 1) return;
         setCartItems((prev) =>
             prev.map((item) =>
-                item.id === productId ? { ...item, quantity } : item
+                item.cartId === cartId ? { ...item, quantity } : item
             )
         );
     };

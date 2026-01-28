@@ -12,7 +12,7 @@ const Cart = () => {
   const { toast } = useToast();
   const { cartItems, removeFromCart, updateQuantity, cartSubtotal, shippingCost, cartTotal } = useCart();
 
-  const handleRemoveItem = (id: number) => {
+  const handleRemoveItem = (id: string) => {
     removeFromCart(id);
     toast({
       title: "Uklonjeno iz košarice",
@@ -60,24 +60,36 @@ const Cart = () => {
             <div className="lg:col-span-2 space-y-4">
               {cartItems.map((item, index) => (
                 <Card
-                  key={item.id}
+                  key={item.cartId || item.id}
                   className="p-4 md:p-6 shadow-soft hover-lift animate-bounce-in"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div className="flex gap-4 md:gap-6">
-                    <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white flex items-center justify-center flex-shrink-0 border">
+                    <div
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center flex-shrink-0 border relative overflow-hidden"
+                      style={{ backgroundColor: item.selectedColor || '#ffffff' }}
+                    >
+                      {/* Selected Design Preview */}
                       {item.images?.[0] ? (
-                        <img
-                          src={item.images[0].src}
-                          alt={item.name}
-                          className="w-full h-full object-contain p-2"
-                        />
+                        <div className="relative w-full h-full p-2">
+                          <img
+                            src={item.images[0].src}
+                            alt={item.name}
+                            className="w-full h-full object-contain relative z-10"
+                          />
+                        </div>
                       ) : (
                         <div className="text-gray-400 text-xs">Nema slike</div>
                       )}
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-heading mb-2">{item.name}</h3>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {item.selectedSize && <span className="mr-3">Veličina: <strong>{item.selectedSize}</strong></span>}
+                        {item.selectedColor && <span className="flex items-center gap-1 inline-flex align-middle">
+                          Boja: <span className="w-3 h-3 rounded-full border border-gray-300 inline-block" style={{ backgroundColor: item.selectedColor }}></span>
+                        </span>}
+                      </p>
                       <p className="text-2xl font-bold text-primary mb-4 font-heading">
                         {item.sale_price ? parseFloat(item.sale_price).toFixed(2) : parseFloat(item.price).toFixed(2)} €
                       </p>
@@ -85,8 +97,8 @@ const Cart = () => {
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
-                            size="sm"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="w-8 h-8 rounded-full p-0 flex items-center justify-center border-2"
+                            onClick={() => updateQuantity(item.cartId, item.quantity - 1)}
                           >
                             -
                           </Button>
@@ -95,8 +107,8 @@ const Cart = () => {
                           </span>
                           <Button
                             variant="outline"
-                            size="sm"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-8 h-8 rounded-full p-0 flex items-center justify-center border-2"
+                            onClick={() => updateQuantity(item.cartId, item.quantity + 1)}
                           >
                             +
                           </Button>
@@ -104,7 +116,7 @@ const Cart = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveItem(item.id)}
+                          onClick={() => handleRemoveItem(item.cartId)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -148,7 +160,7 @@ const Cart = () => {
                 <Button
                   variant="default"
                   size="lg"
-                  className="w-full bg-gradient-primary"
+                  className="w-full bg-gradient-to-r from-[#00ffbf] to-[#0089cd] hover:opacity-90 transition-opacity"
                   onClick={() => navigate("/checkout")}
                 >
                   Nastavi na naplatu

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Palette, Zap, Gamepad2, Cpu, SmilePlus, Box, Clock, Paintbrush, Cog, Moon, Wand2, Minus, Shapes } from "lucide-react";
+import { Palette, Zap, Gamepad2, Cpu, SmilePlus, Box, Clock, Paintbrush, Cog, Moon, Wand2, Minus, Shapes, Sparkles, Droplets, CircleDot, MinusSquare, Brush } from "lucide-react";
 
 // Import style images
 import synthwaveImg from "@/assets/styles/synthwave.png";
@@ -12,14 +12,27 @@ import inkpunkImg from "@/assets/styles/inkpunk.png";
 import fantasyImg from "@/assets/styles/fantasy.png";
 import abstractImg from "@/assets/styles/abstract-geometry.png";
 
+// Placeholder for new styles (using existing images as fallback until real ones are added)
+const animeImg = cartoonImg; // TODO: Add proper anime style image
+const threeDImg = abstractImg; // TODO: Add proper 3D style image
+const steampunkImg = retroImg; // TODO: Add proper steampunk style image
+const noirImg = gtaImg; // TODO: Add proper noir style image
+const minimalistImg = abstractImg; // TODO: Add proper minimalist style image
+
 export const styles = [
+  { id: 'no-style', name: 'No Style / Basic', icon: Minus, image: cartoonImg, description: 'Čisti karakter bez dodatnih stilova' },
+  { id: 'cartoon', name: 'Cartoon / Mascot', icon: SmilePlus, image: cartoonImg, description: 'Razigrani maskota stil' },
   { id: 'synthwave', name: 'Synthwave', icon: Palette, image: synthwaveImg, description: 'Retro 80-ih neon vibra' },
-  { id: 'gta', name: 'GTA Stil', icon: Gamepad2, image: gtaImg, description: 'Smjela strip estetika' },
+  { id: 'gta', name: 'GTA Style', icon: Gamepad2, image: gtaImg, description: 'Smjela strip estetika' },
   { id: 'cyberpunk', name: 'Cyberpunk', icon: Cpu, image: cyberpunkImg, description: 'Futuristička neon tehnologija' },
-  { id: 'cartoon', name: 'Crtani Film', icon: SmilePlus, image: cartoonImg, description: 'Razigrani maskota stil' },
-  { id: 'retro', name: 'Retro', icon: Clock, image: retroImg, description: 'Vintage poster umjetnost' },
-  { id: 'inkpunk', name: 'Inkpunk', icon: Paintbrush, image: inkpunkImg, description: 'Kaotične mrlje tinte' },
-  { id: 'fantasy', name: 'Fantasy', icon: Wand2, image: fantasyImg, description: 'Magični RPG stil' },
+  { id: 'anime', name: 'Anime Style', icon: Sparkles, image: animeImg, description: 'Japanski anime stil' },
+  { id: '3d', name: '3D Stylized', icon: Box, image: threeDImg, description: 'Stilizirani 3D model' },
+  { id: 'retro', name: 'Retro / Vintage', icon: Clock, image: retroImg, description: 'Vintage poster umjetnost' },
+  { id: 'inkpunk', name: 'Inkpunk Style', icon: Paintbrush, image: inkpunkImg, description: 'Kaotične mrlje tinte' },
+  { id: 'steampunk', name: 'Steampunk', icon: Cog, image: steampunkImg, description: 'Mehanički mjedeni stil' },
+  { id: 'noir', name: 'Noir / Dark Comic', icon: Moon, image: noirImg, description: 'Crno-bijeli strip noir' },
+  { id: 'fantasy', name: 'Fantasy / RPG', icon: Wand2, image: fantasyImg, description: 'Magični RPG stil' },
+  { id: 'minimalist', name: 'Minimalist Modern', icon: MinusSquare, image: minimalistImg, description: 'Čisti, jednostavni oblici' },
   { id: 'abstract-geometry', name: 'Apstraktna Geometrija', icon: Shapes, image: abstractImg, description: 'Geometrijski oblici i fragmenti' },
 ];
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MediaPicker } from "@/components/admin/MediaPicker";
 import { Label } from "@/components/ui/label";
+import { cleanWordPressJson } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Save, Key, ShieldCheck, Globe, UserCog } from "lucide-react";
 import { getPosts, getPostBySlug, createPost, updatePost } from "@/integrations/wordpress/posts";
@@ -45,16 +47,11 @@ export default function Settings() {
 
             if (found) {
                 setConfigPost(found);
-                try {
-                    const cleanJson = found.content.rendered.replace(/<[^>]*>?/gm, '');
-                    const parsed = JSON.parse(cleanJson);
-                    if (parsed && typeof parsed === 'object') {
-                        setConfig({ ...DEFAULT_CONFIG, ...parsed });
-                        setLoading(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Failed to parse api config", e);
+                const parsed = cleanWordPressJson(found.content.rendered);
+                if (parsed && typeof parsed === 'object') {
+                    setConfig({ ...DEFAULT_CONFIG, ...parsed });
+                    setLoading(false);
+                    return;
                 }
             }
         } catch (error) {
@@ -225,16 +222,11 @@ export default function Settings() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">WooCommerce Key</label>
-                                    <div className="font-mono text-sm bg-white p-2 rounded border mt-1 text-gray-600">
-                                        {import.meta.env.VITE_WC_CONSUMER_KEY ? '••••••••••••••••' : 'Not Set'}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">WooCommerce Secret</label>
-                                    <div className="font-mono text-sm bg-white p-2 rounded border mt-1 text-gray-600">
-                                        {import.meta.env.VITE_WC_CONSUMER_SECRET ? '••••••••••••••••' : 'Not Set'}
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">WooCommerce API Keys</label>
+                                    <div className="font-mono text-sm bg-green-50 p-2 rounded border border-green-200 mt-1 text-green-700 flex items-center gap-2">
+                                        <ShieldCheck className="w-3 h-3" />
+                                        Configured securely on server (not exposed to browser)
                                     </div>
                                 </div>
                                 <div className="md:col-span-2">

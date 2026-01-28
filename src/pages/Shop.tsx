@@ -297,7 +297,7 @@ const Shop = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const wpProducts = await getProducts();
+                const wpProducts = await getProducts(1, 100);
                 console.log('Fetched products:', wpProducts);
 
                 setProducts(current => {
@@ -481,8 +481,10 @@ const Shop = () => {
     const handleAddToCart = () => {
         const product = products[selectedProduct];
 
-        // determine main image based on active zone or just front
-        const mainImage = designs.front;
+        // determine main image based on product type
+        const mainImage = (selectedProduct === 'hoodie' || selectedProduct === 'tshirt')
+            ? (designs.back || designs.front)
+            : designs.front;
 
         addToCart({
             // @ts-ignore - Local product data doesn't perfectly match WCProduct
@@ -490,10 +492,13 @@ const Shop = () => {
             name: product.name,
             price: product.price.toString(), // Convert number to string for WCProduct compliance if needed
             images: [{ id: 0, src: mainImage, alt: product.name }],
-            color: selectedColor,
-            size: selectedSize,
-            // designs: designs 
-        } as any, quantity);
+            // color: selectedColor, // Deprecated in favor of options
+            // size: selectedSize,   // Deprecated in favor of options
+        } as any, quantity, {
+            selectedDesigns: designs,
+            selectedColor: selectedColor,
+            selectedSize: selectedSize
+        });
 
         toast({
             title: "Dodano u košaricu",
@@ -597,13 +602,13 @@ const Shop = () => {
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-50 flex justify-between px-4 md:px-8 pointer-events-none">
                         <button
                             onClick={() => cycleProduct('prev')}
-                            className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-110 shadow-lg"
+                            className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/40 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-110 shadow-lg"
                         >
                             <ChevronLeft className="w-8 h-8 md:w-10 md:h-10" />
                         </button>
                         <button
                             onClick={() => cycleProduct('next')}
-                            className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-110 shadow-lg"
+                            className="pointer-events-auto w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/40 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-110 shadow-lg"
                         >
                             <ChevronRight className="w-8 h-8 md:w-10 md:h-10" />
                         </button>

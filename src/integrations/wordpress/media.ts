@@ -2,13 +2,11 @@ import { getAuthHeaders, WP_API_URL } from './client';
 import { WPMedia } from './types';
 
 export const getMedia = async (page = 1, perPage = 20): Promise<{ data: WPMedia[], totalPages: number }> => {
-    const url = `${WP_API_URL}/wp/v2/media?page=${page}&per_page=${perPage}`;
-    // Use raw fetch to get headers
-    const response = await fetch(url, {
+    const url = `/wp/v2/media?page=${page}&per_page=${perPage}`;
+
+    // We use a custom fetch here because we need to access response headers for pagination
+    const response = await fetch(`${WP_API_URL}${url}`, {
         headers: {
-            'Content-Type': 'application/json',
-            // Include auth headers if available/needed. 
-            // Previous code didn't use them for GET, but let's be consistent if we want private media.
             ...getAuthHeaders() as any,
         }
     });
@@ -17,7 +15,7 @@ export const getMedia = async (page = 1, perPage = 20): Promise<{ data: WPMedia[
         throw new Error(`WordPress API Error: ${response.statusText}`);
     }
 
-    const totalPages = parseInt(response.headers.get('X-WP-TotalPages') || '0', 10);
+    const totalPages = parseInt(response.headers.get('X-WP-TotalPages') || '1', 10);
     const data = await response.json();
 
     return { data, totalPages };
@@ -38,9 +36,9 @@ export const uploadMedia = async (file: File): Promise<WPMedia> => {
         headers: {
             'Authorization': authHeader,
             'Content-Disposition': `attachment; filename="${file.name}"`,
-            // Let browser set Content-Type for FormData
+            'Content-Type': file.type,
         },
-        body: formData
+        body: file
     });
 
     if (!response.ok) {

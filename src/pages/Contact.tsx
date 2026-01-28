@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PageHero } from "@/components/PageHero";
 import rokoKontakt from "@/assets/roko-kontakt.webp";
 import ekipaImg from "@/assets/ekipa.png";
@@ -6,7 +6,10 @@ import { MapPin, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getPosts, getPostBySlug } from "@/integrations/wordpress/posts";
+import { getPostBySlug } from "@/integrations/wordpress/posts";
+import { HoneypotInput, HoneypotRef } from "@/components/ui/honeypot";
+import { useToast } from "@/hooks/use-toast";
+import { cleanWordPressJson } from "@/lib/utils";
 
 const CONFIG_SLUG = "config-contact";
 
@@ -33,18 +36,16 @@ interface LegacyContactConfig {
 
 const Contact = () => {
     const [contactInfo, setContactInfo] = useState<ContactConfig>(DEFAULT_CONTACT);
+    const honeypotRef = useRef<HoneypotRef>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                // Use specific slug fetch for reliability
                 const found = await getPostBySlug(CONFIG_SLUG);
-
                 if (found) {
-                    const cleanJson = found.content.rendered.replace(/<[^>]*>?/gm, '');
-                    const parsed = JSON.parse(cleanJson) as LegacyContactConfig;
+                    const parsed = cleanWordPressJson(found.content.rendered) as LegacyContactConfig;
                     if (parsed && typeof parsed === 'object') {
-                        // Migrate legacy fields to arrays
                         const emails = parsed.emails || (parsed.email ? [parsed.email] : DEFAULT_CONTACT.emails);
                         const phones = parsed.phones || (parsed.phone ? [parsed.phone] : DEFAULT_CONTACT.phones);
 
@@ -61,6 +62,57 @@ const Contact = () => {
         };
         fetchConfig();
     }, []);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        // SPAM CHECK: If invisible field is filled, silently reject
+        if (!honeypotRef.current?.isValid()) {
+            console.warn("Spam bot detected");
+            return;
+        }
+
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const data = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            message: formData.get('message'),
+        };
+
+        try {
+            const apiUrl = import.meta.env.DEV
+                ? 'http://localhost:3000/api/contact'
+                : '/api/contact';
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                toast({
+                    title: "Poruka poslana!",
+                    description: "Javit ćemo vam se uskoro.",
+                });
+                // Optional: Reset form
+                form.reset();
+            } else {
+                throw new Error('Failed to send');
+            }
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Greška",
+                description: "Došlo je do greške prilikom slanja poruke.",
+            });
+        }
+    };
 
     return (
         <div className="min-h-screen bg-white">
@@ -135,11 +187,14 @@ const Contact = () => {
                                     <h2 className="text-3xl font-heading font-bold mb-4 text-foreground">Slobodno nam se obratite</h2>
                                 </div>
 
-                                <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                                <form className="space-y-6" onSubmit={handleSubmit}>
+                                    <HoneypotInput ref={honeypotRef} />
+
                                     <div className="space-y-2">
                                         <label htmlFor="name" className="text-sm font-bold text-foreground ml-1">Ime i prezime <span className="text-destructive">*</span></label>
                                         <Input
                                             id="name"
+                                            name="name"
                                             className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
                                     </div>
@@ -148,6 +203,7 @@ const Contact = () => {
                                         <label htmlFor="phone" className="text-sm font-bold text-foreground ml-1">Telefon <span className="text-destructive">*</span></label>
                                         <Input
                                             id="phone"
+                                            name="phone"
                                             type="tel"
                                             className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
@@ -157,6 +213,7 @@ const Contact = () => {
                                         <label htmlFor="email" className="text-sm font-bold text-foreground ml-1">Email adresa <span className="text-destructive">*</span></label>
                                         <Input
                                             id="email"
+                                            name="email"
                                             type="email"
                                             className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all"
                                         />
@@ -166,6 +223,7 @@ const Contact = () => {
                                         <label htmlFor="message" className="text-sm font-bold text-foreground ml-1">Vaša poruka <span className="text-destructive">*</span></label>
                                         <Textarea
                                             id="message"
+                                            name="message"
                                             className="min-h-[150px] bg-card rounded-3xl border-2 focus:border-primary p-4 transition-all"
                                         />
                                     </div>

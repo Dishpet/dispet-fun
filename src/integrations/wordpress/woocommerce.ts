@@ -27,9 +27,10 @@ export const createOrder = async (orderData: any) => {
     });
 };
 
-export const getOrders = async (customerId: number): Promise<WCOrder[]> => {
+export const getOrders = async (customerId?: number): Promise<WCOrder[]> => {
     const headers = getAuthHeaders();
-    return wpFetch(`/wc/v3/orders?customer=${customerId}`, { headers });
+    const query = customerId ? `?customer=${customerId}` : '';
+    return wpFetch(`/wc/v3/orders${query}`, { headers });
 };
 
 export const createCustomer = async (customerData: any) => {
@@ -63,6 +64,20 @@ export const createProduct = async (data: any): Promise<WCProduct> => {
 export const updateProduct = async (id: number, data: any): Promise<WCProduct> => {
     const headers = getAuthHeaders();
     return wpFetch(`/wc/v3/products/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data)
+    });
+};
+
+export const getProductVariations = async (productId: number): Promise<any[]> => {
+    const headers = getAuthHeaders();
+    return wpFetch(`/wc/v3/products/${productId}/variations?per_page=100`, { headers });
+};
+
+export const updateProductVariation = async (productId: number, variationId: number, data: any): Promise<any> => {
+    const headers = getAuthHeaders();
+    return wpFetch(`/wc/v3/products/${productId}/variations/${variationId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data)

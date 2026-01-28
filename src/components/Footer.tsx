@@ -1,4 +1,4 @@
-import { FaFacebook, FaInstagram, FaYoutube } from "react-icons/fa";
+import { FaFacebook, FaInstagram } from "react-icons/fa";
 import logo from "@/assets/1web-logo-whitel.png";
 import rokoWave from "@/assets/roko_web_wave_orig_2.gif";
 import cloudsSvg from "@/assets/clouds-bottom.svg";
@@ -68,20 +68,34 @@ export const Footer = () => {
 
                     {/* Right Column - Social Links */}
                     <div className="flex flex-col items-center md:items-end">
+                        {/* Define Gradients for Icons */}
+                        <svg width="0" height="0" className="absolute w-0 h-0 pointer-events-none opacity-0">
+                            <defs>
+                                <linearGradient id="footer-home-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#0044bf" />
+                                    <stop offset="100%" stopColor="#ad00e9" />
+                                </linearGradient>
+                                <linearGradient id="footer-shop-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#00ffbf" />
+                                    <stop offset="100%" stopColor="#0089cd" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+
                         <div className="flex gap-4">
                             <a href="https://www.facebook.com/profile.php?id=61555918944052" target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform duration-300 group">
                                 <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-lg group-hover:shadow-xl">
-                                    <FaFacebook className="h-6 w-6 text-[#e83e70]" />
+                                    <FaFacebook className="h-6 w-6" style={{ fill: "url(#footer-home-gradient)" }} />
                                 </div>
                             </a>
                             <a href="https://www.instagram.com/dispet.fun/" target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform duration-300 group">
                                 <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-lg group-hover:shadow-xl">
-                                    <FaInstagram className="h-6 w-6 text-[#e83e70]" />
+                                    <FaInstagram className="h-6 w-6" style={{ fill: "url(#footer-home-gradient)" }} />
                                 </div>
                             </a>
-                            <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform duration-300 group">
+                            <a href="https://www.instagram.com/dispet_collection?igsh=dmpzaWtqN3E3ZDc4" target="_blank" rel="noopener noreferrer" className="hover:scale-110 transition-transform duration-300 group">
                                 <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-lg group-hover:shadow-xl">
-                                    <FaYoutube className="h-6 w-6 text-[#e83e70]" />
+                                    <FaInstagram className="h-6 w-6" style={{ fill: "url(#footer-shop-gradient)" }} />
                                 </div>
                             </a>
                         </div>

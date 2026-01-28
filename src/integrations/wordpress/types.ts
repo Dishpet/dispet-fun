@@ -24,6 +24,10 @@ export interface WCProduct {
     images: Array<{ id: number; src: string; alt: string }>;
     categories: Array<{ id: number; name: string; slug: string }>;
     stock_status: 'instock' | 'outofstock' | 'onbackorder';
+    stock_quantity: number | null;
+    manage_stock: boolean;
+    type: 'simple' | 'variable' | 'grouped' | 'external';
+    variations: number[];
     average_rating: string;
     rating_count: number;
 }

@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { createCustomer } from "@/integrations/wordpress/woocommerce";
 import { useAuth } from "@/contexts/AuthContext";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 interface JoinModalProps {
     isOpen: boolean;
@@ -80,22 +82,24 @@ export const JoinModal = ({ isOpen, onClose }: JoinModalProps) => {
             />
 
             {/* Modal Content */}
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col md:flex-row max-h-[90vh]">
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col md:flex-row max-h-[90vh] md:h-auto">
 
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/20 hover:bg-white/40 transition-colors md:text-white text-gray-800"
+                    className="absolute top-2 right-2 z-50 p-2 rounded-full bg-white/20 hover:bg-white/40 transition-colors md:text-white text-gray-800"
                 >
                     <X className="w-6 h-6" />
                 </button>
 
                 {/* Left Side - Benefits (Gradient Background) */}
-                <div className="md:w-2/5 bg-gradient-to-br from-[#0044bf] to-[#ad00e9] p-6 md:p-8 text-white flex flex-col justify-center relative overflow-hidden">
+                <div className="md:w-2/5 bg-gradient-to-br from-[#0044bf] to-[#ad00e9] p-4 md:p-8 text-white flex flex-col justify-center relative overflow-hidden shrink-0">
                     <div className="absolute top-0 left-0 w-full h-full bg-[url('/pattern.png')] opacity-10"></div>
 
-                    <h2 className="text-3xl font-heading font-bold mb-6 relative z-10">Pridruži se Dišpet Klubu! 🚀</h2>
-                    <p className="mb-8 text-white/90 relative z-10">Postani dio ekipe i uživaj u ekskluzivnim pogodnostima:</p>
+                    <h2 className="text-xl md:text-3xl font-heading font-bold mb-2 md:mb-6 relative z-10 text-center md:text-left pt-2 md:pt-0">
+                        Pridruži se Dišpet Klubu!
+                    </h2>
+                    <p className="mb-0 md:mb-8 text-white/90 relative z-10 text-sm md:text-base hidden md:block">Postani dio ekipe i uživaj u ekskluzivnim pogodnostima:</p>
 
                     <div className="space-y-6 relative z-10 hidden md:block">
                         <div className="flex items-start gap-4">
@@ -141,45 +145,101 @@ export const JoinModal = ({ isOpen, onClose }: JoinModalProps) => {
                 </div>
 
                 {/* Right Side - Registration Form */}
-                <div className="md:w-3/5 p-6 md:p-8 bg-white md:overflow-y-auto">
+                <div className="md:w-3/5 p-4 md:p-8 bg-white overflow-y-auto">
                     <div className="max-w-md mx-auto">
-                        <h3 className="text-2xl font-heading font-bold text-gray-800 mb-6">Kreiraj Račun</h3>
+                        <h3 className="text-2xl font-heading font-bold text-[#e83e70] mb-6">Kreiraj svoj račun</h3>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="firstName">Ime</Label>
-                                    <Input id="firstName" required value={formData.firstName} onChange={handleInputChange} className="rounded-xl" />
+                                    <Label htmlFor="firstName" className="ml-1 font-bold">Ime</Label>
+                                    <Input id="firstName" required value={formData.firstName} onChange={handleInputChange} className="rounded-full h-12 border-2 bg-gray-50 focus:bg-white focus:border-primary transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="lastName">Prezime</Label>
-                                    <Input id="lastName" required value={formData.lastName} onChange={handleInputChange} className="rounded-xl" />
+                                    <Label htmlFor="lastName" className="ml-1 font-bold">Prezime</Label>
+                                    <Input id="lastName" required value={formData.lastName} onChange={handleInputChange} className="rounded-full h-12 border-2 bg-gray-50 focus:bg-white focus:border-primary transition-all" />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="username">Korisničko ime</Label>
-                                <Input id="username" required value={formData.username} onChange={handleInputChange} className="rounded-xl" />
+                                <Label htmlFor="username" className="ml-1 font-bold">Korisničko ime</Label>
+                                <Input id="username" required value={formData.username} onChange={handleInputChange} className="rounded-full h-12 border-2 bg-gray-50 focus:bg-white focus:border-primary transition-all" />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" required value={formData.email} onChange={handleInputChange} className="rounded-xl" />
+                                <Label htmlFor="email" className="ml-1 font-bold">Email</Label>
+                                <Input id="email" type="email" required value={formData.email} onChange={handleInputChange} className="rounded-full h-12 border-2 bg-gray-50 focus:bg-white focus:border-primary transition-all" />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="password">Lozinka</Label>
-                                <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} className="rounded-xl" />
+                                <Label htmlFor="password" className="ml-1 font-bold">Lozinka</Label>
+                                <Input id="password" type="password" required value={formData.password} onChange={handleInputChange} className="rounded-full h-12 border-2 bg-gray-50 focus:bg-white focus:border-primary transition-all" />
                             </div>
 
                             <div className="pt-4">
                                 <Button
                                     type="submit"
-                                    className="w-full bg-gradient-to-br from-[#0044bf] to-[#ad00e9] text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
+                                    className="w-full bg-gradient-to-br from-[#0044bf] to-[#ad00e9] text-white hover:opacity-90 font-bold py-6 rounded-full shadow-lg transition-all transform hover:-translate-y-1"
                                     disabled={loading}
                                 >
                                     {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : "Registriraj se"}
                                 </Button>
+                            </div>
+
+                            <div className="relative my-4">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-white px-2 text-muted-foreground">Ili nastavite putem</span>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-center w-full">
+                                <GoogleLogin
+                                    onSuccess={async (credentialResponse) => {
+                                        try {
+                                            const decoded: any = jwtDecode(credentialResponse.credential!);
+                                            console.log("Google User in Join:", decoded);
+
+                                            // Create session from Google
+                                            const googleUser = {
+                                                id: Date.now(),
+                                                username: decoded.email.split('@')[0],
+                                                email: decoded.email,
+                                                first_name: decoded.given_name,
+                                                last_name: decoded.family_name,
+                                                billing: {
+                                                    first_name: decoded.given_name,
+                                                    last_name: decoded.family_name,
+                                                    email: decoded.email,
+                                                    address_1: "", city: "", postcode: "", country: "", phone: ""
+                                                },
+                                                shipping: {
+                                                    first_name: decoded.given_name,
+                                                    last_name: decoded.family_name,
+                                                    address_1: "", city: "", postcode: "", country: ""
+                                                }
+                                            };
+
+                                            login("google-session-token", googleUser);
+
+                                            toast({
+                                                title: "Uspješna registracija",
+                                                description: `Dobrodošli, ${decoded.name}!`,
+                                            });
+
+                                            onClose();
+                                        } catch (error) {
+                                            console.error("Google Login Error", error);
+                                        }
+                                    }}
+                                    onError={() => console.log('Login Failed')}
+                                    useOneTap
+                                    theme="filled_blue"
+                                    shape="pill"
+                                    width="100%"
+                                />
                             </div>
 
                             <p className="text-center text-sm text-gray-500 mt-4">

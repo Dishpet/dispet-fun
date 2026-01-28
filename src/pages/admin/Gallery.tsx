@@ -5,6 +5,7 @@ import { getPosts, createPost, updatePost } from "@/integrations/wordpress/posts
 import { WPPost } from "@/integrations/wordpress/types";
 import { useToast } from "@/hooks/use-toast";
 import { MediaPicker } from "@/components/admin/MediaPicker";
+import { cleanWordPressJson } from "@/lib/utils";
 
 // Import all gallery images (32 new webp images) as fallback
 const galleryImages = import.meta.glob("@/assets/gallery/dispet galerija (*).webp", { eager: true, import: 'default' });
@@ -48,16 +49,11 @@ export default function AdminGallery() {
 
             if (found) {
                 setConfigPost(found);
-                try {
-                    const cleanJson = found.content.rendered.replace(/<[^>]*>?/gm, '');
-                    const parsed = JSON.parse(cleanJson);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        setImages(parsed);
-                        setLoading(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Failed to parse gallery config", e);
+                const parsed = cleanWordPressJson(found.content.rendered);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setImages(parsed);
+                    setLoading(false);
+                    return;
                 }
             }
 

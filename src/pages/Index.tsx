@@ -3,6 +3,7 @@ import { Hero } from "@/components/Hero";
 import { Partners } from "@/components/Partners";
 import { Gallery } from "@/components/Gallery";
 import { BlogSection } from "@/components/BlogSection";
+import { CTABanner } from "@/components/CTABanner";
 import bannerImage from "@/assets/banner-image.webp";
 import mobileBannerImage from "@/assets/boce-kape.webp";
 import bannerVideo from "@/assets/banner-video.webm";
@@ -14,6 +15,7 @@ import cloudsBottomVideo from "@/assets/clouds-bottom-video.svg";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AboutHeader, AboutVideoSlider, AboutDescription, features } from "@/components/AboutSection";
+import { SEOHead } from "@/components/SEOHead";
 
 const Index = () => {
   const generatorRef = useRef<HTMLDivElement>(null);
@@ -30,8 +32,32 @@ const Index = () => {
     generatorRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Dišpet",
+    "url": "https://dispet.fun",
+    "logo": "https://dispet.fun/dispet-logo-symbol-bg.png",
+    "sameAs": [
+      "https://www.facebook.com/profile.php?id=61561783472097",
+      "https://www.instagram.com/dispet_fun/"
+    ],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+385-95-555-6666",
+      "contactType": "Customer Service",
+      "areaServed": "HR",
+      "availableLanguage": "Croatian"
+    }
+  };
+
   return (
     <div className="min-h-screen">
+      <SEOHead
+        title="Naslovnica"
+        description="Dišpet - Dan zabave za djecu i odrasle. Najbolji board game i merch shop u Splitu."
+        schema={schema}
+      />
       <Hero onCreateClick={scrollToGenerator} />
 
       {/* About Header (Title) */}
@@ -128,6 +154,7 @@ const Index = () => {
 
       <Gallery />
       <Partners />
+      <CTABanner />
     </div>
   );
 };

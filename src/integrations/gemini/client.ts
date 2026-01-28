@@ -1,13 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const CONFIG_SLUG = "config-api-keys";
-
-// Fetch API Key from WordPress Config
-// Fetch API Key from WordPress Config
-// Fetch API Key (Hardcoded for testing as per user request to ensure it works)
+// Fetch API Key from environment variable
 export const getGoogleApiKey = async (): Promise<string | null> => {
-    // User provided specific key to use
-    return "AIzaSyDdsLw_A1aoC7xvnuSk-GgyUu59VzyNeQ4";
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    if (!apiKey) {
+        console.error("VITE_GOOGLE_API_KEY not set in .env");
+        return null;
+    }
+    return apiKey;
 };
 
 // Initialize Gemini Client
@@ -61,26 +61,35 @@ export const generateImageWithGemini = async (prompt: string, stylePrompt: strin
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Combine prompts
-    // Combine prompts and enforce background removal instructions
-    const backgroundInstruction = " CRITICAL: Generate the image with a TRANSPARENT background if possible, or a solid white background that is easy to remove. The subject must be strictly isolated. NO background elements.";
-    const finalPrompt = stylePrompt.replace("{prompt}", prompt) + backgroundInstruction;
+    const finalPrompt = stylePrompt.replace("{prompt}", prompt);
 
-    // Prepare input parts
+    // Prepare input parts - Start with the text instructions
     const parts: any[] = [{ text: finalPrompt }];
+    console.log("📝 Main prompt added to Gemini request parts.");
 
-    // Add reference images if provided
+    // Add reference images with explicit labels so the model can correlate with "IMAGE 1", "IMAGE 2" etc.
     if (referenceImages && referenceImages.length > 0) {
-        for (const imgData of referenceImages) {
+        console.log(`📡 Adding ${referenceImages.length} reference images to Gemini multipart request...`);
+        referenceImages.forEach((imgData, index) => {
             const match = imgData.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
             if (match) {
+                // Add a text label before each image part
+                parts.push({ text: `CHARACTER REFERENCE IMAGE ${index + 1}:` });
                 parts.push({
                     inlineData: {
                         mimeType: match[1],
                         data: match[2]
                     }
                 });
+            } else {
+                console.warn(`⚠️ Reference image ${index + 1} did not match expected base64 format!`);
             }
-        }
+        });
+
+        // Final emphasis after images
+        parts.push({ text: `FINAL INSTRUCTION: Use the character provided in the images above EXACTLY. Match face, colors, and features from IMAGE 1.` });
+    } else {
+        console.warn("⚠️ No reference images provided to generateImageWithGemini!");
     }
 
     // Helper function to execute generation with Retry Logic
@@ -88,8 +97,16 @@ export const generateImageWithGemini = async (prompt: string, stylePrompt: strin
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
                 console.log(`Attempting generation with model: ${modelName} (Attempt ${attempt + 1}/${retries + 1})`);
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent(parts);
+
+                // Configure model with image generation capability
+                const model = genAI.getGenerativeModel({
+                    model: modelName,
+                    generationConfig: {
+                        responseModalities: ["TEXT", "IMAGE"],
+                    } as any
+                });
+
+                const result = await model.generateContent(parts as any);
                 const response = await result.response;
 
                 if (response.candidates && response.candidates[0].content.parts) {
@@ -98,7 +115,9 @@ export const generateImageWithGemini = async (prompt: string, stylePrompt: strin
                             return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
                         }
                         if (part.text) {
-                            throw new Error(`Model Refusal (${modelName}): ${part.text}`);
+                            console.warn(`Model returned text instead of image (${modelName}):`, part.text);
+                            // If text is returned, it might be a refusal or a description.
+                            // We only throw if it's the last attempt or a hard error.
                         }
                     }
                 }
@@ -108,27 +127,35 @@ export const generateImageWithGemini = async (prompt: string, stylePrompt: strin
                 if (isRetryable && attempt < retries) {
                     console.warn(`Attempt ${attempt + 1} failed with 503/Overloaded. Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // Exponential backoff
+                    delay *= 2;
                     continue;
                 }
-                throw error; // Not retryable or max retries reached
+                throw error;
             }
         }
         throw new Error(`Max retries exceeded for ${modelName}`);
     };
 
     try {
-        // Try Primary: Gemini 2.5 Flash ("Regular Nano Banana") as requested
-        return await executeGeneration("gemini-2.5-flash-image");
+        // Try Primary: Nano Banana Pro (Gemini 3 Pro Image)
+        return await executeGeneration("gemini-3-pro-image-preview");
     } catch (error: any) {
-        console.warn("Nano Banana (2.5) failed, attempting upgrade to Pro (3.0)...", error);
+        console.warn("Nano Banana Pro failed, attempting fallback...", error);
 
-        // Fallback to Pro (3.0)
         try {
-            return await executeGeneration("gemini-3-pro-image-preview");
+            // Fallback 1: Nano Banana (Gemini 2.5 Flash Image)
+            return await executeGeneration("gemini-2.5-flash-image");
         } catch (fallbackError: any) {
-            console.error("Fallback Pro (3.0) also failed:", fallbackError);
-            throw new Error(`Both 'Nano Banana' (2.5) and 'Nano Banana Pro' (3.0) failed. Last error: ${fallbackError.message}`);
+            console.warn("Nano Banana failed, attempting stable fallback...", fallbackError);
+
+            try {
+                // Fallback 2: Stable multimodal model (Gemini 1.5 Pro)
+                // Note: Image gen support varies by region/tier for 1.5 Pro
+                return await executeGeneration("gemini-1.5-pro-002");
+            } catch (stableError: any) {
+                console.error("All generation models failed:", stableError);
+                throw new Error(`Image generation failed across all models. Error: ${stableError.message}`);
+            }
         }
     }
 };
@@ -147,7 +174,7 @@ export const removeBackgroundWithGemini = async (base64Image: string): Promise<s
     const mimeType = match[1];
     const data = match[2];
 
-    const modelName = "gemini-3-pro-image-preview"; // Use user's preferred model
+    const modelName = "gemini-3-pro-image-preview";
     const model = genAI.getGenerativeModel({ model: modelName });
 
     console.log("Requesting background removal from Gemini...");
@@ -166,7 +193,7 @@ export const removeBackgroundWithGemini = async (base64Image: string): Promise<s
     ];
 
     try {
-        const result = await model.generateContent(parts);
+        const result = await model.generateContent(parts as any);
         const response = await result.response;
 
         // Parse response for image

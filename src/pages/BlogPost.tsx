@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Calendar, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { hr } from "date-fns/locale";
+import DOMPurify from "dompurify";
 
 const BlogPost = () => {
     const { slug } = useParams();
@@ -78,7 +79,7 @@ const BlogPost = () => {
 
                         <div
                             className="w-full [&_*]:!max-w-none [&_*]:w-full [&_p]:!max-w-none [&_p]:w-full"
-                            dangerouslySetInnerHTML={{ __html: post.content.rendered }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content.rendered) }}
                         />
                     </article>
                 </div>

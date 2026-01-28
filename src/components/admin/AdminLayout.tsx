@@ -12,14 +12,13 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     const menuItems = [
         { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
         { icon: FileText, label: "Blog", path: "/admin/posts" },
-        { icon: Share2, label: "Social Media", path: "/admin/social" },
         { icon: ShoppingBag, label: "Products", path: "/admin/products" },
+        { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
+        { icon: Image, label: "Gallery", path: "/admin/gallery" },
         { icon: Users, label: "Users", path: "/admin/users" },
         { icon: Handshake, label: "Partners", path: "/admin/partners" },
-        { icon: Image, label: "Gallery", path: "/admin/gallery" },
         { icon: Phone, label: "Contact Info", path: "/admin/contact" },
-        { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
-        { icon: Settings, label: "Settings", path: "/admin/settings" },
+        { icon: Share2, label: "Social Media", path: "/admin/social" },
     ];
 
     const SidebarContent = () => (

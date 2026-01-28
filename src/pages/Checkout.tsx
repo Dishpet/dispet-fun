@@ -1,24 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { CreditCard, MapPin, User, Loader2, ArrowLeft } from "lucide-react";
+import { MapPin, User, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { createOrder } from "@/integrations/wordpress/woocommerce";
-
 import { PageHero } from "@/components/PageHero";
+import { useAuth } from "@/contexts/AuthContext";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import { StripePaymentForm } from "@/components/StripePaymentForm";
+
+// Initialize Stripe outside of component
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const { cartItems, cartSubtotal, shippingCost, cartTotal, clearCart } = useCart();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // ... (existing state and handlers)
-
+  // Form State
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -27,16 +33,33 @@ const Checkout = () => {
     address: "",
     city: "",
     postalCode: "",
-    country: "",
+    country: "Hrvatska",
   });
+
+  // Auto-populate user data
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: user.first_name || user.billing?.first_name || prev.firstName,
+        lastName: user.last_name || user.billing?.last_name || prev.lastName,
+        email: user.email || user.billing?.email || prev.email,
+        phone: user.billing?.phone || prev.phone,
+        address: user.billing?.address_1 || prev.address,
+        city: user.billing?.city || prev.city,
+        postalCode: user.billing?.postcode || prev.postalCode,
+        country: user.billing?.country || prev.country
+      }));
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Logic to process order after Stripe token is created
+  const handleStripePayment = async (token: any) => {
     setLoading(true);
 
     if (cartItems.length === 0) {
@@ -49,9 +72,25 @@ const Checkout = () => {
       return;
     }
 
+    // Validate Form
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'postalCode', 'country'];
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+
+    if (missingFields.length > 0) {
+      toast({
+        title: "Nedostaju podaci",
+        description: "Molimo ispunite sva obavezna polja.",
+        variant: "destructive"
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const orderData = {
-        set_paid: false,
+        set_paid: true, // Attempt to set as paid immediately since we have a token
+        payment_method: "stripe",
+        payment_method_title: "Credit Card (Stripe)",
         billing: {
           first_name: formData.firstName,
           last_name: formData.lastName,
@@ -70,50 +109,80 @@ const Checkout = () => {
           postcode: formData.postalCode,
           country: formData.country,
         },
+        shipping_lines: [
+          {
+            method_id: calculatedShipping === 0 ? "free_shipping" : "flat_rate",
+            method_title: calculatedShipping === 0
+              ? "Besplatna dostava"
+              : (isCroatia ? "Dostava (Hrvatska)" : "International Shipping"),
+            total: calculatedShipping.toString()
+          }
+        ],
         line_items: cartItems.map(item => {
           const cartItem = item as any;
           const meta_data = [];
 
-          if (cartItem.size) {
-            meta_data.push({ key: 'Veličina', value: cartItem.size });
-          }
-          if (cartItem.color) {
-            meta_data.push({ key: 'Boja', value: cartItem.color });
-          }
-          if (cartItem.images?.[0]?.src) {
-            // Pass the design URL. This is the custom overlay image.
-            meta_data.push({ key: 'Dizajn', value: cartItem.images[0].src });
-          }
+          if (cartItem.size) meta_data.push({ key: 'Veličina', value: cartItem.size });
+          if (cartItem.color) meta_data.push({ key: 'Boja', value: cartItem.color });
+          if (cartItem.images?.[0]?.src) meta_data.push({ key: 'Dizajn', value: cartItem.images[0].src });
 
           return {
             product_id: item.id,
             quantity: item.quantity,
             meta_data
           };
-        })
+        }),
+        meta_data: [
+          { key: '_stripe_source_id', value: token.id }
+        ]
       };
 
       const response: any = await createOrder(orderData);
 
-      if (response.id && response.order_key) {
+      if (response.id) {
+        // Send order notification with design details for printing team
+        try {
+          const notificationApiUrl = import.meta.env.DEV
+            ? 'http://localhost:3000/api/order-notification'
+            : '/api/order-notification';
+
+          await fetch(notificationApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: response.id,
+              customer: {
+                name: `${formData.firstName} ${formData.lastName}`,
+                email: formData.email,
+                phone: formData.phone,
+                address: formData.address,
+                city: formData.city,
+                postalCode: formData.postalCode,
+              },
+              items: cartItems.map(item => ({
+                name: item.name,
+                image: item.images?.[0]?.src || '',
+                color: item.selectedColor || '',
+                size: item.selectedSize || '',
+                quantity: item.quantity,
+              })),
+              total: cartTotal.toFixed(2),
+            }),
+          });
+        } catch (notifError) {
+          console.error('Failed to send order notification:', notifError);
+          // Don't fail the order if notification fails
+        }
+
         toast({
-          title: "Narudžba kreirana",
-          description: "Preusmjeravanje na sigurno plaćanje...",
+          title: "Narudžba uspješna!",
+          description: "Hvala na kupovini. Potvrda je poslana na vaš email.",
         });
 
         clearCart();
-
-        // Construct Payment URL dynamically
-        // Assuming API URL is like 'https://wp.dispet.fun/wp-json'
-        const wpApiUrl = import.meta.env.VITE_WP_API_URL || 'https://wp.dispet.fun/wp-json';
-        const wpBaseUrl = wpApiUrl.replace('/wp-json', '');
-
-        // Standard WooCommerce Pay Link - Hardcoded to ensure correct path
-        const payUrl = `https://wp.dispet.fun/checkout-2/order-pay/${response.id}/?pay_for_order=true&key=${response.order_key}`;
-        console.log("Redirecting to:", payUrl);
-
+        // Redirect to a success page or account page
         setTimeout(() => {
-          window.location.href = payUrl;
+          navigate('/account');
         }, 1500);
 
       } else {
@@ -124,15 +193,17 @@ const Checkout = () => {
       console.error("Order creation failed:", error);
       toast({
         title: "Greška narudžbe",
-        description: error instanceof Error ? error.message : "Došlo je do greške. Provjerite konzolu.",
+        description: error instanceof Error ? error.message : "Došlo je do greške.",
         variant: "destructive"
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  const shipping = 0;
-  const total = cartTotal + shipping;
+  const isCroatia = formData.country.toLowerCase().includes('hrvat') || formData.country.toUpperCase() === 'HR';
+  const calculatedShipping = isCroatia ? (cartSubtotal >= 70 ? 0 : 5) : 10;
+  const total = cartSubtotal + calculatedShipping;
 
   return (
     <div className="min-h-screen">
@@ -147,9 +218,12 @@ const Checkout = () => {
             <ArrowLeft className="w-6 h-6 mr-2" />
             Natrag
           </Button>
-          <form onSubmit={handleSubmit}>
+
+          {/* Wrap everything in Elements provider for Stripe */}
+          <Elements stripe={stripePromise}>
             <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-              {/* Checkout Forms */}
+
+              {/* Left Column: Input Forms */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Contact Information */}
                 <Card className="p-6 shadow-soft animate-bounce-in">
@@ -158,27 +232,21 @@ const Checkout = () => {
                     <h2 className="text-2xl font-heading">Kontakt informacije</h2>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Ime</Label>
-                      <Input id="firstName" required className="rounded-full" value={formData.firstName} onChange={handleInputChange} />
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-sm font-bold text-foreground ml-1">Ime <span className="text-destructive">*</span></Label>
+                      <Input id="firstName" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.firstName} onChange={handleInputChange} />
                     </div>
-                    <div>
-                      <Label htmlFor="lastName">Prezime</Label>
-                      <Input id="lastName" required className="rounded-full" value={formData.lastName} onChange={handleInputChange} />
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-sm font-bold text-foreground ml-1">Prezime <span className="text-destructive">*</span></Label>
+                      <Input id="lastName" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.lastName} onChange={handleInputChange} />
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        required
-                        className="rounded-full"
-                        value={formData.email} onChange={handleInputChange}
-                      />
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="email" className="text-sm font-bold text-foreground ml-1">Email <span className="text-destructive">*</span></Label>
+                      <Input id="email" type="email" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.email} onChange={handleInputChange} />
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="phone">Telefon</Label>
-                      <Input id="phone" type="tel" required className="rounded-full" value={formData.phone} onChange={handleInputChange} />
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="phone" className="text-sm font-bold text-foreground ml-1">Telefon <span className="text-destructive">*</span></Label>
+                      <Input id="phone" type="tel" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.phone} onChange={handleInputChange} />
                     </div>
                   </div>
                 </Card>
@@ -190,77 +258,81 @@ const Checkout = () => {
                     <h2 className="text-2xl font-heading">Adresa dostave</h2>
                   </div>
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="address">Adresa</Label>
-                      <Input id="address" required className="rounded-full" value={formData.address} onChange={handleInputChange} />
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-sm font-bold text-foreground ml-1">Adresa <span className="text-destructive">*</span></Label>
+                      <Input id="address" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.address} onChange={handleInputChange} />
                     </div>
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="city">Grad</Label>
-                        <Input id="city" required className="rounded-full" value={formData.city} onChange={handleInputChange} />
+                      <div className="space-y-2">
+                        <Label htmlFor="city" className="text-sm font-bold text-foreground ml-1">Grad <span className="text-destructive">*</span></Label>
+                        <Input id="city" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.city} onChange={handleInputChange} />
                       </div>
-                      <div>
-                        <Label htmlFor="postalCode">Poštanski broj</Label>
-                        <Input id="postalCode" required className="rounded-full" value={formData.postalCode} onChange={handleInputChange} />
+                      <div className="space-y-2">
+                        <Label htmlFor="postalCode" className="text-sm font-bold text-foreground ml-1">Poštanski broj <span className="text-destructive">*</span></Label>
+                        <Input id="postalCode" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.postalCode} onChange={handleInputChange} />
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="country">Država</Label>
-                      <Input id="country" required className="rounded-full" value={formData.country} onChange={handleInputChange} />
+                    <div className="space-y-2">
+                      <Label htmlFor="country" className="text-sm font-bold text-foreground ml-1">Država <span className="text-destructive">*</span></Label>
+                      <Input id="country" required className="bg-card rounded-full h-12 border-2 focus:border-primary transition-all" value={formData.country} onChange={handleInputChange} />
                     </div>
-                  </div>
-                </Card>
-
-                {/* Payment Information */}
-                <Card className="p-6 shadow-soft animate-bounce-in" style={{ animationDelay: "0.2s" }}>
-                  <div className="flex items-center gap-3 mb-6">
-                    <CreditCard className="w-6 h-6 text-primary" />
-                    <h2 className="text-2xl font-heading">Način plaćanja</h2>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-xl text-center">
-                    <p className="text-muted-foreground">
-                      Bit ćete preusmjereni na sigurnu WordPress stranicu za plaćanje (Kartice / Stripe).
-                    </p>
                   </div>
                 </Card>
               </div>
 
-              {/* Order Summary */}
+              {/* Right Column: Order Summary & Payment */}
               <div className="lg:col-span-1">
-                <Card className="p-6 shadow-medium sticky top-24 animate-fade-in">
-                  <h2 className="text-2xl font-heading mb-6">Sažetak narudžbe</h2>
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between">
-                      <span>Proizvodi:</span>
-                      <span className="font-semibold font-heading">{cartTotal.toFixed(2)} €</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Dostava:</span>
-                      <span className="font-bold font-heading text-green-600">Besplatno</span>
-                    </div>
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between text-xl font-bold">
-                        <span>Ukupno:</span>
-                        <span className="text-primary font-heading">{total.toFixed(2)} €</span>
+                <Card className="p-6 shadow-medium sticky top-24 animate-fade-in space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-heading mb-6">Sažetak narudžbe</h2>
+                    <div className="space-y-4 mb-6">
+                      <div className="flex justify-between">
+                        <span>Proizvodi:</span>
+                        <span className="font-semibold font-heading">{cartSubtotal.toFixed(2)} €</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Dostava:</span>
+                        {calculatedShipping === 0 ? (
+                          <span className="font-bold font-heading text-green-600">Besplatna</span>
+                        ) : (
+                          <span className="font-bold font-heading">{calculatedShipping.toFixed(2)} €</span>
+                        )}
+                      </div>
+                      {!isCroatia && (
+                        <p className="text-[10px] text-muted-foreground italic -mt-2">Međunarodna dostava (Flat Rate)</p>
+                      )}
+                      {isCroatia && cartSubtotal < 70 && (
+                        <div className="text-[10px] text-muted-foreground italic -mt-2">
+                          Još {(70 - cartSubtotal).toFixed(2)}€ do besplatne dostave u HR!
+                        </div>
+                      )}
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between text-xl font-bold">
+                          <span>Ukupno:</span>
+                          <span className="text-primary font-heading">{total.toFixed(2)} €</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="lg"
-                    className="w-full bg-gradient-primary"
-                    disabled={loading}
-                  >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Završi narudžbu"}
-                  </Button>
+
+                  {/* Secure Payment Form Replaces the Standard Button */}
+                  <div className="pt-2 border-t">
+                    <h3 className="text-lg font-bold mb-4">Plaćanje</h3>
+                    <StripePaymentForm
+                      amount={total}
+                      onPaymentSuccess={handleStripePayment}
+                      isProcessing={loading}
+                    />
+                  </div>
+
                   <p className="text-sm text-muted-foreground text-center mt-4">
-                    Sigurno plaćanje pomoću SSL enkripcije
+                    Vaši podaci su zaštićeni SSL enkripcijom.
                   </p>
                 </Card>
               </div>
+
             </div>
-          </form>
+          </Elements>
         </div>
       </div>
     </div>

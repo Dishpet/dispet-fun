@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1769585551044,
+    "name": "Bananko",
+    "email": "sipa1950@gmail.com",
+    "phone": "091666999",
+    "message": "buba švabe",
+    "date": "2026-01-28T07:32:31.044Z",
+    "read": false
+  },
+  {
+    "id": 1769579959752,
+    "name": "Bananas",
+    "email": "sipa1950@gmail.com",
+    "phone": "091666999",
+    "message": "Pošto banane?",
+    "date": "2026-01-28T05:59:19.752Z",
+    "read": false
+  },
+  {
+    "id": 1769579353883,
+    "name": "Bananko",
+    "email": "nikola.kurobasa87@gmail.com",
+    "phone": "091666999",
+    "message": "Testis, 123 testis",
+    "date": "2026-01-28T05:49:13.883Z",
+    "read": false
+  }
+]

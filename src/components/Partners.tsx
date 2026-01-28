@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getPosts } from "@/integrations/wordpress/posts";
+import { cleanWordPressJson } from "@/lib/utils";
 
 // Default imports for fallback
 import caelor from "@/assets/partneri/caelor.png";
@@ -34,8 +35,7 @@ export const Partners = () => {
                 const posts = await getPosts();
                 const found = posts.find(p => p.slug === CONFIG_SLUG);
                 if (found) {
-                    const cleanJson = found.content.rendered.replace(/<[^>]*>?/gm, '');
-                    const parsed = JSON.parse(cleanJson);
+                    const parsed = cleanWordPressJson(found.content.rendered);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         setPartners(parsed);
                         setLoading(false);

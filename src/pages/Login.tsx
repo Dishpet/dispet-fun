@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PageHero } from "@/components/PageHero";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 import { verifyCredentials, getCustomer } from "@/integrations/wordpress/woocommerce";
 
 const Login = () => {
@@ -23,6 +25,59 @@ const Login = () => {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleGoogleSuccess = async (credentialResponse: any) => {
+        try {
+            const decoded: any = jwtDecode(credentialResponse.credential);
+            console.log("Google User:", decoded);
+
+            // In a real app, you would send credentialResponse.credential to your backend 
+            // to verify and get a WP user token.
+            // For now, we will create a session based on the Google profile.
+
+            const googleUser = {
+                id: Date.now(), // Temporary ID
+                username: decoded.email.split('@')[0],
+                email: decoded.email,
+                first_name: decoded.given_name,
+                last_name: decoded.family_name,
+                billing: {
+                    first_name: decoded.given_name,
+                    last_name: decoded.family_name,
+                    email: decoded.email,
+                    address_1: "",
+                    city: "",
+                    postcode: "",
+                    country: "",
+                    phone: ""
+                },
+                shipping: {
+                    first_name: decoded.given_name,
+                    last_name: decoded.family_name,
+                    address_1: "",
+                    city: "",
+                    postcode: "",
+                    country: ""
+                }
+            };
+
+            login("google-session-token", googleUser);
+
+            toast({
+                title: "Uspješna Google prijava",
+                description: `Dobrodošli, ${decoded.name}!`,
+            });
+
+            navigate("/account");
+        } catch (error) {
+            console.error("Google Login Error", error);
+            toast({
+                title: "Greška",
+                description: "Neuspješna prijava putem Google-a.",
+                variant: "destructive"
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -90,6 +145,34 @@ const Login = () => {
                         <Button type="submit" className="w-full bg-gradient-to-r from-[#0044bf] to-[#ad00e9] text-white font-bold" disabled={loading}>
                             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Prijavi se"}
                         </Button>
+
+                        <div className="relative my-4">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">Ili nastavite putem</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center w-full">
+                            <GoogleLogin
+                                onSuccess={handleGoogleSuccess}
+                                onError={() => {
+                                    console.log('Login Failed');
+                                    toast({
+                                        title: "Greška",
+                                        description: "Neuspješna prijava putem Google-a.",
+                                        variant: "destructive"
+                                    });
+                                }}
+                                useOneTap
+                                theme="filled_blue"
+                                shape="pill"
+                                width="300"
+                            />
+                        </div>
+
                     </form>
                     <p className="text-center text-sm text-gray-500 mt-4">
                         Nemate račun? <span className="text-primary font-bold">Pridružite se klikom na gumb u izborniku!</span>
