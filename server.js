@@ -532,6 +532,25 @@ ${message}
         }
     });
 
+
+    // --- DEBUG ENDPOINT ---
+    app.get('/api/debug-auth', (req, res) => {
+        const key = process.env.WC_CONSUMER_KEY || '';
+        const secret = process.env.WC_CONSUMER_SECRET || '';
+
+        res.json({
+            envLoaded: loadedEnv,
+            hasKey: !!key,
+            keyLength: key.length,
+            keyPrefix: key.substring(0, 5),
+            keySummary: key ? `${key.substring(0, 5)}...${key.substring(key.length - 5)}` : 'none',
+            hasSecret: !!secret,
+            cwd: process.cwd(),
+            wpUrl: process.env.WP_API_URL,
+            envDebugLog: envDebugLog || []
+        });
+    });
+
     // --- PROXY API ROUTES ---
 
     const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
