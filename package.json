@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "echo 'Skipping build on server'",
     "build:local": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
