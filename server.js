@@ -9,92 +9,104 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import FormData from 'form-data';
 
-// ES Module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Wrap everything in try-catch to see errors
+try {
 
-// Try loading .env.server, fallback to default .env
-if (fs.existsSync('.env.server')) {
-    dotenv.config({ path: '.env.server' });
-} else {
-    dotenv.config();
-}
+    // ES Module __dirname equivalent
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
+    console.log('[STARTUP] Server initializing...');
+    console.log('[STARTUP] __dirname:', __dirname);
+    console.log('[STARTUP] Node version:', process.version);
 
-// Ensure the data directory exists for local message storage
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Helper to get WordPress Application Password Auth Header (for /wp/v2/* endpoints)
-const getWpAuthHeader = () => {
-    const user = process.env.WP_APP_USER;
-    const pass = process.env.WP_APP_PASS;
-    if (!user || !pass) return null;
-    const cleanPass = pass.replace(/\s+/g, '');
-    const hash = Buffer.from(`${user}:${cleanPass}`).toString('base64');
-    return `Basic ${hash}`;
-};
-
-// Middleware
-app.use(helmet({
-    contentSecurityPolicy: false,
-}));
-app.use(cors({
-    exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages']
-}));
-app.use(express.json());
-
-// --- HEALTH CHECK / DEBUG ---
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'production',
-        config: {
-            hasWpUrl: !!process.env.WP_API_URL,
-            hasWcKey: !!process.env.WC_CONSUMER_KEY,
-            hasWcSecret: !!process.env.WC_CONSUMER_SECRET,
-            wpUrl: process.env.WP_API_URL ? 'set' : 'not set',
-            port: PORT
-        }
-    });
-});
-
-// --- CONTACT FORM HANDLER ---
-app.post('/api/contact', async (req, res) => {
-    const { name, email, phone, message } = req.body;
-
-    if (!name || !email || !message) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    // Try loading .env.server, fallback to default .env
+    if (fs.existsSync(path.join(__dirname, '.env.server'))) {
+        dotenv.config({ path: path.join(__dirname, '.env.server') });
+        console.log('[STARTUP] Loaded .env.server');
+    } else if (fs.existsSync(path.join(__dirname, '.env'))) {
+        dotenv.config({ path: path.join(__dirname, '.env') });
+        console.log('[STARTUP] Loaded .env');
+    } else {
+        console.log('[STARTUP] No .env file found, using system environment');
     }
 
-    console.log(`Received Contact Form Submission from: ${name} (${email})`);
 
-    const smtpConfig = {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT || 465,
-        secure: true,
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
+    const app = express();
+    const PORT = process.env.PORT || 3000;
+    const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
+
+    // Ensure the data directory exists for local message storage
+    const dataDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    // Helper to get WordPress Application Password Auth Header (for /wp/v2/* endpoints)
+    const getWpAuthHeader = () => {
+        const user = process.env.WP_APP_USER;
+        const pass = process.env.WP_APP_PASS;
+        if (!user || !pass) return null;
+        const cleanPass = pass.replace(/\s+/g, '');
+        const hash = Buffer.from(`${user}:${cleanPass}`).toString('base64');
+        return `Basic ${hash}`;
     };
 
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-        try {
-            const transporter = nodemailer.createTransport(smtpConfig);
+    // Middleware
+    app.use(helmet({
+        contentSecurityPolicy: false,
+    }));
+    app.use(cors({
+        exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages']
+    }));
+    app.use(express.json());
 
-            await transporter.sendMail({
-                from: `"Dišpet Web" <${process.env.SMTP_USER}>`,
-                to: 'info@dispet.fun',
-                replyTo: email,
-                subject: `Nova poruka s weba: ${name}`,
-                text: `
+    // --- HEALTH CHECK / DEBUG ---
+    app.get('/api/health', (req, res) => {
+        res.json({
+            status: 'ok',
+            uptime: process.uptime(),
+            environment: process.env.NODE_ENV || 'production',
+            config: {
+                hasWpUrl: !!process.env.WP_API_URL,
+                hasWcKey: !!process.env.WC_CONSUMER_KEY,
+                hasWcSecret: !!process.env.WC_CONSUMER_SECRET,
+                wpUrl: process.env.WP_API_URL ? 'set' : 'not set',
+                port: PORT
+            }
+        });
+    });
+
+    // --- CONTACT FORM HANDLER ---
+    app.post('/api/contact', async (req, res) => {
+        const { name, email, phone, message } = req.body;
+
+        if (!name || !email || !message) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        console.log(`Received Contact Form Submission from: ${name} (${email})`);
+
+        const smtpConfig = {
+            host: process.env.SMTP_HOST,
+            port: process.env.SMTP_PORT || 465,
+            secure: true,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        };
+
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            try {
+                const transporter = nodemailer.createTransport(smtpConfig);
+
+                await transporter.sendMail({
+                    from: `"Dišpet Web" <${process.env.SMTP_USER}>`,
+                    to: 'info@dispet.fun',
+                    replyTo: email,
+                    subject: `Nova poruka s weba: ${name}`,
+                    text: `
 Ime: ${name}
 Email: ${email}
 Telefon: ${phone || 'Nije naveden'}
@@ -102,7 +114,7 @@ Telefon: ${phone || 'Nije naveden'}
 Poruka:
 ${message}
                 `,
-                html: `
+                    html: `
 <h3>Nova poruka s weba</h3>
 <p><strong>Ime:</strong> ${name}</p>
 <p><strong>Email:</strong> ${email}</p>
@@ -111,155 +123,155 @@ ${message}
 <p><strong>Poruka:</strong></p>
 <p>${message.replace(/\n/g, '<br>')}</p>
                 `
-            });
-            console.log('Email sent successfully via SMTP.');
-        } catch (error) {
-            console.error('SMTP Error:', error);
-        }
-    } else {
-        console.warn('No SMTP configuration found. Message logged to console only.');
-        console.log('Message Content:', message);
-    }
-
-    // Store message locally
-    try {
-        const newMessage = {
-            id: Date.now(),
-            name,
-            email,
-            phone: phone || '',
-            message,
-            date: new Date().toISOString(),
-            read: false
-        };
-
-        let messages = [];
-        if (fs.existsSync(MESSAGES_FILE)) {
-            const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-            try {
-                messages = JSON.parse(data);
-                if (!Array.isArray(messages)) messages = [];
-            } catch (e) {
-                console.error("Error parsing messages file, resetting to empty array.");
-                messages = [];
+                });
+                console.log('Email sent successfully via SMTP.');
+            } catch (error) {
+                console.error('SMTP Error:', error);
             }
-        }
-
-        messages.unshift(newMessage);
-        if (messages.length > 100) messages = messages.slice(0, 100);
-
-        fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-        console.log('Message saved locally.');
-    } catch (fsError) {
-        console.error('Failed to save message locally:', fsError);
-    }
-
-    res.json({ success: true, message: 'Message received' });
-});
-
-// --- GET MESSAGES (for Admin) ---
-app.get('/api/messages', (req, res) => {
-    try {
-        if (fs.existsSync(MESSAGES_FILE)) {
-            const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-            const messages = JSON.parse(data);
-            res.json(messages);
         } else {
-            res.json([]);
+            console.warn('No SMTP configuration found. Message logged to console only.');
+            console.log('Message Content:', message);
         }
-    } catch (error) {
-        console.error('Error reading messages:', error);
-        res.status(500).json({ error: 'Failed to retrieve messages' });
-    }
-});
 
-// --- DELETE MESSAGE ---
-app.delete('/api/messages/:id', (req, res) => {
-    const { id } = req.params;
-    try {
-        if (fs.existsSync(MESSAGES_FILE)) {
-            const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
-            let messages = JSON.parse(data);
+        // Store message locally
+        try {
+            const newMessage = {
+                id: Date.now(),
+                name,
+                email,
+                phone: phone || '',
+                message,
+                date: new Date().toISOString(),
+                read: false
+            };
 
-            const initialLength = messages.length;
-            messages = messages.filter(msg => String(msg.id) !== String(id));
-
-            if (messages.length < initialLength) {
-                fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
-                return res.json({ success: true, message: 'Message deleted' });
-            } else {
-                return res.status(404).json({ error: 'Message not found' });
+            let messages = [];
+            if (fs.existsSync(MESSAGES_FILE)) {
+                const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+                try {
+                    messages = JSON.parse(data);
+                    if (!Array.isArray(messages)) messages = [];
+                } catch (e) {
+                    console.error("Error parsing messages file, resetting to empty array.");
+                    messages = [];
+                }
             }
+
+            messages.unshift(newMessage);
+            if (messages.length > 100) messages = messages.slice(0, 100);
+
+            fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+            console.log('Message saved locally.');
+        } catch (fsError) {
+            console.error('Failed to save message locally:', fsError);
         }
-        res.status(404).json({ error: 'No messages file found' });
-    } catch (error) {
-        console.error('Error deleting message:', error);
-        res.status(500).json({ error: 'Failed to delete message' });
-    }
-});
 
-// --- REPLY TO MESSAGE ---
-app.post('/api/messages/reply', async (req, res) => {
-    const { to, subject, body } = req.body;
+        res.json({ success: true, message: 'Message received' });
+    });
 
-    if (!to || !body) {
-        return res.status(400).json({ error: 'Missing recipient or body' });
-    }
+    // --- GET MESSAGES (for Admin) ---
+    app.get('/api/messages', (req, res) => {
+        try {
+            if (fs.existsSync(MESSAGES_FILE)) {
+                const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+                const messages = JSON.parse(data);
+                res.json(messages);
+            } else {
+                res.json([]);
+            }
+        } catch (error) {
+            console.error('Error reading messages:', error);
+            res.status(500).json({ error: 'Failed to retrieve messages' });
+        }
+    });
 
-    if (!process.env.SMTP_HOST) {
-        return res.status(500).json({ error: 'SMTP not configured' });
-    }
+    // --- DELETE MESSAGE ---
+    app.delete('/api/messages/:id', (req, res) => {
+        const { id } = req.params;
+        try {
+            if (fs.existsSync(MESSAGES_FILE)) {
+                const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+                let messages = JSON.parse(data);
 
-    try {
-        const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: process.env.SMTP_PORT || 465,
-            secure: true,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
-            },
-        });
+                const initialLength = messages.length;
+                messages = messages.filter(msg => String(msg.id) !== String(id));
 
-        await transporter.sendMail({
-            from: `"Dišpet Podrška" <${process.env.SMTP_USER}>`,
-            to,
-            subject: subject || 'Re: Vaša poruka za Dišpet',
-            text: body,
-            html: `<p>${body.replace(/\n/g, '<br>')}</p><br><hr><p><small>Sent from Dišpet Admin Dashboard</small></p>`
-        });
+                if (messages.length < initialLength) {
+                    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+                    return res.json({ success: true, message: 'Message deleted' });
+                } else {
+                    return res.status(404).json({ error: 'Message not found' });
+                }
+            }
+            res.status(404).json({ error: 'No messages file found' });
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            res.status(500).json({ error: 'Failed to delete message' });
+        }
+    });
 
-        res.json({ success: true, message: 'Reply sent successfully' });
-    } catch (error) {
-        console.error('Reply failed:', error);
-        res.status(500).json({ error: 'Failed to send reply' });
-    }
-});
+    // --- REPLY TO MESSAGE ---
+    app.post('/api/messages/reply', async (req, res) => {
+        const { to, subject, body } = req.body;
 
-// --- FORWARD MESSAGE ---
-app.post('/api/messages/forward', async (req, res) => {
-    const { to, subject, body, originalMessage } = req.body;
+        if (!to || !body) {
+            return res.status(400).json({ error: 'Missing recipient or body' });
+        }
 
-    if (!to || !body) {
-        return res.status(400).json({ error: 'Missing recipient or body' });
-    }
+        if (!process.env.SMTP_HOST) {
+            return res.status(500).json({ error: 'SMTP not configured' });
+        }
 
-    if (!process.env.SMTP_HOST) {
-        return res.status(500).json({ error: 'SMTP not configured' });
-    }
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: process.env.SMTP_PORT || 465,
+                secure: true,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS,
+                },
+            });
 
-    try {
-        const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: process.env.SMTP_PORT || 465,
-            secure: true,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
-            },
-        });
+            await transporter.sendMail({
+                from: `"Dišpet Podrška" <${process.env.SMTP_USER}>`,
+                to,
+                subject: subject || 'Re: Vaša poruka za Dišpet',
+                text: body,
+                html: `<p>${body.replace(/\n/g, '<br>')}</p><br><hr><p><small>Sent from Dišpet Admin Dashboard</small></p>`
+            });
 
-        const forwardedContent = `
+            res.json({ success: true, message: 'Reply sent successfully' });
+        } catch (error) {
+            console.error('Reply failed:', error);
+            res.status(500).json({ error: 'Failed to send reply' });
+        }
+    });
+
+    // --- FORWARD MESSAGE ---
+    app.post('/api/messages/forward', async (req, res) => {
+        const { to, subject, body, originalMessage } = req.body;
+
+        if (!to || !body) {
+            return res.status(400).json({ error: 'Missing recipient or body' });
+        }
+
+        if (!process.env.SMTP_HOST) {
+            return res.status(500).json({ error: 'SMTP not configured' });
+        }
+
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: process.env.SMTP_PORT || 465,
+                secure: true,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS,
+                },
+            });
+
+            const forwardedContent = `
         <p>${body.replace(/\n/g, '<br>')}</p>
         <br>
         <hr>
@@ -271,37 +283,37 @@ app.post('/api/messages/forward', async (req, res) => {
         </blockquote>
         `;
 
-        await transporter.sendMail({
-            from: `"Dišpet Admin" <${process.env.SMTP_USER}>`,
-            to,
-            subject: subject || `Fwd: Message from ${originalMessage.name}`,
-            html: forwardedContent
-        });
+            await transporter.sendMail({
+                from: `"Dišpet Admin" <${process.env.SMTP_USER}>`,
+                to,
+                subject: subject || `Fwd: Message from ${originalMessage.name}`,
+                html: forwardedContent
+            });
 
-        res.json({ success: true, message: 'Message forwarded successfully' });
-    } catch (error) {
-        console.error('Forward failed:', error);
-        res.status(500).json({ error: 'Failed to forward message' });
-    }
-});
+            res.json({ success: true, message: 'Message forwarded successfully' });
+        } catch (error) {
+            console.error('Forward failed:', error);
+            res.status(500).json({ error: 'Failed to forward message' });
+        }
+    });
 
 
-// --- ORDER NOTIFICATION (for printing team) ---
-app.post('/api/order-notification', async (req, res) => {
-    const { orderId, customer, items, total } = req.body;
+    // --- ORDER NOTIFICATION (for printing team) ---
+    app.post('/api/order-notification', async (req, res) => {
+        const { orderId, customer, items, total } = req.body;
 
-    if (!orderId || !items || items.length === 0) {
-        return res.status(400).json({ error: 'Missing order data' });
-    }
+        if (!orderId || !items || items.length === 0) {
+            return res.status(400).json({ error: 'Missing order data' });
+        }
 
-    console.log(`Received Order Notification for Order #${orderId}`);
+        console.log(`Received Order Notification for Order #${orderId}`);
 
-    let itemsHtml = '';
-    for (const item of items) {
-        const imageUrl = item.image || '';
-        const colorStyle = item.color ? `background-color: ${item.color}; padding: 20px; border-radius: 12px;` : '';
+        let itemsHtml = '';
+        for (const item of items) {
+            const imageUrl = item.image || '';
+            const colorStyle = item.color ? `background-color: ${item.color}; padding: 20px; border-radius: 12px;` : '';
 
-        itemsHtml += `
+            itemsHtml += `
         <tr>
             <td style="padding: 15px; border-bottom: 1px solid #eee;">
                 <div style="${colorStyle} display: inline-block;">
@@ -319,9 +331,9 @@ app.post('/api/order-notification', async (req, res) => {
             </td>
         </tr>
         `;
-    }
+        }
 
-    const emailHtml = `
+        const emailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #ff69b4, #9b59b6); padding: 20px; text-align: center; border-radius: 12px 12px 0 0;">
             <h1 style="color: white; margin: 0;">🛒 Nova Narudžba #${orderId}</h1>
@@ -356,214 +368,225 @@ app.post('/api/order-notification', async (req, res) => {
     </div>
     `;
 
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            try {
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SMTP_HOST,
+                    port: process.env.SMTP_PORT || 465,
+                    secure: true,
+                    auth: {
+                        user: process.env.SMTP_USER,
+                        pass: process.env.SMTP_PASS,
+                    },
+                });
+
+                await transporter.sendMail({
+                    from: `"Dišpet Narudžbe" <${process.env.SMTP_USER}>`,
+                    to: 'info@dispet.fun, dispet.fun@gmail.com',
+                    subject: `🛒 Nova Narudžba #${orderId} - Za Print`,
+                    html: emailHtml
+                });
+
+                console.log(`Order notification email sent for Order #${orderId}`);
+            } catch (error) {
+                console.error('Failed to send order notification:', error);
+            }
+        } else {
+            console.warn('SMTP not configured - order notification logged only');
+        }
+
+        res.json({ success: true });
+    });
+
+    // --- UPLOAD DESIGN TO WORDPRESS MEDIA LIBRARY ---
+    app.post('/api/upload-design', async (req, res) => {
+        const { image, filename } = req.body;
+
+        if (!image) {
+            return res.status(400).json({ error: 'No image provided' });
+        }
+
+        const wpApiUrl = process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json';
+        const wcKey = process.env.WC_CONSUMER_KEY;
+        const wcSecret = process.env.WC_CONSUMER_SECRET;
+
+        if (!wcKey || !wcSecret) {
+            console.error('WordPress credentials not configured');
+            return res.status(500).json({ error: 'WordPress credentials not configured' });
+        }
+
         try {
-            const transporter = nodemailer.createTransport({
-                host: process.env.SMTP_HOST,
-                port: process.env.SMTP_PORT || 465,
-                secure: true,
-                auth: {
-                    user: process.env.SMTP_USER,
-                    pass: process.env.SMTP_PASS,
+            const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                return res.status(400).json({ error: 'Invalid image format' });
+            }
+
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            let extension = 'png';
+            if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+            else if (mimeType.includes('webp')) extension = 'webp';
+
+            const finalFilename = filename || `design-${Date.now()}.${extension}`;
+
+            console.log(`Uploading design to WordPress: ${finalFilename}`);
+
+            const form = new FormData();
+            form.append('file', buffer, {
+                filename: finalFilename,
+                contentType: mimeType,
+            });
+
+            const authHeader = Buffer.from(`${wcKey}:${wcSecret}`).toString('base64');
+
+            const response = await axios.post(`${wpApiUrl}/wp/v2/media`, form, {
+                headers: {
+                    ...form.getHeaders(),
+                    'Authorization': `Basic ${authHeader}`,
                 },
             });
 
-            await transporter.sendMail({
-                from: `"Dišpet Narudžbe" <${process.env.SMTP_USER}>`,
-                to: 'info@dispet.fun, dispet.fun@gmail.com',
-                subject: `🛒 Nova Narudžba #${orderId} - Za Print`,
-                html: emailHtml
-            });
-
-            console.log(`Order notification email sent for Order #${orderId}`);
+            if (response.data && response.data.source_url) {
+                console.log(`Design uploaded successfully: ${response.data.source_url}`);
+                res.json({
+                    success: true,
+                    url: response.data.source_url,
+                    id: response.data.id,
+                });
+            } else {
+                throw new Error('No URL returned from WordPress');
+            }
         } catch (error) {
-            console.error('Failed to send order notification:', error);
-        }
-    } else {
-        console.warn('SMTP not configured - order notification logged only');
-    }
-
-    res.json({ success: true });
-});
-
-// --- UPLOAD DESIGN TO WORDPRESS MEDIA LIBRARY ---
-app.post('/api/upload-design', async (req, res) => {
-    const { image, filename } = req.body;
-
-    if (!image) {
-        return res.status(400).json({ error: 'No image provided' });
-    }
-
-    const wpApiUrl = process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json';
-    const wcKey = process.env.WC_CONSUMER_KEY;
-    const wcSecret = process.env.WC_CONSUMER_SECRET;
-
-    if (!wcKey || !wcSecret) {
-        console.error('WordPress credentials not configured');
-        return res.status(500).json({ error: 'WordPress credentials not configured' });
-    }
-
-    try {
-        const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        if (!matches || matches.length !== 3) {
-            return res.status(400).json({ error: 'Invalid image format' });
-        }
-
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        let extension = 'png';
-        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
-        else if (mimeType.includes('webp')) extension = 'webp';
-
-        const finalFilename = filename || `design-${Date.now()}.${extension}`;
-
-        console.log(`Uploading design to WordPress: ${finalFilename}`);
-
-        const form = new FormData();
-        form.append('file', buffer, {
-            filename: finalFilename,
-            contentType: mimeType,
-        });
-
-        const authHeader = Buffer.from(`${wcKey}:${wcSecret}`).toString('base64');
-
-        const response = await axios.post(`${wpApiUrl}/wp/v2/media`, form, {
-            headers: {
-                ...form.getHeaders(),
-                'Authorization': `Basic ${authHeader}`,
-            },
-        });
-
-        if (response.data && response.data.source_url) {
-            console.log(`Design uploaded successfully: ${response.data.source_url}`);
-            res.json({
-                success: true,
-                url: response.data.source_url,
-                id: response.data.id,
+            console.error('Upload failed:', error.response?.data || error.message);
+            res.status(500).json({
+                error: 'Upload failed',
+                details: error.response?.data?.message || error.message,
             });
-        } else {
-            throw new Error('No URL returned from WordPress');
         }
-    } catch (error) {
-        console.error('Upload failed:', error.response?.data || error.message);
-        res.status(500).json({
-            error: 'Upload failed',
-            details: error.response?.data?.message || error.message,
-        });
-    }
-});
+    });
 
-// --- PROXY API ROUTES ---
+    // --- PROXY API ROUTES ---
 
-const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+    const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
-app.all('/api/*', async (req, res) => {
-    try {
-        const subPath = req.params[0];
-        const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
-        const targetUrl = `${WP_API_URL}${apiPath}`;
+    // Express 5 uses {*param} syntax for wildcards
+    app.all('/api/{*path}', async (req, res) => {
+        try {
+            // In Express 5, the wildcard is accessed via req.params.path
+            const subPath = req.params.path || '';
+            const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
+            const targetUrl = `${WP_API_URL}${apiPath}`;
 
-        console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
-        let authHeader = null;
-        let queryAuth = {};
 
-        if (apiPath.startsWith('/wc/')) {
-            queryAuth = {
-                consumer_key: process.env.WC_CONSUMER_KEY,
-                consumer_secret: process.env.WC_CONSUMER_SECRET
+            console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+
+            let authHeader = null;
+            let queryAuth = {};
+
+            if (apiPath.startsWith('/wc/')) {
+                queryAuth = {
+                    consumer_key: process.env.WC_CONSUMER_KEY,
+                    consumer_secret: process.env.WC_CONSUMER_SECRET
+                };
+            } else if (apiPath.startsWith('/wp/')) {
+                authHeader = getWpAuthHeader();
+            } else {
+                queryAuth = {
+                    consumer_key: process.env.WC_CONSUMER_KEY,
+                    consumer_secret: process.env.WC_CONSUMER_SECRET
+                };
+            }
+
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             };
-        } else if (apiPath.startsWith('/wp/')) {
-            authHeader = getWpAuthHeader();
-        } else {
-            queryAuth = {
-                consumer_key: process.env.WC_CONSUMER_KEY,
-                consumer_secret: process.env.WC_CONSUMER_SECRET
+
+            if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
+                headers['Content-Type'] = 'application/json';
+            }
+
+            if (req.headers['content-disposition']) {
+                headers['Content-Disposition'] = req.headers['content-disposition'];
+            }
+
+            if (authHeader) {
+                headers['Authorization'] = authHeader;
+            }
+
+            const axiosConfig = {
+                method: req.method,
+                url: targetUrl,
+                headers,
+                params: { ...req.query, ...queryAuth }
             };
+
+            if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+                axiosConfig.data = req.body;
+            }
+
+            const response = await axios(axiosConfig);
+
+            if (response.headers['x-wp-total']) {
+                res.setHeader('X-WP-Total', response.headers['x-wp-total']);
+            }
+            if (response.headers['x-wp-totalpages']) {
+                res.setHeader('X-WP-TotalPages', response.headers['x-wp-totalpages']);
+            }
+
+            res.status(response.status).json(response.data);
+        } catch (error) {
+            console.error('Proxy Error:', error.message);
+            if (error.response) {
+                res.status(error.response.status).json(error.response.data);
+            } else {
+                res.status(500).json({ error: 'Proxy request failed', details: error.message });
+            }
         }
+    });
 
-        const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        };
+    // --- STATIC ASSETS & FALLBACK ---
 
-        if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
-            headers['Content-Type'] = 'application/json';
-        }
+    const distPath = path.resolve(__dirname, 'dist');
+    const distIndexPath = path.join(distPath, 'index.html');
 
-        if (req.headers['content-disposition']) {
-            headers['Content-Disposition'] = req.headers['content-disposition'];
-        }
-
-        if (authHeader) {
-            headers['Authorization'] = authHeader;
-        }
-
-        const axiosConfig = {
-            method: req.method,
-            url: targetUrl,
-            headers,
-            params: { ...req.query, ...queryAuth }
-        };
-
-        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-            axiosConfig.data = req.body;
-        }
-
-        const response = await axios(axiosConfig);
-
-        if (response.headers['x-wp-total']) {
-            res.setHeader('X-WP-Total', response.headers['x-wp-total']);
-        }
-        if (response.headers['x-wp-totalpages']) {
-            res.setHeader('X-WP-TotalPages', response.headers['x-wp-totalpages']);
-        }
-
-        res.status(response.status).json(response.data);
-    } catch (error) {
-        console.error('Proxy Error:', error.message);
-        if (error.response) {
-            res.status(error.response.status).json(error.response.data);
-        } else {
-            res.status(500).json({ error: 'Proxy request failed', details: error.message });
-        }
-    }
-});
-
-// --- STATIC ASSETS & FALLBACK ---
-
-const distPath = path.resolve(__dirname, 'dist');
-const distIndexPath = path.join(distPath, 'index.html');
-
-if (!fs.existsSync(distPath)) {
-    console.error(`[ERROR] dist folder not found at: ${distPath}`);
-    console.error('[ERROR] Please run "npm run build" first');
-} else if (!fs.existsSync(distIndexPath)) {
-    console.error(`[ERROR] dist/index.html not found at: ${distIndexPath}`);
-    console.error('[ERROR] Build may have failed');
-} else {
-    console.log(`[OK] Serving static files from: ${distPath}`);
-}
-
-app.use(express.static(distPath));
-
-app.get('*', (req, res) => {
-    if (fs.existsSync(distIndexPath)) {
-        res.sendFile(distIndexPath);
+    if (!fs.existsSync(distPath)) {
+        console.error(`[ERROR] dist folder not found at: ${distPath}`);
+        console.error('[ERROR] Please run "npm run build" first');
+    } else if (!fs.existsSync(distIndexPath)) {
+        console.error(`[ERROR] dist/index.html not found at: ${distIndexPath}`);
+        console.error('[ERROR] Build may have failed');
     } else {
-        res.status(500).send(`
+        console.log(`[OK] Serving static files from: ${distPath}`);
+    }
+
+    app.use(express.static(distPath));
+
+    // Express 5 catch-all route syntax
+    app.get('{*path}', (req, res) => {
+
+        if (fs.existsSync(distIndexPath)) {
+            res.sendFile(distIndexPath);
+        } else {
+            res.status(500).send(`
             <h1>Build Not Found</h1>
             <p>The production build (dist folder) was not found.</p>
             <p>Expected path: ${distPath}</p>
             <p>Current directory: ${__dirname}</p>
             <p>Please ensure 'npm run build' has been executed.</p>
         `);
-    }
-});
+        }
+    });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`__dirname: ${__dirname}`);
-    console.log(`distPath: ${distPath}`);
-});
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`__dirname: ${__dirname}`);
+        console.log(`distPath: ${distPath}`);
+    });
+
+} catch (error) {
+    console.error('[FATAL ERROR] Server failed to start:', error);
+    process.exit(1);
+}
