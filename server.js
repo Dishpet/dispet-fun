@@ -534,19 +534,37 @@ ${message}
 
 
     // --- DEBUG ENDPOINT ---
-    app.get('/api/debug-auth', (req, res) => {
+    app.get('/api/debug-auth', async (req, res) => {
         const key = process.env.WC_CONSUMER_KEY || '';
         const secret = process.env.WC_CONSUMER_SECRET || '';
+        const wpUrl = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+
+        let testResult = 'Skipped';
+        if (key && secret) {
+            try {
+                 const auth = Buffer.from(`${key}:${secret}`).toString('base64');
+                 const response = await axios.get(`${wpUrl}/wc/v3/products?per_page=1`, {
+                     headers: { Authorization: `Basic ${auth}` },
+                     validateStatus: () => true
+                 });
+                 testResult = { 
+                     status: response.status, 
+                     statusText: response.statusText,
+                     dataType: typeof response.data,
+                     isArray: Array.isArray(response.data)
+                 };
+            } catch (e) {
+                 testResult = { error: e.message };
+            }
+        }
 
         res.json({
             envLoaded: loadedEnv,
             hasKey: !!key,
-            keyLength: key.length,
-            keyPrefix: key.substring(0, 5),
-            keySummary: key ? `${key.substring(0, 5)}...${key.substring(key.length - 5)}` : 'none',
-            hasSecret: !!secret,
+            keySummary: key ? `${key.substring(0,5)}...` : 'none',
+            wpUrl,
+            testResult,
             cwd: process.cwd(),
-            wpUrl: process.env.WP_API_URL,
             envDebugLog: envDebugLog || []
         });
     });
