@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { AttributeSync } from "@/components/admin/AttributeSync";
 
 const COLOR_MAP: Record<string, string> = {
     'Crna': '#231f20',
@@ -248,7 +247,6 @@ const Products = () => {
     const [products, setProducts] = useState<WCProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [showAttributes, setShowAttributes] = useState(false);
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -303,16 +301,6 @@ const Products = () => {
                 </div>
                 <div className="flex gap-3">
                     <Button
-                        variant="outline"
-                        onClick={() => setShowAttributes(!showAttributes)}
-                        className={cn(
-                            "h-12 px-6 rounded-full font-bold text-xs uppercase tracking-wider border-slate-200 transition-all",
-                            showAttributes ? "bg-slate-100 border-primary/20" : "hover:bg-slate-50"
-                        )}
-                    >
-                        {showAttributes ? "Zatvori Atribute" : "Sinkroniziraj Atribute"}
-                    </Button>
-                    <Button
                         onClick={() => navigate("/admin/products/new")}
                         className="h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all"
                     >
@@ -321,13 +309,6 @@ const Products = () => {
                 </div>
             </div>
 
-            <Collapsible open={showAttributes}>
-                <CollapsibleContent>
-                    <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 mb-10 overflow-hidden">
-                        <AttributeSync />
-                    </div>
-                </CollapsibleContent>
-            </Collapsible>
 
             <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/30 max-w-xl group focus-within:border-primary/30 transition-all">
                 <Search className="w-5 h-5 text-slate-400 ml-2 group-focus-within:text-primary transition-colors" />
