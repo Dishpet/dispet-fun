@@ -211,4 +211,14 @@
   .glow {
     box-shadow: 0 0 20px hsla(343, 80%, 63%, 0.4);
   }
+
+  /* Force all buttons in admin to be fully rounded */
+  button:not(.no-round) {
+    border-radius: 9999px !important;
+  }
+
+  /* Also apply to button-styled elements */
+  [role="button"]:not(.no-round) {
+    border-radius: 9999px !important;
+  }
 }
