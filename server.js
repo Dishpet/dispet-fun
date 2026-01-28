@@ -24,15 +24,41 @@ try {
     const possiblePaths = [
         path.join(__dirname, '.env.server'),
         path.join(__dirname, '.env'),
-        path.join(process.cwd(), '.env.server'),
         path.join(process.cwd(), '.env')
     ];
 
     let loadedEnv = false;
+    let envDebugLog = [];
+
     for (const p of possiblePaths) {
         if (fs.existsSync(p)) {
             console.log(`[STARTUP] Found .env at: ${p}`);
-            dotenv.config({ path: p });
+            envDebugLog.push(`Found .env at: ${p}`);
+
+            // Debug: Read raw content (first 100 chars)
+            try {
+                const rawContent = fs.readFileSync(p, 'utf8');
+                console.log(`[STARTUP] First 50 chars: ${JSON.stringify(rawContent.slice(0, 50))}`);
+                envDebugLog.push(`First 50 chars: ${JSON.stringify(rawContent.slice(0, 50))}`);
+
+                // Manual parse attempt
+                const lines = rawContent.split('\n');
+                console.log(`[STARTUP] File has ${lines.length} lines`);
+                envDebugLog.push(`File has ${lines.length} lines`);
+            } catch (err) {
+                console.error('[STARTUP] Error reading file:', err);
+                envDebugLog.push(`Error reading file: ${err.message}`);
+            }
+
+            const result = dotenv.config({ path: p });
+            if (result.error) {
+                console.error('[STARTUP] dotenv error:', result.error);
+                envDebugLog.push(`dotenv error: ${result.error.message}`);
+            } else {
+                console.log('[STARTUP] dotenv parsed:', Object.keys(result.parsed || {}));
+                envDebugLog.push(`dotenv parsed keys: ${Object.keys(result.parsed || {}).join(', ')}`);
+            }
+
             loadedEnv = true;
             break;
         }
@@ -105,7 +131,8 @@ try {
                     cwd: process.cwd(),
                     dirname: __dirname,
                     envFileExists: fs.existsSync(path.join(__dirname, '.env')),
-                    ls: files.filter(f => f.startsWith('.env') || f === 'server.js')
+                    ls: files.filter(f => f.startsWith('.env') || f === 'server.js'),
+                    envLog: envDebugLog // Return the startup log to the client
                 }
             }
         });
