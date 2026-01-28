@@ -4,10 +4,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { AdminLogin } from "@/pages/admin/AdminLogin";
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
+    const { user, logout, isAuthenticated } = useAuth();
     const location = useLocation();
     const [open, setOpen] = useState(false);
+
+    if (!isAuthenticated || user?.role !== 'admin') {
+        return <AdminLogin />;
+    }
 
     const menuItems = [
         { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -56,7 +63,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                         View Site
                     </Link>
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 gap-3">
+                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 gap-3" onClick={logout}>
                     <LogOut className="w-5 h-5" />
                     Logout
                 </Button>

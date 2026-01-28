@@ -24,6 +24,7 @@ interface User {
         postcode: string;
         country: string;
     };
+    role?: 'admin' | 'customer';
 }
 
 interface AuthContextType {
