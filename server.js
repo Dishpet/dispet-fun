@@ -474,10 +474,17 @@ ${message}
     // Express 5 uses {*param} syntax for wildcards
     app.all('/api/{*path}', async (req, res) => {
         try {
-            // In Express 5, the wildcard is accessed via req.params.path
-            const subPath = req.params.path || '';
+            // In Express 5, the wildcard can be an array or string
+            let subPath = req.params.path;
+            // If it's an array, join it
+            if (Array.isArray(subPath)) {
+                subPath = subPath.join('/');
+            }
+            // Ensure it's a string
+            subPath = String(subPath || '');
             const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
             const targetUrl = `${WP_API_URL}${apiPath}`;
+
 
 
 
