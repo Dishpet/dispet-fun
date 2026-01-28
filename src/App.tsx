@@ -33,6 +33,7 @@ const AdminGallery = lazy(() => import("./pages/admin/Gallery"));
 const AdminContact = lazy(() => import("./pages/admin/Contact"));
 const AdminMessages = lazy(() => import("./pages/admin/Messages"));
 const Social = lazy(() => import("./pages/admin/Social"));
+const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -90,6 +91,7 @@ const App = () => (
                     <Route path="contact" element={<AdminContact />} />
                     <Route path="messages" element={<AdminMessages />} />
                     <Route path="social" element={<Social />} />
+                    <Route path="settings" element={<AdminSettings />} />
                   </Route>
                 </Routes>
               </Suspense>
