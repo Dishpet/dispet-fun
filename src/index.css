@@ -211,4 +211,15 @@
   .glow {
     box-shadow: 0 0 20px hsla(343, 80%, 63%, 0.4);
   }
+
+  /* Custom Masks for Preview */
+  .mask-zabava-preview {
+    mask-image: radial-gradient(circle at center, transparent 40%, black 41%);
+    -webkit-mask-image: radial-gradient(circle at center, transparent 40%, black 41%);
+  }
+
+  .mask-zdravlje-preview {
+    mask-image: radial-gradient(ellipse at center, transparent 30%, black 31%);
+    -webkit-mask-image: radial-gradient(ellipse at center, transparent 30%, black 31%);
+  }
 }
