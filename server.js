@@ -537,42 +537,40 @@ ${message}
 
 
 
-    // Express 5 uses {*param} syntax for wildcards
-    app.all('/api/{*path}', async (req, res) => {
+    // Express 5 / 4 Compatible Wildcard Route
+    app.all('/api/:path(*)', async (req, res) => {
         try {
-            // In Express 5, the wildcard can be an array or string
-            let subPath = req.params.path;
-            // If it's an array, join it
-            if (Array.isArray(subPath)) {
-                subPath = subPath.join('/');
-            }
-            // Ensure it's a string
-            subPath = String(subPath || '');
+            const subPath = req.params.path;
             const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
-            const targetUrl = `${WP_API_URL}${apiPath}`;
 
-
-
+            // Construct base Target URL
+            let targetUrl = `${WP_API_URL}${apiPath}`;
 
             console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
             let authHeader = null;
-            let queryAuth = {}; // Kept empty unless needed for fallback
 
+            // Authentication Logic
             if (apiPath.startsWith('/wc/')) {
-                // Use Basic Auth for WooCommerce (Standard & More Secure)
                 const key = process.env.WC_CONSUMER_KEY;
                 const secret = process.env.WC_CONSUMER_SECRET;
+
                 if (key && secret) {
+                    // Method 1: Basic Auth Header (Standard)
                     const authString = Buffer.from(`${key}:${secret}`).toString('base64');
                     authHeader = `Basic ${authString}`;
+
+                    // Method 2: Query Params (Fallback for Header Stripping Proxies)
+                    // We append these to the URL to ensure auth works even if headers are lost
+                    const separator = targetUrl.includes('?') ? '&' : '?';
+                    targetUrl = `${targetUrl}${separator}consumer_key=${key}&consumer_secret=${secret}`;
                 } else {
                     console.warn('[Proxy] Missing WC credentials for WooCommerce request');
                 }
             } else if (apiPath.startsWith('/wp/')) {
                 authHeader = getWpAuthHeader();
             } else {
-                // For generic API calls, try WC Auth as fallback
+                // Fallback for other routes
                 const key = process.env.WC_CONSUMER_KEY;
                 const secret = process.env.WC_CONSUMER_SECRET;
                 if (key && secret) {
