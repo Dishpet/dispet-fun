@@ -165,16 +165,16 @@ export default function AdminPartners() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         PARTNERI
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte logotipima partnera na naslovnici.</p>
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Upravljajte logotipima partnera na naslovnici.</p>
                 </div>
                 <Button
                     onClick={handleCreate}
                     disabled={loading}
                     className={cn(
-                        "h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg transition-all shadow-primary/10",
+                        "w-full md:w-auto h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg transition-all shadow-primary/10",
                         formOpen ? "bg-slate-900" : "bg-primary"
                     )}
                 >
@@ -187,7 +187,7 @@ export default function AdminPartners() {
             <Collapsible open={formOpen}>
                 <CollapsibleContent>
                     <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2.5rem] overflow-hidden mb-12">
-                        <div className="p-8 md:p-10 space-y-8">
+                        <div className="p-6 md:p-10 space-y-8">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">
                                     {editingId ? "Uredi Partnera" : "Novi Partner"}
@@ -250,7 +250,7 @@ export default function AdminPartners() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {partners.map((partner) => (
                         <Card key={partner.id} className="group overflow-hidden border-none shadow-lg shadow-slate-200/30 bg-white rounded-[2.5rem] transition-all duration-500 hover:shadow-xl hover:shadow-slate-300/40">
-                            <div className="p-8">
+                            <div className="p-6 md:p-8">
                                 <div className="h-32 w-full rounded-[1.5rem] bg-slate-50 border border-slate-100/50 flex items-center justify-center p-6 mb-6 group-hover:bg-white transition-colors duration-500">
                                     <img
                                         src={partner.logoUrl}

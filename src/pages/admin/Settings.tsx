@@ -112,15 +112,15 @@ export default function Settings() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         POSTAVKE
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte konfiguracijom sustava i API vezama.</p>
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Upravljajte konfiguracijom sustava i API vezama.</p>
                 </div>
                 <Button
                     onClick={handleSaveConfig}
                     disabled={loading || saving}
-                    className="h-12 px-8 rounded-full bg-primary hover:bg-primary/90 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 transition-all"
+                    className="w-full md:w-auto h-12 px-8 rounded-full bg-primary hover:bg-primary/90 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 transition-all"
                 >
                     {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
                     Spremi Sve
@@ -136,7 +136,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* WordPress Connection */}
                     <Card className="border-none shadow-xl shadow-blue-500/5 bg-white rounded-[2.5rem] overflow-hidden">
-                        <CardHeader className="p-8 pb-4">
+                        <CardHeader className="p-6 md:p-8 pb-4">
                             <div className="flex items-center gap-4 mb-2">
                                 <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center">
                                     <Globe className="w-6 h-6 text-blue-600" />
@@ -147,7 +147,7 @@ export default function Settings() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-8 pt-0 space-y-6">
+                        <CardContent className="p-6 md:p-8 pt-0 space-y-6">
                             <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex items-start gap-4">
                                 <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                                 <p className="text-xs font-medium text-blue-700 leading-relaxed">
@@ -192,7 +192,7 @@ export default function Settings() {
 
                     {/* Google AI Configuration */}
                     <Card className="border-none shadow-xl shadow-indigo-500/5 bg-white rounded-[2.5rem] overflow-hidden">
-                        <CardHeader className="p-8 pb-4">
+                        <CardHeader className="p-6 md:p-8 pb-4">
                             <div className="flex items-center gap-4 mb-2">
                                 <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
                                     <Key className="w-6 h-6 text-indigo-600" />
@@ -203,7 +203,7 @@ export default function Settings() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-8 pt-0 space-y-6">
+                        <CardContent className="p-6 md:p-8 pt-0 space-y-6">
                             <div className="space-y-2">
                                 <Label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Primarni API Ključ</Label>
                                 <Input
@@ -242,7 +242,7 @@ export default function Settings() {
 
                     {/* Environment Info */}
                     <Card className="lg:col-span-2 border-none shadow-lg shadow-slate-200/20 bg-slate-900 rounded-[2.5rem] overflow-hidden">
-                        <div className="p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 text-white">
+                        <div className="p-6 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 text-white">
                             <div className="space-y-2 text-center md:text-left">
                                 <h3 className="text-xl font-black uppercase tracking-tight">Okruženje Sustava</h3>
                                 <p className="text-slate-400 text-sm font-medium">Ove vrijednosti su zadane pri build-u i ne mogu se mjenjati ovdje.</p>

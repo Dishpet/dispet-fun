@@ -136,13 +136,13 @@ const Users = () => {
         <div className="space-y-10 animate-fade-in pb-20">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         KORISNICI
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Pregledajte vaše kupce i partnere.</p>
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Pregledajte vaše kupce i partnere.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="px-4 h-12 rounded-full bg-slate-100 text-slate-900 font-bold border-none text-xs uppercase tracking-wider">
+                <div className="flex w-full md:w-auto items-center gap-3">
+                    <Badge variant="secondary" className="w-full md:w-auto flex justify-center px-4 h-12 rounded-full bg-slate-100 text-slate-900 font-bold border-none text-xs uppercase tracking-wider">
                         Ukupno: {users.length}
                     </Badge>
                 </div>

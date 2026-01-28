@@ -160,7 +160,7 @@ export const ProductEditor = ({ product, initialImage, onSuccess }: ProductEdito
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto mb-10 bg-slate-100/50 p-2 rounded-full gap-2">
+                <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto mb-10 bg-slate-100/50 p-2 rounded-2xl gap-2">
                     <TabsTrigger
                         value="general"
                         className="rounded-full h-12 font-bold text-xs uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all"

@@ -228,10 +228,10 @@ const Messages = () => {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                     <div>
-                        <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                        <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                             INBOX
                         </h1>
-                        <p className="text-slate-500 text-lg font-medium mt-1">
+                        <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">
                             Upravljajte porukama posjetitelja i kupaca.
                         </p>
                     </div>
@@ -272,11 +272,11 @@ const Messages = () => {
                                     key={msg.id}
                                     className="group relative overflow-hidden transition-all duration-500 hover:shadow-xl hover:shadow-slate-300/40 border-none bg-white rounded-[3rem] shadow-lg shadow-slate-200/30"
                                 >
-                                    <div className="p-8 md:p-10">
+                                    <div className="p-6 md:p-10">
                                         <div className="flex flex-col lg:flex-row gap-10">
                                             {/* Avatar & Info */}
                                             <div className="flex items-start gap-6 min-w-[260px]">
-                                                <div className="h-20 w-20 shrink-0 rounded-3xl bg-slate-900 flex items-center justify-center text-white font-black text-3xl shadow-2xl transform group-hover:-rotate-3 transition-transform">
+                                                <div className="h-16 w-16 md:h-20 md:w-20 shrink-0 rounded-3xl bg-slate-900 flex items-center justify-center text-white font-black text-2xl md:text-3xl shadow-2xl transform group-hover:-rotate-3 transition-transform">
                                                     {msg.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="space-y-3">
