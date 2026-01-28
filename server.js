@@ -5,7 +5,13 @@ const path = require('path');
 const helmet = require('helmet');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
-require('dotenv').config({ path: '.env.server' });
+
+// Try loading .env.server, fallback to default .env
+if (fs.existsSync('.env.server')) {
+    require('dotenv').config({ path: '.env.server' });
+} else {
+    require('dotenv').config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +41,22 @@ app.use(cors({
     exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages']
 }));
 app.use(express.json());
+
+// --- HEALTH CHECK / DEBUG ---
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'production',
+        config: {
+            hasWpUrl: !!process.env.WP_API_URL,
+            hasWcKey: !!process.env.WC_CONSUMER_KEY,
+            hasWcSecret: !!process.env.WC_CONSUMER_SECRET,
+            wpUrl: process.env.WP_API_URL ? 'set' : 'not set',
+            port: PORT
+        }
+    });
+});
 
 // --- CONTACT FORM HANDLER ---
 app.post('/api/contact', async (req, res) => {
@@ -445,14 +467,14 @@ const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').r
 
 // Proxies all requests starting with /api to the WordPress API
 app.all('/api/*', async (req, res) => {
-    // If the request matches one of our local API handlers already, we don't want to double-process it.
-    // However, since app.post('/api/contact' etc) are defined ABOVE this, Express will handle them first.
-
     try {
-        const apiPath = req.originalUrl.replace(/^\/api/, '');
+        // Use req.params[0] to get the wildcard part (e.g., 'wc/v3/products')
+        const subPath = req.params[0];
+        // Ensure subPath starts with a slash
+        const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
         const targetUrl = `${WP_API_URL}${apiPath}`;
 
-        console.log(`Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+        console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
         let authHeader = null;
         let queryAuth = {};
@@ -465,6 +487,7 @@ app.all('/api/*', async (req, res) => {
         } else if (apiPath.startsWith('/wp/')) {
             authHeader = getWpAuthHeader();
         } else {
+            // Default to WooCommerce keys for any other /api/* calls
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
