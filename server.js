@@ -21,24 +21,27 @@ try {
     console.log('[STARTUP] Node version:', process.version);
 
     // Check what env files exist
-    const envServerPath = path.join(__dirname, '.env.server');
-    const envPath = path.join(__dirname, '.env');
+    const possiblePaths = [
+        path.join(__dirname, '.env.server'),
+        path.join(__dirname, '.env'),
+        path.join(process.cwd(), '.env.server'),
+        path.join(process.cwd(), '.env')
+    ];
 
-    console.log('[STARTUP] Checking for .env.server at:', envServerPath, '- exists:', fs.existsSync(envServerPath));
-    console.log('[STARTUP] Checking for .env at:', envPath, '- exists:', fs.existsSync(envPath));
+    let loadedEnv = false;
+    for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+            console.log(`[STARTUP] Found .env at: ${p}`);
+            dotenv.config({ path: p });
+            loadedEnv = true;
+            break;
+        }
+    }
 
-    // Load environment variables from file (if exists)
-    // dotenv won't override existing process.env values by default
-    if (fs.existsSync(envServerPath)) {
-        dotenv.config({ path: envServerPath });
-        console.log('[STARTUP] Loaded .env.server');
-    } else if (fs.existsSync(envPath)) {
-        dotenv.config({ path: envPath });
-        console.log('[STARTUP] Loaded .env');
-    } else {
-        // Try to load from default location anyway
+    if (!loadedEnv) {
+        console.log('[STARTUP] No local .env file found in search paths.');
+        // Try default load just in case
         dotenv.config();
-        console.log('[STARTUP] No local .env file found, using system environment');
     }
 
     // Log which critical env vars are available
@@ -76,10 +79,15 @@ try {
     app.use(express.json());
 
     // --- HEALTH CHECK / DEBUG ---
-    // --- HEALTH CHECK / DEBUG ---
     app.get('/api/health', (req, res) => {
         const wcKey = process.env.WC_CONSUMER_KEY || '';
         const wcSecret = process.env.WC_CONSUMER_SECRET || '';
+
+        // Debug: List files in directory to see if .env exists
+        let files = [];
+        try {
+            files = fs.readdirSync(__dirname);
+        } catch (e) { files = ['error-listing-files']; }
 
         res.json({
             status: 'ok',
@@ -89,11 +97,16 @@ try {
                 hasWpUrl: !!process.env.WP_API_URL,
                 hasWcKey: !!wcKey,
                 hasWcSecret: !!wcSecret,
-                // Show last 4 chars for verification (safe to expose)
                 wcKeyMasked: wcKey ? `...${wcKey.slice(-4)}` : 'none',
                 wcSecretMasked: wcSecret ? `...${wcSecret.slice(-4)}` : 'none',
                 wpUrl: process.env.WP_API_URL || 'not set',
-                port: PORT
+                port: PORT,
+                debug: {
+                    cwd: process.cwd(),
+                    dirname: __dirname,
+                    envFileExists: fs.existsSync(path.join(__dirname, '.env')),
+                    ls: files.filter(f => f.startsWith('.env') || f === 'server.js')
+                }
             }
         });
     });
