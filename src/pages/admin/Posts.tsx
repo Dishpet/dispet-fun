@@ -69,19 +69,20 @@ const Posts = () => {
     return (
         <div className="max-w-7xl mx-auto space-y-10 animate-fade-in pb-20">
             {/* Header Section */}
+            {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         BLOG OBJAVE
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium mt-1">
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">
                         Kreirajte, uredite i upravljajte blog sadržajem.
                     </p>
                 </div>
                 <Button
                     onClick={toggleCreate}
                     className={cn(
-                        "h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg transition-all shadow-primary/10",
+                        "h-12 w-full md:w-auto px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg transition-all shadow-primary/10",
                         isCreateOpen ? "bg-slate-900" : "bg-primary"
                     )}
                 >
@@ -93,8 +94,8 @@ const Posts = () => {
             {/* Inline Editor */}
             <Collapsible open={isCreateOpen}>
                 <CollapsibleContent>
-                    <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2.5rem] overflow-hidden mb-12">
-                        <div className="p-8 md:p-10 space-y-8">
+                    <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-12">
+                        <div className="p-4 md:p-10 space-y-8">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">
                                     {selectedPost ? 'Uredi Objavu' : 'Nova Blog Objava'}
@@ -148,7 +149,7 @@ const Posts = () => {
                                     </div>
                                 )}
 
-                                <div className="p-8 md:p-10 flex-1 flex flex-col">
+                                <div className="p-6 md:p-10 flex-1 flex flex-col">
                                     <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">
                                         <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
                                             <Calendar className="w-3.5 h-3.5" />

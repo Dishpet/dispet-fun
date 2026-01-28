@@ -67,22 +67,23 @@ const ProductFormPage = () => {
     return (
         <div className="max-w-5xl mx-auto space-y-10 animate-fade-in pb-20">
             {/* Header Section */}
+            {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div className="flex items-center gap-4">
-                    <Button variant="outline" size="icon" onClick={() => navigate("/admin/products")} className="rounded-full h-12 w-12 border-slate-200 hover:bg-slate-50">
+                    <Button variant="outline" size="icon" onClick={() => navigate("/admin/products")} className="rounded-full h-10 w-10 md:h-12 md:w-12 border-slate-200 hover:bg-slate-50 shrink-0">
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <div>
-                        <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                        <h1 className="text-xl md:text-3xl lg:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase leading-tight">
                             {id ? "UREDI PROIZVOD" : "NOVI PROIZVOD"}
                         </h1>
-                        <p className="text-slate-500 text-lg font-medium mt-1">Konfigurirajte detalje proizvoda i zalihe.</p>
+                        <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Konfigurirajte detalje proizvoda i zalihe.</p>
                     </div>
                 </div>
             </div>
 
-            <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2.5rem] overflow-hidden">
-                <div className="p-8 md:p-10">
+            <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
+                <div className="p-4 md:p-8 lg:p-10">
 
                     {!id && view === 'selection' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8">

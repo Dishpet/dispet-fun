@@ -294,15 +294,15 @@ const Products = () => {
         <div className="space-y-10 animate-fade-in pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h1 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         PROIZVODI
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte svojim proizvodima i zalihama.</p>
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Upravljajte svojim proizvodima i zalihama.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex w-full md:w-auto gap-3">
                     <Button
                         onClick={() => navigate("/admin/products/new")}
-                        className="h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all"
+                        className="w-full md:w-auto h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all"
                     >
                         <Plus className="w-4 h-4 mr-2 stroke-[3]" /> Novi Proizvod
                     </Button>
@@ -316,7 +316,7 @@ const Products = () => {
                     placeholder="Pretraži proizvode..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="border-none shadow-none focus-visible:ring-0 text-slate-900 font-bold placeholder:text-slate-300 text-base"
+                    className="border-none shadow-none focus-visible:ring-0 text-slate-900 font-bold placeholder:text-slate-300 text-base py-0 h-auto"
                 />
             </div>
 

@@ -9,7 +9,7 @@ interface AnalyticsChartProps {
 const AnalyticsChart = ({ data, title }: AnalyticsChartProps) => {
     return (
         <div className="w-full">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-10 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-10 gap-4">
                 <div>
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{title}</h3>
                     <div className="flex items-center gap-3">
@@ -17,12 +17,12 @@ const AnalyticsChart = ({ data, title }: AnalyticsChartProps) => {
                         <span className="text-sm font-black text-slate-900 tracking-tight">Real-time Prodaja</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-full border border-slate-100">
-                    <Badge variant="outline" className="rounded-full border-none bg-white font-bold text-[10px] uppercase tracking-wider shadow-sm text-slate-600">Zadnjih 30 dana</Badge>
+                <div className="flex w-full sm:w-auto items-center gap-2 bg-slate-50 p-1.5 rounded-full border border-slate-100">
+                    <Badge variant="outline" className="w-full sm:w-auto h-7 sm:h-auto flex justify-center rounded-full border-none bg-white font-bold text-[10px] uppercase tracking-wider shadow-sm text-slate-600">Zadnjih 30 dana</Badge>
                 </div>
             </div>
 
-            <div className="h-[420px] w-full">
+            <div className="h-[300px] md:h-[420px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
                         <defs>

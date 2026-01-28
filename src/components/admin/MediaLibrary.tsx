@@ -98,9 +98,9 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Media Library</h3>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center w-full sm:w-auto justify-between sm:justify-end">
                     <span className="text-sm text-gray-500 mr-2">
                         {selectedItems.length > 0 ? `${selectedItems.length} selected` : ''}
                     </span>
@@ -125,7 +125,7 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                 </div>
             </div>
 
-            <div className="bg-slate-50 border-none rounded-[2rem] p-6 min-h-[400px] flex flex-col shadow-inner">
+            <div className="bg-slate-50 border-none rounded-[2rem] p-4 md:p-6 min-h-[300px] md:min-h-[400px] flex flex-col shadow-inner">
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center min-h-[300px]">
                         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -165,25 +165,36 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                         )}
 
                         {/* Pagination Controls */}
-                        <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-auto">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100"
-                                onClick={handlePrev}
-                                disabled={page <= 1 || loading}
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-1" /> Prethodna
-                            </Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t border-gray-200 mt-auto gap-4 sm:gap-0">
+                            <div className="flex justify-between w-full sm:w-auto gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="rounded-full h-10 px-4 md:px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100 flex-1 sm:flex-none"
+                                    onClick={handlePrev}
+                                    disabled={page <= 1 || loading}
+                                >
+                                    <ChevronLeft className="w-4 h-4 mr-1" /> <span className="hidden sm:inline">Prethodna</span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="sm:hidden rounded-full h-10 px-4 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100 flex-1"
+                                    onClick={handleNext}
+                                    disabled={page >= totalPages || loading}
+                                >
+                                    Sljedeća <ChevronRight className="w-4 h-4 ml-1" />
+                                </Button>
+                            </div>
 
-                            <span className="text-sm text-gray-500">
-                                Page {page} of {totalPages || 1}
+                            <span className="text-sm text-gray-500 font-medium">
+                                Page {page} / {totalPages || 1}
                             </span>
 
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100"
+                                className="hidden sm:flex rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100"
                                 onClick={handleNext}
                                 disabled={page >= totalPages || loading}
                             >

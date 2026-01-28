@@ -103,7 +103,7 @@ export const PostEditor = ({ post, onSuccess }: PostEditorProps) => {
 
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                 {/* Main Content Area */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="space-y-2">
@@ -120,7 +120,7 @@ export const PostEditor = ({ post, onSuccess }: PostEditorProps) => {
 
                     <div className="space-y-2">
                         <Label htmlFor="content" className="text-sm font-semibold text-gray-700">Body Content</Label>
-                        <div className="min-h-[400px] mb-14 lg:mb-12 border rounded-lg border-gray-200 overflow-hidden bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/10">
+                        <div className="min-h-[300px] lg:min-h-[400px] mb-14 lg:mb-12 border rounded-lg border-gray-200 overflow-hidden bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/10">
                             <ReactQuill
                                 theme="snow"
                                 value={content}
@@ -134,7 +134,7 @@ export const PostEditor = ({ post, onSuccess }: PostEditorProps) => {
                 </div>
 
                 {/* Sidebar area */}
-                <div className="space-y-8 lg:border-l lg:pl-8 border-gray-100 pb-10">
+                <div className="space-y-8 border-t pt-8 lg:pt-0 lg:border-t-0 lg:border-l lg:pl-8 border-gray-100 pb-10">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <Label className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Featured Image</Label>

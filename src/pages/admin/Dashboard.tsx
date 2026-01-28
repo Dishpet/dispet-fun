@@ -87,19 +87,19 @@ const Dashboard = () => {
         <div className="space-y-10 animate-fade-in pb-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h2 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                    <h2 className="text-2xl md:text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
                         Dashboard
                     </h2>
-                    <p className="text-slate-500 text-lg font-medium mt-1">Pregled vašeg poslovanja u zadnjih 30 dana.</p>
+                    <p className="text-slate-500 text-sm md:text-lg font-medium mt-1">Pregled vašeg poslovanja u zadnjih 30 dana.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="rounded-full font-bold text-xs uppercase tracking-wider" onClick={() => window.location.reload()}>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <Button variant="outline" className="w-full md:w-auto rounded-full font-bold text-xs uppercase tracking-wider h-10 md:h-11" onClick={() => window.location.reload()}>
                         Osvježi
                     </Button>
                 </div>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <Card className="relative overflow-hidden border-none shadow-xl shadow-blue-500/5 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] transition-transform hover:scale-[1.01]">
                     <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
                         <DollarSign size={80} strokeWidth={1} />
@@ -158,7 +158,7 @@ const Dashboard = () => {
                 </Card>
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/30">
+            <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/30">
                 <AnalyticsChart data={chartData} title="Statistika Prodaje" />
             </div>
         </div>
