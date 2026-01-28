@@ -11,6 +11,22 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
 
+// Ensure the data directory exists for local message storage
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Helper to get WordPress Application Password Auth Header (for /wp/v2/* endpoints)
+const getWpAuthHeader = () => {
+    const user = process.env.WP_APP_USER;
+    const pass = process.env.WP_APP_PASS;
+    if (!user || !pass) return null;
+    const cleanPass = pass.replace(/\s+/g, '');
+    const hash = Buffer.from(`${user}:${cleanPass}`).toString('base64');
+    return `Basic ${hash}`;
+};
+
 // Middleware
 app.use(helmet({
     contentSecurityPolicy: false, // Disabled for now to avoid breaking external scripts (Stripe, Google)
@@ -423,67 +439,32 @@ app.post('/api/upload-design', async (req, res) => {
     }
 });
 
-// Serve static files from the React app
-const distPath = path.resolve(__dirname, 'dist');
-app.use(express.static(distPath));
-
-// Ensure the data directory exists for local message storage
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
-
 // --- PROXY API ROUTES ---
-
-// Helper to get WooCommerce Auth Header (for /wc/v3/* endpoints)
-const getWcAuthHeader = () => {
-    const key = process.env.WC_CONSUMER_KEY;
-    const secret = process.env.WC_CONSUMER_SECRET;
-    const hash = Buffer.from(`${key}:${secret}`).toString('base64');
-    return `Basic ${hash}`;
-};
-
-// Helper to get WordPress Application Password Auth Header (for /wp/v2/* endpoints)
-const getWpAuthHeader = () => {
-    const user = process.env.WP_APP_USER;
-    const pass = process.env.WP_APP_PASS;
-    if (!user || !pass) {
-        console.warn('WP_APP_USER or WP_APP_PASS not set - wp/v2 requests may fail');
-        return null;
-    }
-    // Remove spaces from Application Password (WordPress includes them for readability)
-    const cleanPass = pass.replace(/\s+/g, '');
-    const hash = Buffer.from(`${user}:${cleanPass}`).toString('base64');
-    return `Basic ${hash}`;
-};
 
 const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
-// --- GENERIC PROXY ROUTE ---
 // Proxies all requests starting with /api to the WordPress API
 app.all('/api/*', async (req, res) => {
+    // If the request matches one of our local API handlers already, we don't want to double-process it.
+    // However, since app.post('/api/contact' etc) are defined ABOVE this, Express will handle them first.
+
     try {
-        // 1. Extract the subpath after /api
         const apiPath = req.originalUrl.replace(/^\/api/, '');
         const targetUrl = `${WP_API_URL}${apiPath}`;
 
         console.log(`Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
-        // Choose the right auth based on the endpoint
         let authHeader = null;
         let queryAuth = {};
 
         if (apiPath.startsWith('/wc/')) {
-            // WooCommerce endpoints: use query parameter auth
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
             };
         } else if (apiPath.startsWith('/wp/')) {
-            // WordPress v2 endpoints
             authHeader = getWpAuthHeader();
         } else {
-            // Default to WooCommerce auth
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
@@ -536,6 +517,12 @@ app.all('/api/*', async (req, res) => {
         }
     }
 });
+
+// --- STATIC ASSETS & FALLBACK ---
+
+// Serve static files from the React app
+const distPath = path.resolve(__dirname, 'dist');
+app.use(express.static(distPath));
 
 // Catch-all handler: for any request that doesn't match an API route, send back React's index.html
 app.get('*', (req, res) => {
