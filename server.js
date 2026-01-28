@@ -12,105 +12,97 @@ import { Buffer } from 'buffer';
 
 // Wrap everything in try-catch to see errors
 try {
-
-    // ES Module __dirname equivalent
+    // ES Module path helper
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
+    const CWD = process.cwd();
 
     console.log('[STARTUP] Server initializing...');
+    console.log('[STARTUP] CWD:', CWD);
     console.log('[STARTUP] __dirname:', __dirname);
-    console.log('[STARTUP] Node version:', process.version);
 
-    // Check what env files exist
-    const possiblePaths = [
+    // Robust environment variable loading
+    const envPaths = [
+        path.join(CWD, '.env.server'),
+        path.join(CWD, '.env'),
         path.join(__dirname, '.env.server'),
         path.join(__dirname, '.env'),
-        path.join(process.cwd(), '.env'),
-        path.join(__dirname, '.builds', 'config', '.env'),
-        path.join(process.cwd(), '.builds', 'config', '.env')
     ];
 
-    let loadedEnv = false;
-    let envDebugLog = [];
-
-    for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-            console.log(`[STARTUP] Found .env at: ${p}`);
-            envDebugLog.push(`Found .env at: ${p}`);
-
-            // Debug: Read raw content (first 100 chars)
-            try {
-                const rawContent = fs.readFileSync(p, 'utf8');
-                console.log(`[STARTUP] First 50 chars: ${JSON.stringify(rawContent.slice(0, 50))}`);
-                envDebugLog.push(`First 50 chars: ${JSON.stringify(rawContent.slice(0, 50))}`);
-
-                // Manual parse attempt
-                const lines = rawContent.split('\n');
-                console.log(`[STARTUP] File has ${lines.length} lines`);
-                envDebugLog.push(`File has ${lines.length} lines`);
-            } catch (err) {
-                console.error('[STARTUP] Error reading file:', err);
-                envDebugLog.push(`Error reading file: ${err.message}`);
-            }
-
-            const result = dotenv.config({ path: p });
-            if (result.error) {
-                console.error('[STARTUP] dotenv error:', result.error);
-                envDebugLog.push(`dotenv error: ${result.error.message}`);
+    let envLoaded = false;
+    for (const envPath of envPaths) {
+        if (fs.existsSync(envPath)) {
+            console.log(`[STARTUP] Loading env from: ${envPath}`);
+            const result = dotenv.config({ path: envPath });
+            if (!result.error) {
+                envLoaded = true;
+                break;
             } else {
-                console.log('[STARTUP] dotenv parsed:', Object.keys(result.parsed || {}));
-                envDebugLog.push(`dotenv parsed keys: ${Object.keys(result.parsed || {}).join(', ')}`);
+                console.error(`[STARTUP] Error loading ${envPath}:`, result.error);
             }
-
-            loadedEnv = true;
-            break;
         }
     }
 
-    if (!loadedEnv) {
-        console.log('[STARTUP] No local .env file found in search paths.');
-        // Try default load just in case
-        dotenv.config();
+    if (!envLoaded) {
+        console.warn('[STARTUP] No specific .env file found/loaded. Using system environment.');
+        dotenv.config(); // Fallback to default
     }
 
-    // Scrub environment variables for invisible characters and quotes
-    const scrub = (v) => (v || '').toString().trim().replace(/['"]/g, '');
-    if (process.env.WP_API_URL) process.env.WP_API_URL = scrub(process.env.WP_API_URL);
+    // Scrub helper - only remove quotes from values that actually have them
+    const scrub = (v) => {
+        if (!v) return '';
+        let s = v.toString().trim();
+        if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+            return s.slice(1, -1);
+        }
+        return s;
+    };
+
+    // Apply scrubbing to critical variables
     if (process.env.WC_CONSUMER_KEY) process.env.WC_CONSUMER_KEY = scrub(process.env.WC_CONSUMER_KEY);
     if (process.env.WC_CONSUMER_SECRET) process.env.WC_CONSUMER_SECRET = scrub(process.env.WC_CONSUMER_SECRET);
     if (process.env.WP_APP_USER) process.env.WP_APP_USER = scrub(process.env.WP_APP_USER);
     if (process.env.WP_APP_PASS) process.env.WP_APP_PASS = scrub(process.env.WP_APP_PASS);
+    if (process.env.WP_API_URL) process.env.WP_API_URL = scrub(process.env.WP_API_URL);
 
-    console.log('[STARTUP] Critical Env Vars Loaded');
-
+    // Validate existence of keys after load
+    const HAS_WC_CREDS = !!(process.env.WC_CONSUMER_KEY && process.env.WC_CONSUMER_SECRET);
+    if (!HAS_WC_CREDS) {
+        console.error('[CRITICAL] WooCommerce Credentials Missing after env load!');
+    } else {
+        console.log('[STARTUP] WooCommerce Credentials Loaded');
+    }
 
     const app = express();
     const PORT = process.env.PORT || 3000;
-    const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
 
-    // Ensure the data directory exists for local message storage
-    const dataDir = path.join(__dirname, 'data');
+    // Use CWD for data persistence - safer on Hostinger
+    const dataDir = path.join(CWD, 'data');
+    const MESSAGES_FILE = path.join(dataDir, 'messages.json');
+
     if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+        try {
+            fs.mkdirSync(dataDir, { recursive: true });
+            console.log('[STARTUP] Created data directory at:', dataDir);
+        } catch (e) {
+            console.error('[STARTUP] Failed to create data directory:', e.message);
+        }
     }
 
-    // Helper to get WordPress Application Password Auth Header (for /wp/v2/* endpoints)
+    // Helper to get WordPress Application Password Auth Header
     const getWpAuthHeader = () => {
         const user = process.env.WP_APP_USER;
         const pass = process.env.WP_APP_PASS;
         if (!user || !pass) return null;
+        // Strip spaces from WP App Passwords
         const cleanPass = pass.replace(/\s+/g, '');
         const hash = Buffer.from(`${user}:${cleanPass}`).toString('base64');
         return `Basic ${hash}`;
     };
 
     // Middleware
-    app.use(helmet({
-        contentSecurityPolicy: false,
-    }));
-    app.use(cors({
-        exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages']
-    }));
+    app.use(helmet({ contentSecurityPolicy: false }));
+    app.use(cors({ exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages'] }));
     app.use(express.json());
 
     // --- HEALTH CHECK / DEBUG ---
@@ -118,31 +110,18 @@ try {
         const wcKey = process.env.WC_CONSUMER_KEY || '';
         const wcSecret = process.env.WC_CONSUMER_SECRET || '';
 
-        // Debug: List files in directory to see if .env exists
-        let files = [];
-        try {
-            files = fs.readdirSync(__dirname);
-        } catch (e) { files = ['error-listing-files']; }
-
         res.json({
             status: 'ok',
             uptime: process.uptime(),
-            environment: process.env.NODE_ENV || 'production',
+            timestamp: new Date().toISOString(),
             config: {
                 hasWpUrl: !!process.env.WP_API_URL,
                 hasWcKey: !!wcKey,
                 hasWcSecret: !!wcSecret,
-                wcKeyMasked: wcKey ? `...${wcKey.slice(-4)}` : 'none',
-                wcSecretMasked: wcSecret ? `...${wcSecret.slice(-4)}` : 'none',
+                wcKeyMasked: wcKey ? `${wcKey.slice(0, 5)}...${wcKey.slice(-4)}` : 'none',
                 wpUrl: process.env.WP_API_URL || 'not set',
-                port: PORT,
-                debug: {
-                    cwd: process.cwd(),
-                    dirname: __dirname,
-                    envFileExists: fs.existsSync(path.join(__dirname, '.env')),
-                    ls: files.filter(f => f.startsWith('.env') || f === 'server.js'),
-                    envLog: envDebugLog // Return the startup log to the client
-                }
+                cwd: CWD,
+                envLoaded
             }
         });
     });
@@ -577,98 +556,78 @@ ${message}
 
     // --- PROXY API ROUTES ---
 
-    const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
-
-    // Use app.use as a catch-all proxy for /api requests not handled by specialized routes
+    // Use app.use as a catch-all proxy for /api requests
     app.use('/api', async (req, res, next) => {
-        const subPath = req.url;
+        const subPath = req.url; // includes query params
         const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
 
-        // SAFETY: Skip internal routes already handled by specific handlers above
+        // SAFETY: Skip internal routes
         const internalRoutes = ['/messages', '/health', '/debug-auth', '/contact', '/upload-design'];
         if (internalRoutes.some(route => apiPath.startsWith(route))) {
             return next();
         }
 
-        // Construct base Target URL
-        let targetUrl = `${WP_API_URL}${apiPath}`;
+        const WP_API_BASE = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+        const targetUrl = `${WP_API_BASE}${apiPath}`;
+
         console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
         let authHeader = null;
 
-        // WooCommerce Authentication Logic (supports both /wc/ and /wc-analytics/)
-        if (apiPath.startsWith('/wc')) {
+        // WooCommerce Authentication (covers /wc/v3, /wc-analytics, etc)
+        if (apiPath.includes('/wc')) {
             const key = process.env.WC_CONSUMER_KEY;
             const secret = process.env.WC_CONSUMER_SECRET;
 
             if (key && secret) {
                 const authString = Buffer.from(`${key}:${secret}`).toString('base64');
                 authHeader = `Basic ${authString}`;
-            } else {
-                console.warn('[Proxy] Missing WC credentials');
             }
-        } else if (apiPath.startsWith('/wp/')) {
+        } else if (apiPath.includes('/wp/')) {
             authHeader = getWpAuthHeader();
-        } else {
-            // Fallback
-            const key = process.env.WC_CONSUMER_KEY;
-            const secret = process.env.WC_CONSUMER_SECRET;
-            if (key && secret) {
-                const authString = Buffer.from(`${key}:${secret}`).toString('base64');
-                authHeader = `Basic ${authString}`;
-            }
         }
 
         const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Node.js Proxy)',
+            'Accept': 'application/json'
         };
 
-        if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
-            headers['Content-Type'] = 'application/json';
-        }
-
-        if (req.headers['content-disposition']) {
-            headers['Content-Disposition'] = req.headers['content-disposition'];
+        if (req.headers['content-type']) {
+            headers['Content-Type'] = req.headers['content-type'];
         }
 
         if (authHeader) {
             headers['Authorization'] = authHeader;
         }
 
-        const axiosConfig = {
-            method: req.method,
-            url: targetUrl,
-            headers: headers,
-            data: req.method !== 'GET' ? req.body : undefined,
-            validateStatus: () => true, // Don't throw on 4xx/5xx
-        };
-
-        // Handle specific fetch behavior if needed, but axios is fine.
-        // We need to return the response.
-
-        // ... (We need to copy the axios call from the previous implementation)
-        // I will include it here in ReplacementContent to be safe
         try {
-            const response = await axios(axiosConfig);
+            const response = await axios({
+                method: req.method,
+                url: targetUrl,
+                headers: headers,
+                data: ['POST', 'PUT', 'PATCH'].includes(req.method) ? req.body : undefined,
+                validateStatus: () => true, // Forward all status codes
+            });
 
             // Forward status and headers
             res.status(response.status);
 
-            // Forward headers carefully
+            // Forward relevant headers
+            const safeHeaders = ['content-type', 'x-wp-total', 'x-wp-totalpages', 'link'];
             Object.keys(response.headers).forEach(key => {
-                // Skip dangerous headers
-                if (['content-length', 'connection', 'host', 'transfer-encoding'].includes(key.toLowerCase())) return;
-                res.setHeader(key, response.headers[key]);
+                if (safeHeaders.includes(key.toLowerCase())) {
+                    res.setHeader(key, response.headers[key]);
+                }
             });
 
             res.send(response.data);
         } catch (error) {
-            console.error(`[Proxy Error] ${error.message}`);
-            if (error.response) {
-                res.status(error.response.status).send(error.response.data);
-            } else {
-                res.status(500).json({ error: 'Proxy Error', message: error.message });
-            }
+            console.error(`[Proxy Error] ${req.method} ${apiPath}: ${error.message}`);
+            res.status(500).json({
+                error: 'Proxy Error',
+                message: error.message,
+                path: apiPath
+            });
         }
     });
 

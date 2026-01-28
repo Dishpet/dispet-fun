@@ -287,45 +287,46 @@ const Products = () => {
         }
     };
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase())
+    const filteredProducts = (products || []).filter(p =>
+        p.name?.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-10 animate-fade-in pb-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h1 className="text-4xl font-bold font-heading bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                        Products
+                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                        PROIZVODI
                     </h1>
-                    <p className="text-muted-foreground mt-1 text-lg">
-                        Manage your catalog and stock inventory.
-                    </p>
+                    <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte svojim proizvodima i zalihama.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="shadow-sm hover:shadow-md transition-all">
-                                Setup Attributes
+                            <Button variant="outline" className="h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider border-slate-200 hover:bg-slate-50 transition-all">
+                                Atributi
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
+                        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
                             <AttributeSync />
                         </DialogContent>
                     </Dialog>
-                    <Button onClick={() => navigate("/admin/products/new")} className="shadow-lg hover:shadow-xl transition-all">
-                        <Plus className="w-4 h-4 mr-2" /> New Product
+                    <Button
+                        onClick={() => navigate("/admin/products/new")}
+                        className="h-12 px-6 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
+                    >
+                        <Plus className="w-4 h-4 mr-2 stroke-[3]" /> Novi Proizvod
                     </Button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white p-2 rounded-lg border shadow-sm max-w-md">
-                <Search className="w-5 h-5 text-gray-400 ml-2" />
+            <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40 max-w-xl group focus-within:border-primary/30 transition-all">
+                <Search className="w-5 h-5 text-slate-400 ml-2 group-focus-within:text-primary transition-colors" />
                 <Input
-                    placeholder="Search products..."
+                    placeholder="Pretraži proizvode..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="border-none shadow-none focus-visible:ring-0"
+                    className="border-none shadow-none focus-visible:ring-0 text-slate-900 font-bold placeholder:text-slate-300 text-base"
                 />
             </div>
 
