@@ -457,35 +457,33 @@ const getWpAuthHeader = () => {
     return `Basic ${hash}`;
 };
 
-const WP_API_URL = process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json';
+const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
 // --- GENERIC PROXY ROUTE ---
 // Proxies all requests starting with /api to the WordPress API
-app.use('/api', async (req, res) => {
+app.all('/api/*', async (req, res) => {
     try {
-        // req.url contains the path after '/api', e.g., '/wc/v3/products'
-        // If WP_API_URL ends in /wp-json, and we want to append the rest.
-        // req.url might also include query strings.
+        // 1. Extract the subpath after /api
+        const apiPath = req.originalUrl.replace(/^\/api/, '');
+        const targetUrl = `${WP_API_URL}${apiPath}`;
 
-        const targetUrl = `${WP_API_URL}${req.url}`;
-
-        console.log(`Proxying ${req.method} request to: ${targetUrl}`);
+        console.log(`Proxying ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
         // Choose the right auth based on the endpoint
         let authHeader = null;
         let queryAuth = {};
 
-        if (req.url.startsWith('/wc/')) {
-            // WooCommerce endpoints: use query parameter auth (more reliable over HTTPS)
+        if (apiPath.startsWith('/wc/')) {
+            // WooCommerce endpoints: use query parameter auth
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
             };
-        } else if (req.url.startsWith('/wp/')) {
-            // WordPress REST API endpoints use Application Password
+        } else if (apiPath.startsWith('/wp/')) {
+            // WordPress v2 endpoints
             authHeader = getWpAuthHeader();
         } else {
-            // Default to WooCommerce query auth
+            // Default to WooCommerce auth
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
@@ -496,12 +494,10 @@ app.use('/api', async (req, res) => {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         };
 
-        // Don't force Content-Type: application/json for media uploads
         if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
             headers['Content-Type'] = 'application/json';
         }
 
-        // Pass through content-disposition if present (used for media)
         if (req.headers['content-disposition']) {
             headers['Content-Disposition'] = req.headers['content-disposition'];
         }
@@ -517,20 +513,12 @@ app.use('/api', async (req, res) => {
             params: { ...req.query, ...queryAuth }
         };
 
-        // For JSON requests, req.body is parsed. For files/binary, we use the raw request stream.
-        if (req.method !== 'GET') {
-            if (req.body && Object.keys(req.body).length > 0) {
-                axiosConfig.data = req.body;
-            } else {
-                // If body is not JSON (e.g. binary media), forward the request stream
-                axiosConfig.data = req;
-            }
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            axiosConfig.data = req.body;
         }
 
         const response = await axios(axiosConfig);
 
-        // Forward important WordPress headers (like pagination)
-        // Axios provides headers in lowercase
         if (response.headers['x-wp-total']) {
             res.setHeader('X-WP-Total', response.headers['x-wp-total']);
         }
@@ -542,10 +530,9 @@ app.use('/api', async (req, res) => {
     } catch (error) {
         console.error('Proxy Error:', error.message);
         if (error.response) {
-            // Forward the error status and data from WP
             res.status(error.response.status).json(error.response.data);
         } else {
-            res.status(500).json({ error: 'Proxy request failed' });
+            res.status(500).json({ error: 'Proxy request failed', details: error.message });
         }
     }
 });
