@@ -100,27 +100,55 @@ export const VariationManager = ({ productId }: VariationManagerProps) => {
         }
     };
 
-    if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Učitavanje varijacija...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Variations ({variations.length})</h3>
+        <div className="space-y-6">
+            {/* Mobile-friendly header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight">Varijacije</h3>
+                    <p className="text-sm text-slate-500 font-medium mt-0.5">{variations.length} pronađenih varijacija</p>
+                </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchVariations} title="Refresh">
-                        <RefreshCw className="w-4 h-4" />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchVariations}
+                        className="flex-1 sm:flex-initial h-10 rounded-xl font-bold text-xs uppercase tracking-wider border-slate-200 hover:bg-white"
+                    >
+                        <RefreshCw className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Osvježi</span>
                     </Button>
-                    <Button onClick={handleSaveAll} disabled={saving} size="sm">
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        Save All
+                    <Button
+                        onClick={handleSaveAll}
+                        disabled={saving}
+                        className="flex-1 sm:flex-initial h-10 px-6 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg"
+                    >
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
+                        Spremi Sve
                     </Button>
                 </div>
             </div>
 
+            {/* Variations grid */}
             <div className="grid gap-4">
                 {variations.length === 0 && (
-                    <div className="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg">
-                        No variations found. Add attributes in WooCommerce first.
+                    <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50">
+                        <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                            <ChevronDown className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h4 className="text-lg font-black text-slate-900 mb-2">Nema Varijacija</h4>
+                        <p className="text-slate-500 max-w-sm font-medium">
+                            Prvo dodajte atribute u WooCommerce-u kako biste mogli upravljati varijacijama.
+                        </p>
                     </div>
                 )}
                 {variations.map(variation => (
@@ -141,90 +169,118 @@ export const VariationManager = ({ productId }: VariationManagerProps) => {
 const VariationCard = ({ variation, editData, onChange, onSave, saving }: any) => {
     const [isOpen, setIsOpen] = useState(false);
 
-    // Extract color: Try to find an attribute whose option matches our color map
+    // Extract color
     const colorAttr = variation.attributes?.find((a: any) => COLOR_MAP[a.option]);
     const colorHex = colorAttr ? COLOR_MAP[colorAttr.option] : null;
-
     const attributes = variation.attributes.map((a: any) => `${a.option}`).join(' / ');
 
-    // Safety check if editData is processing
     if (!editData) return null;
 
     return (
-        <Card>
-            <div className="p-4 flex items-center gap-4">
-                <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-4">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
-                                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                </Button>
-                            </CollapsibleTrigger>
-                            <div>
-                                <div className="flex items-center gap-3">
-                                    {colorHex && (
-                                        <div
-                                            className="w-4 h-4 rounded-full border border-gray-300 shadow-sm shrink-0"
-                                            style={{ backgroundColor: colorHex }}
-                                            title={colorAttr.option}
-                                        />
-                                    )}
-                                    <h4 className="font-medium text-sm text-gray-900">{attributes || `Variation #${variation.id}`}</h4>
-                                </div>
-                                <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                                    <span>ID: {variation.id}</span>
-                                    <Badge variant="outline" className="text-[10px] h-4">{variation.stock_status}</Badge>
+        <Card className="border-none shadow-xl shadow-slate-200/50 rounded-[2rem] overflow-hidden transition-all hover:shadow-2xl hover:shadow-primary/5">
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+                {/* Main row - mobile optimized */}
+                <div className="p-5 sm:p-6">
+                    <div className="flex flex-col gap-4">
+                        {/* Top row: variation info + toggle */}
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shrink-0 hover:bg-slate-100">
+                                        {isOpen ? <ChevronUp className="w-5 h-5 text-slate-600" /> : <ChevronDown className="w-5 h-5 text-slate-600" />}
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <div className="flex-1 min-w-0 pt-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {colorHex && (
+                                            <div
+                                                className="w-5 h-5 rounded-full border-2 border-slate-200 shadow-inner shrink-0"
+                                                style={{ backgroundColor: colorHex }}
+                                            />
+                                        )}
+                                        <h4 className="font-black text-slate-900 text-base leading-tight truncate">
+                                            {attributes || `Varijacija #${variation.id}`}
+                                        </h4>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge
+                                            variant={variation.stock_status === 'instock' ? 'default' : 'destructive'}
+                                            className="text-[10px] uppercase tracking-tighter font-black px-2 py-0.5 rounded-full"
+                                        >
+                                            {variation.stock_status === 'instock' ? 'Dostupno' : 'Rasprodano'}
+                                        </Badge>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {variation.id}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <div className="flex flex-col items-end">
-                                <Label className="text-[10px] uppercase text-gray-500 mb-1">Stock</Label>
+                        {/* Quick edit inputs - stacked on mobile, horizontal on desktop */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Zaliha</Label>
                                 <Input
                                     type="number"
-                                    className="w-20 h-8 text-right"
+                                    className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-center"
                                     value={editData.stock_quantity ?? 0}
                                     onChange={(e) => onChange('stock_quantity', parseInt(e.target.value) || 0)}
                                 />
                             </div>
-                            <div className="flex flex-col items-end">
-                                <Label className="text-[10px] uppercase text-gray-500 mb-1">Price (€)</Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cijena (€)</Label>
                                 <Input
                                     type="number"
-                                    className="w-20 h-8 text-right"
+                                    step="0.01"
+                                    className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-all font-bold text-center"
                                     value={editData.regular_price}
                                     onChange={(e) => onChange('regular_price', e.target.value)}
                                 />
                             </div>
-                            <Button size="icon" variant="ghost" onClick={onSave} disabled={saving}>
-                                <Save className="w-4 h-4 text-primary" />
-                            </Button>
+                            <div className="col-span-2 sm:col-span-1 flex items-end">
+                                <Button
+                                    onClick={onSave}
+                                    disabled={saving}
+                                    className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:shadow-primary/30 transition-all"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
+                                    Spremi
+                                </Button>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <CollapsibleContent className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Sale Price (€)</Label>
-                            <Input
-                                value={editData.sale_price || ''}
-                                onChange={(e) => onChange('sale_price', e.target.value)}
-                                placeholder="Sale Price"
-                            />
+                {/* Expandable advanced options */}
+                <CollapsibleContent>
+                    <div className="px-5 sm:px-6 pb-6 pt-2 border-t border-slate-100 bg-slate-50/50">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700">Snižena Cijena (€)</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    className="h-11 rounded-xl bg-white border-slate-200 font-bold"
+                                    value={editData.sale_price || ''}
+                                    onChange={(e) => onChange('sale_price', e.target.value)}
+                                    placeholder="Unesite sniženu cijenu"
+                                />
+                            </div>
+                            <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                                <div>
+                                    <Label className="text-sm font-bold text-slate-700">Upravljaj Zalihom</Label>
+                                    <p className="text-xs text-slate-500 mt-0.5">Omogući praćenje zaliha</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={editData.manage_stock}
+                                    onChange={(e) => onChange('manage_stock', e.target.checked)}
+                                    className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                                />
+                            </div>
                         </div>
-                        <div className="flex items-center pt-8">
-                            <span className="text-xs text-muted-foreground mr-2">Manage Stock?</span>
-                            <input
-                                type="checkbox"
-                                checked={editData.manage_stock}
-                                onChange={(e) => onChange('manage_stock', e.target.checked)}
-                                className="toggle"
-                            />
-                        </div>
-                    </CollapsibleContent>
-                </Collapsible>
-            </div>
+                    </div>
+                </CollapsibleContent>
+            </Collapsible>
         </Card>
     );
 };

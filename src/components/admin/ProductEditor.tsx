@@ -127,31 +127,60 @@ export const ProductEditor = ({ product, initialImage, onSuccess }: ProductEdito
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border mb-4 sticky top-0 z-10">
-                <div>
-                    <h2 className="text-lg font-bold">{product ? `Editing: ${name}` : 'New Product'}</h2>
-                    <p className="text-sm text-gray-500">{productType === 'variable' ? 'Variable Product' : 'Simple Product'}</p>
+        <div className="space-y-6 pb-10">
+            {/* Mobile-friendly sticky header */}
+            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 p-4 sm:p-6 -mx-4 sm:mx-0 rounded-none sm:rounded-2xl shadow-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight truncate">
+                            {product ? name || 'Uređivanje Proizvoda' : 'Novi Proizvod'}
+                        </h2>
+                        <p className="text-sm text-slate-500 font-medium mt-1">
+                            {productType === 'variable' ? 'Varijabilni Proizvod' : 'Jednostavni Proizvod'}
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => handleSubmit()}
+                        disabled={loading}
+                        className="w-full sm:w-auto h-12 px-8 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
+                        Spremi
+                    </Button>
                 </div>
-                <Button onClick={() => handleSubmit()} disabled={loading} className="w-32 shadow-lg">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save
-                </Button>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mb-8 bg-gray-100/50 p-1">
-                    <TabsTrigger value="general" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                        <Tag className="w-4 h-4 mr-2" /> General
+                {/* Mobile-optimized tabs */}
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 mb-8 h-auto">
+                    <TabsTrigger
+                        value="general"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                        <Tag className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Osnovno</span>
                     </TabsTrigger>
-                    <TabsTrigger value="inventory" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                        <Box className="w-4 h-4 mr-2" /> Inventory
+                    <TabsTrigger
+                        value="inventory"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                        <Box className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Zalihe</span>
                     </TabsTrigger>
-                    <TabsTrigger value="media" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                        <ImageIcon className="w-4 h-4 mr-2" /> Media
+                    <TabsTrigger
+                        value="media"
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                        <ImageIcon className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Mediji</span>
                     </TabsTrigger>
-                    <TabsTrigger value="variations" disabled={productType !== 'variable'} className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                        <List className="w-4 h-4 mr-2" /> Variations
+                    <TabsTrigger
+                        value="variations"
+                        disabled={productType !== 'variable'}
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+                    >
+                        <List className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Varijacije</span>
                     </TabsTrigger>
                 </TabsList>
 
