@@ -542,26 +542,25 @@ ${message}
         let testResult = 'Skipped';
         if (key && secret) {
             try {
-                 const auth = Buffer.from(`${key}:${secret}`).toString('base64');
-                 const response = await axios.get(`${wpUrl}/wc/v3/products?per_page=1`, {
-                     headers: { Authorization: `Basic ${auth}` },
-                     validateStatus: () => true
-                 });
-                 testResult = { 
-                     status: response.status, 
-                     statusText: response.statusText,
-                     dataType: typeof response.data,
-                     isArray: Array.isArray(response.data)
-                 };
+                const auth = Buffer.from(`${key}:${secret}`).toString('base64');
+                const response = await axios.get(`${wpUrl}/wc/v3/products?per_page=1`, {
+                    headers: { Authorization: `Basic ${auth}` },
+                    validateStatus: () => true
+                });
+                testResult = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    dataMsg: response.data?.message || 'No message',
+                    dataType: typeof response.data
+                };
             } catch (e) {
-                 testResult = { error: e.message };
+                testResult = { error: e.message };
             }
         }
 
         res.json({
             envLoaded: loadedEnv,
             hasKey: !!key,
-            keySummary: key ? `${key.substring(0,5)}...` : 'none',
             wpUrl,
             testResult,
             cwd: process.cwd(),
