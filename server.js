@@ -20,16 +20,30 @@ try {
     console.log('[STARTUP] __dirname:', __dirname);
     console.log('[STARTUP] Node version:', process.version);
 
-    // Try loading .env.server, fallback to default .env
-    if (fs.existsSync(path.join(__dirname, '.env.server'))) {
-        dotenv.config({ path: path.join(__dirname, '.env.server') });
+    // Check what env files exist
+    const envServerPath = path.join(__dirname, '.env.server');
+    const envPath = path.join(__dirname, '.env');
+
+    console.log('[STARTUP] Checking for .env.server at:', envServerPath, '- exists:', fs.existsSync(envServerPath));
+    console.log('[STARTUP] Checking for .env at:', envPath, '- exists:', fs.existsSync(envPath));
+
+    // Load environment variables from file (if exists)
+    // dotenv won't override existing process.env values by default
+    if (fs.existsSync(envServerPath)) {
+        dotenv.config({ path: envServerPath });
         console.log('[STARTUP] Loaded .env.server');
-    } else if (fs.existsSync(path.join(__dirname, '.env'))) {
-        dotenv.config({ path: path.join(__dirname, '.env') });
+    } else if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
         console.log('[STARTUP] Loaded .env');
     } else {
-        console.log('[STARTUP] No .env file found, using system environment');
+        // Try to load from default location anyway
+        dotenv.config();
+        console.log('[STARTUP] No local .env file found, using system environment');
     }
+
+    // Log which critical env vars are available
+    console.log('[STARTUP] WP_API_URL:', process.env.WP_API_URL ? 'SET' : 'NOT SET');
+    console.log('[STARTUP] WC_CONSUMER_KEY:', process.env.WC_CONSUMER_KEY ? 'SET' : 'NOT SET');
 
 
     const app = express();
@@ -62,20 +76,28 @@ try {
     app.use(express.json());
 
     // --- HEALTH CHECK / DEBUG ---
+    // --- HEALTH CHECK / DEBUG ---
     app.get('/api/health', (req, res) => {
+        const wcKey = process.env.WC_CONSUMER_KEY || '';
+        const wcSecret = process.env.WC_CONSUMER_SECRET || '';
+
         res.json({
             status: 'ok',
             uptime: process.uptime(),
             environment: process.env.NODE_ENV || 'production',
             config: {
                 hasWpUrl: !!process.env.WP_API_URL,
-                hasWcKey: !!process.env.WC_CONSUMER_KEY,
-                hasWcSecret: !!process.env.WC_CONSUMER_SECRET,
-                wpUrl: process.env.WP_API_URL ? 'set' : 'not set',
+                hasWcKey: !!wcKey,
+                hasWcSecret: !!wcSecret,
+                // Show last 4 chars for verification (safe to expose)
+                wcKeyMasked: wcKey ? `...${wcKey.slice(-4)}` : 'none',
+                wcSecretMasked: wcSecret ? `...${wcSecret.slice(-4)}` : 'none',
+                wpUrl: process.env.WP_API_URL || 'not set',
                 port: PORT
             }
         });
     });
+
 
     // --- CONTACT FORM HANDLER ---
     app.post('/api/contact', async (req, res) => {
@@ -471,6 +493,8 @@ ${message}
 
     const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
+
+
     // Express 5 uses {*param} syntax for wildcards
     app.all('/api/{*path}', async (req, res) => {
         try {
@@ -491,20 +515,28 @@ ${message}
             console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
             let authHeader = null;
-            let queryAuth = {};
+            let queryAuth = {}; // Kept empty unless needed for fallback
 
             if (apiPath.startsWith('/wc/')) {
-                queryAuth = {
-                    consumer_key: process.env.WC_CONSUMER_KEY,
-                    consumer_secret: process.env.WC_CONSUMER_SECRET
-                };
+                // Use Basic Auth for WooCommerce (Standard & More Secure)
+                const key = process.env.WC_CONSUMER_KEY;
+                const secret = process.env.WC_CONSUMER_SECRET;
+                if (key && secret) {
+                    const authString = Buffer.from(`${key}:${secret}`).toString('base64');
+                    authHeader = `Basic ${authString}`;
+                } else {
+                    console.warn('[Proxy] Missing WC credentials for WooCommerce request');
+                }
             } else if (apiPath.startsWith('/wp/')) {
                 authHeader = getWpAuthHeader();
             } else {
-                queryAuth = {
-                    consumer_key: process.env.WC_CONSUMER_KEY,
-                    consumer_secret: process.env.WC_CONSUMER_SECRET
-                };
+                // For generic API calls, try WC Auth as fallback
+                const key = process.env.WC_CONSUMER_KEY;
+                const secret = process.env.WC_CONSUMER_SECRET;
+                if (key && secret) {
+                    const authString = Buffer.from(`${key}:${secret}`).toString('base64');
+                    authHeader = `Basic ${authString}`;
+                }
             }
 
             const headers = {
