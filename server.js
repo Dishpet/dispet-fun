@@ -545,13 +545,38 @@ app.all('/api/*', async (req, res) => {
 
 // Serve static files from the React app
 const distPath = path.resolve(__dirname, 'dist');
+const distIndexPath = path.join(distPath, 'index.html');
+
+// Check if dist folder exists
+if (!fs.existsSync(distPath)) {
+    console.error(`[ERROR] dist folder not found at: ${distPath}`);
+    console.error('[ERROR] Please run "npm run build" first');
+} else if (!fs.existsSync(distIndexPath)) {
+    console.error(`[ERROR] dist/index.html not found at: ${distIndexPath}`);
+    console.error('[ERROR] Build may have failed');
+} else {
+    console.log(`[OK] Serving static files from: ${distPath}`);
+}
+
 app.use(express.static(distPath));
 
 // Catch-all handler: for any request that doesn't match an API route, send back React's index.html
 app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+    } else {
+        res.status(500).send(`
+            <h1>Build Not Found</h1>
+            <p>The production build (dist folder) was not found.</p>
+            <p>Expected path: ${distPath}</p>
+            <p>Current directory: ${__dirname}</p>
+            <p>Please ensure 'npm run build' has been executed.</p>
+        `);
+    }
 });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`__dirname: ${__dirname}`);
+    console.log(`distPath: ${distPath}`);
 });
