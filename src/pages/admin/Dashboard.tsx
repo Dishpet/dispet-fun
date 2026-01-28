@@ -38,21 +38,32 @@ const Dashboard = () => {
                 const totalSales = validOrders.reduce((acc: number, curr: any) => acc + parseFloat(curr.total), 0);
                 const totalOrdersCount = validOrders.length;
 
+
                 // Group by date for the chart
-                // Helper to format date key
+                // Helper to format date key and preserve original date for sorting
                 const getDayKey = (dateStr: string) => new Date(dateStr).toLocaleDateString('hr-HR', { day: 'numeric', month: 'short' });
 
-                // Aggregate sales by day
-                const salesByDay: Record<string, number> = {};
+                // Aggregate sales by day with date tracking
+                const salesByDay: Record<string, { total: number, timestamp: number }> = {};
                 validOrders.forEach((o: any) => {
                     const key = getDayKey(o.date_created);
-                    salesByDay[key] = (salesByDay[key] || 0) + parseFloat(o.total);
+                    const timestamp = new Date(o.date_created).getTime();
+
+                    if (!salesByDay[key]) {
+                        salesByDay[key] = { total: 0, timestamp };
+                    }
+                    salesByDay[key].total += parseFloat(o.total);
                 });
 
-                const formattedData = Object.keys(salesByDay).map(date => ({
-                    date,
-                    total: salesByDay[date]
-                }));
+                // Convert to array and sort chronologically (oldest to newest)
+                const formattedData = Object.keys(salesByDay)
+                    .map(date => ({
+                        date,
+                        total: salesByDay[date].total,
+                        timestamp: salesByDay[date].timestamp
+                    }))
+                    .sort((a, b) => a.timestamp - b.timestamp) // Sort by timestamp ascending
+                    .map(({ date, total }) => ({ date, total })); // Remove timestamp from final data
 
                 setStats({
                     totalSales,
