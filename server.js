@@ -24,7 +24,9 @@ try {
     const possiblePaths = [
         path.join(__dirname, '.env.server'),
         path.join(__dirname, '.env'),
-        path.join(process.cwd(), '.env')
+        path.join(process.cwd(), '.env'),
+        path.join(__dirname, '.builds', 'config', '.env'),
+        path.join(process.cwd(), '.builds', 'config', '.env')
     ];
 
     let loadedEnv = false;
