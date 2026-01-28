@@ -77,6 +77,7 @@ const Index = () => {
           loop
           muted
           playsInline
+          preload="auto"
           className="w-full h-full object-cover block"
         >
           <source src={dispetLoop} type="video/mp4" />
@@ -116,6 +117,7 @@ const Index = () => {
             loop
             muted
             playsInline
+            preload="auto"
             className="w-full h-full object-cover block"
           >
             <source src={bannerVideo} type="video/webm" />

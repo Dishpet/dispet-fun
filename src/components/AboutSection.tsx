@@ -123,8 +123,6 @@ export const AboutVideoSlider = ({ currentIndex, onDotClick }: AboutVideoSliderP
     return (
         <>
             {/* Dark Overlay */}
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[#0044bf]/40 to-[#ad00e9]/40 z-10" />
 
             {/* Content Container */}
             <div className="absolute inset-0 z-20 pointer-events-none">
