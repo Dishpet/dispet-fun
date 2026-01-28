@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Plus, Trash2, Edit, Loader2, Save, ChevronDown, ChevronUp, Package, Search } from "lucide-react";
 import { getProducts, updateProduct, getProductVariations, updateProductVariation } from "@/integrations/wordpress/woocommerce";
 import { wpFetch, getAuthHeaders } from "@/integrations/wordpress/client";
@@ -93,110 +94,147 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
     };
 
     return (
-        <Card className="mb-4 overflow-hidden border-border/60 shadow-sm hover:shadow-md transition-all">
-            <div className="p-4 flex flex-col md:flex-row items-start md:items-center gap-4">
+        <Card className="mb-6 overflow-hidden border-none shadow-xl shadow-slate-200/50 bg-white rounded-[2rem] transition-all hover:shadow-2xl hover:shadow-primary/5 group">
+            <div className="p-6 flex flex-col lg:flex-row items-start lg:items-center gap-6">
                 {/* Image */}
-                <div className="h-16 w-16 rounded-md bg-gray-100 flex-shrink-0 overflow-hidden border">
+                <div className="h-24 w-24 rounded-3xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500">
                     {product.images?.[0] ? (
                         <img src={product.images[0].src} alt={product.name} className="h-full w-full object-cover" />
                     ) : (
-                        <div className="h-full w-full flex items-center justify-center text-gray-400">
-                            <Package className="w-8 h-8 opacity-50" />
+                        <div className="h-full w-full flex items-center justify-center text-slate-300">
+                            <Package className="w-10 h-10 opacity-50" />
                         </div>
                     )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <Badge variant={product.stock_status === 'instock' ? 'default' : 'destructive'} className="text-xs px-2 py-0.5">
-                            {product.stock_status === 'instock' ? 'In Stock' : 'Out of Stock'}
+                    <div className="flex items-center gap-3 mb-2">
+                        <Badge variant={product.stock_status === 'instock' ? 'default' : 'destructive'} className="text-[10px] uppercase tracking-tighter font-black px-2.5 py-1 rounded-full">
+                            {product.stock_status === 'instock' ? 'Dostupno' : 'Rasprodano'}
                         </Badge>
-                        <span className="text-sm text-gray-500">ID: {product.id}</span>
-                        <span className="text-sm font-medium text-gray-900">€{product.price}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {product.id}</span>
                     </div>
+                    <h3 className="text-xl font-black text-slate-900 truncate leading-tight mb-1">{product.name}</h3>
+                    <p className="text-lg font-bold text-primary italic">€{product.price}</p>
                 </div>
 
                 {/* Stock Input (Simple Product) */}
                 {!isVariable && (
-                    <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-gray-500 uppercase">Stock:</label>
-                        <Input
-                            type="number"
-                            className="w-24 h-9"
-                            value={stockQuantity}
-                            onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
-                        />
+                    <div className="flex flex-col gap-1.5 min-w-[120px]">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 ml-1">
+                            Zaliha
+                        </label>
+                        <div className="relative">
+                            <Input
+                                type="number"
+                                className="w-full h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-colors font-bold pl-4"
+                                value={stockQuantity}
+                                onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
+                            />
+                        </div>
                     </div>
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 self-end md:self-auto">
+                <div className="flex items-center gap-3 w-full lg:w-auto mt-4 lg:mt-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-50">
                     {isVariable && (
-                        <Button variant="outline" size="sm" onClick={handleFetchVariations} className="gap-2">
+                        <Button
+                            variant="secondary"
+                            size="lg"
+                            onClick={handleFetchVariations}
+                            className="flex-1 lg:flex-none gap-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-900 border-none transition-all shadow-sm"
+                        >
                             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            Variations
+                            Varijacije
                         </Button>
                     )}
 
-                    <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/products/edit/${product.id}`)}>
-                        <Edit className="w-4 h-4 text-blue-600" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => onDelete(product.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-
-                    <Button onClick={handleSave} disabled={saving} size="sm" className={saving ? "opacity-70" : ""}>
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
+                    <div className="flex gap-2 ml-auto lg:ml-0">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 rounded-xl border-slate-100 hover:border-blue-100 hover:bg-blue-50 text-blue-600 transition-all shadow-sm"
+                            onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                        >
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 rounded-xl border-slate-100 hover:border-red-100 hover:bg-red-50 text-red-600 transition-all shadow-sm"
+                            onClick={() => onDelete(product.id)}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
+                            size="lg"
+                            className={cn(
+                                "h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg transition-all",
+                                saving ? "opacity-70" : "hover:shadow-primary/30"
+                            )}
+                        >
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                            Spremi
+                        </Button>
+                    </div>
                 </div>
             </div>
 
             {/* Variations Collapsible */}
-            <Collapsible open={isOpen} className="bg-gray-50/50 border-t">
+            <Collapsible open={isOpen} className="bg-slate-50/50 border-t border-slate-100">
                 <CollapsibleContent>
-                    <div className="p-4 space-y-3">
+                    <div className="p-8 space-y-4">
                         {loadingVariations ? (
-                            <div className="flex justify-center py-4">
-                                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                            <div className="flex flex-col items-center justify-center py-8 gap-3">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Učitavanje varijacija...</p>
                             </div>
                         ) : (
                             <>
-                                <div className="grid grid-cols-12 gap-4 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                                    <div className="col-span-6 md:col-span-8">Variation</div>
-                                    <div className="col-span-6 md:col-span-4">Stock</div>
+                                <div className="grid grid-cols-12 gap-8 px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                                    <div className="col-span-8">Varijacija</div>
+                                    <div className="col-span-4 pl-4 text-center">Zaliha</div>
                                 </div>
-                                {variations.map((v) => (
-                                    <div key={v.id} className="grid grid-cols-12 gap-4 items-center bg-white p-3 rounded-md border shadow-sm">
-                                        <div className="col-span-6 md:col-span-8 flex flex-col">
-                                            <div className="flex items-center gap-2">
-                                                {(() => {
-                                                    const colorAttr = v.attributes?.find((a: any) => COLOR_MAP[a.option]);
-                                                    const hex = colorAttr ? COLOR_MAP[colorAttr.option] : null;
-                                                    return hex ? (
-                                                        <div
-                                                            className="w-3 h-3 rounded-full border border-gray-300 shadow-sm shrink-0"
-                                                            style={{ backgroundColor: hex }}
-                                                        />
-                                                    ) : null;
-                                                })()}
-                                                <span className="font-medium text-gray-900">
-                                                    {v.attributes.map((a: any) => `${a.option}`).join(' / ')}
-                                                </span>
+                                <div className="space-y-3">
+                                    {variations.map((v) => (
+                                        <div key={v.id} className="grid grid-cols-12 gap-8 items-center bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:border-primary/20 transition-all group/var">
+                                            <div className="col-span-8 flex flex-col">
+                                                <div className="flex items-center gap-3">
+                                                    {(() => {
+                                                        const colorAttr = v.attributes?.find((a: any) => COLOR_MAP[a.option]);
+                                                        const hex = colorAttr ? COLOR_MAP[colorAttr.option] : null;
+                                                        return hex ? (
+                                                            <div
+                                                                className="w-4 h-4 rounded-full border border-slate-200 shadow-inner shrink-0 scale-110"
+                                                                style={{ backgroundColor: hex }}
+                                                            />
+                                                        ) : (
+                                                            <div className="w-4 h-4 rounded-full border border-slate-200 bg-slate-100 shrink-0" />
+                                                        );
+                                                    })()}
+                                                    <span className="font-bold text-slate-900 text-sm">
+                                                        {v.attributes.map((a: any) => `${a.option}`).join(' / ')}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-1.5 ml-7 text-[10px] font-bold text-slate-400">
+                                                    <span className="uppercase tracking-widest">ID: {v.id}</span>
+                                                    <span className="text-primary italic">€{v.price}</span>
+                                                </div>
                                             </div>
-                                            <span className="text-xs text-gray-500 ml-5">ID: {v.id} • €{v.price}</span>
+                                            <div className="col-span-4">
+                                                <Input
+                                                    type="number"
+                                                    className="h-10 rounded-xl bg-slate-50 text-center border-none font-bold focus:bg-white transition-all"
+                                                    value={variationStock[v.id] || 0}
+                                                    onChange={(e) => setVariationStock(prev => ({ ...prev, [v.id]: parseInt(e.target.value) || 0 }))}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="col-span-6 md:col-span-4">
-                                            <Input
-                                                type="number"
-                                                className="h-8"
-                                                value={variationStock[v.id] || 0}
-                                                onChange={(e) => setVariationStock(prev => ({ ...prev, [v.id]: parseInt(e.target.value) || 0 }))}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </>
                         )}
                     </div>

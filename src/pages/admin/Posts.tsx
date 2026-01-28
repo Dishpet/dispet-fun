@@ -96,66 +96,66 @@ const Posts = () => {
                         <p className="text-gray-400 font-medium">Loading posts...</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {posts.map((post) => (
-                            <Card key={post.id} className="group hover:shadow-lg transition-all border-border/60 flex flex-col overflow-hidden">
+                            <Card key={post.id} className="group hover:shadow-2xl hover:shadow-slate-200 transition-all border-none bg-white flex flex-col overflow-hidden rounded-[2.5rem] shadow-xl shadow-slate-100/50">
                                 {post._embedded?.['wp:featuredmedia']?.[0]?.source_url && (
-                                    <div className="h-48 w-full bg-gray-100 overflow-hidden relative">
+                                    <div className="h-64 w-full bg-slate-100 overflow-hidden relative">
                                         <img
                                             src={post._embedded['wp:featuredmedia'][0].source_url}
                                             alt="Featured"
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         />
-                                        <div className="absolute top-2 right-2">
-                                            <Badge className="bg-white/90 text-black hover:bg-white border-0 shadow-sm">Published</Badge>
+                                        <div className="absolute top-4 right-4">
+                                            <Badge className="bg-slate-900/80 backdrop-blur-md text-white border-none shadow-xl font-bold text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-xl">Published</Badge>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                                <div className="p-8 flex-1 flex flex-col">
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
                                         <Calendar className="w-3.5 h-3.5" />
-                                        {new Date(post.date).toLocaleDateString()}
+                                        {new Date(post.date).toLocaleDateString('hr-HR', { day: 'numeric', month: 'long', year: 'numeric' })}
                                     </div>
 
                                     <h3
-                                        className="text-xl font-bold mb-3 line-clamp-2 group-hover:text-primary transition-colors"
+                                        className="text-2xl font-black mb-4 line-clamp-2 leading-tight tracking-tight text-slate-900 group-hover:text-primary transition-colors cursor-pointer"
                                         dangerouslySetInnerHTML={{ __html: post.title.rendered }}
                                     />
 
                                     <div
-                                        className="text-muted-foreground text-sm line-clamp-3 mb-6 flex-1"
+                                        className="text-slate-500 text-sm font-medium line-clamp-3 mb-8 flex-1 leading-relaxed opacity-80"
                                         dangerouslySetInnerHTML={{ __html: post.excerpt.rendered }}
                                     />
 
-                                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
+                                    <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-auto">
                                         <a
                                             href={`https://wp.dispet.fun/${post.slug}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="text-xs font-medium text-gray-500 hover:text-primary flex items-center gap-1"
+                                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary flex items-center gap-2 transition-colors"
                                         >
-                                            <Globe className="w-3 h-3" /> View Live
+                                            <Globe className="w-3.5 h-3.5" /> Web Pregled
                                         </a>
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2">
                                             <Button
-                                                variant="ghost"
+                                                variant="outline"
                                                 size="sm"
-                                                className="h-8 w-8 p-0"
+                                                className="h-10 w-10 p-0 rounded-xl border-slate-100 hover:border-blue-200 hover:bg-blue-50 text-blue-600 transition-all"
                                                 onClick={() => {
                                                     setSelectedPost(post);
                                                     setIsCreateOpen(true);
                                                 }}
                                             >
-                                                <Edit className="w-4 h-4 text-blue-600" />
+                                                <Edit className="w-4 h-4" />
                                             </Button>
                                             <Button
-                                                variant="ghost"
+                                                variant="outline"
                                                 size="sm"
-                                                className="h-8 w-8 p-0 hover:bg-red-50"
+                                                className="h-10 w-10 p-0 rounded-xl border-slate-100 hover:border-rose-200 hover:bg-rose-50 text-rose-500 transition-all"
                                                 onClick={() => handleDelete(post.id)}
                                             >
-                                                <Trash2 className="w-4 h-4 text-red-600" />
+                                                <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     </div>

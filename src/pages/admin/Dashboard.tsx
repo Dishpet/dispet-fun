@@ -79,64 +79,83 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            <div>
-                <h2 className="text-3xl font-bold font-heading text-gray-900 tracking-tight">Dashboard</h2>
-                <p className="text-muted-foreground">Pregled vašeg poslovanja u zadnjih 30 dana.</p>
+        <div className="space-y-10 animate-fade-in pb-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
+                <div>
+                    <h2 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                        Dashboard
+                    </h2>
+                    <p className="text-slate-500 text-lg font-medium mt-1">Pregled vašeg poslovanja u zadnjih 30 dana.</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" className="rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => window.location.reload()}>
+                        Osvježi
+                    </Button>
+                </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Ukupna Prodaja</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="relative overflow-hidden border-none shadow-2xl shadow-blue-500/10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                    <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
+                        <DollarSign size={80} strokeWidth={1} />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-blue-100/80 text-xs font-bold uppercase tracking-widest">Ukupna Prodaja</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">€{stats.totalSales.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">+20.1% od prošlog mjeseca</p>
+                    <CardContent className="relative z-10">
+                        <div className="text-3xl font-black mb-1">€{stats.totalSales.toFixed(2)}</div>
+                        <p className="text-blue-100/60 text-xs font-semibold">+20.1% vs prošli mj.</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Narudžbe</CardTitle>
-                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="relative overflow-hidden border-none shadow-2xl shadow-indigo-500/10 bg-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                    <div className="absolute bottom-0 right-0 p-4 text-indigo-50 opacity-10">
+                        <ShoppingBag size={100} strokeWidth={1} />
+                    </div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest">Narudžbe</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalOrders}</div>
-                        <p className="text-xs text-muted-foreground">+180.1% od prošlog mjeseca</p>
+                        <div className="text-3xl font-black text-slate-900 mb-1">{stats.totalOrders}</div>
+                        <p className="text-emerald-500 text-xs font-bold">+180.1% vs prošli mj.</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Prosječna Narudžba</CardTitle>
-                        <UsersIcon className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="relative overflow-hidden border-none shadow-2xl shadow-purple-500/10 bg-slate-900 text-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest">Prosjek</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">€{stats.averageOrder.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">+19% od prošlog mjeseca</p>
+                        <div className="text-3xl font-black mb-1">€{stats.averageOrder.toFixed(2)}</div>
+                        <p className="text-purple-400 text-xs font-bold">+19% vs prošli mj.</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-50 border-dashed">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Google Analytics</CardTitle>
-                        <Activity className="h-4 w-4 text-muted-foreground" />
+
+                <Card className="relative overflow-hidden border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-[2rem] flex flex-col justify-between">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                            <Activity className="h-3 w-3" /> External Tools
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-sm font-medium mb-2">Pregledaj statistiku</div>
-                        <p className="text-xs text-muted-foreground mb-4">Posjetitelji, pregledi i pretraživanja</p>
+                    <CardContent className="pb-4">
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed">Pristupite detaljnoj Google Analytics statistici.</p>
+                    </CardContent>
+                    <div className="px-6 pb-6">
                         <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            className="w-full text-xs gap-2"
+                            className="w-full bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-[10px] uppercase tracking-wider shadow-sm"
                             onClick={() => window.open('https://wp.dispet.fun/wp-admin/admin.php?page=googlesitekit-dashboard', '_blank')}
                         >
-                            Otvori Site Kit <ExternalLink size={12} />
+                            Site Kit <ExternalLink size={10} className="ml-2" />
                         </Button>
-                    </CardContent>
+                    </div>
                 </Card>
             </div>
 
-            <AnalyticsChart data={chartData} title="Prodaja u zadnjih 30 dana" />
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50">
+                <AnalyticsChart data={chartData} title="Statistika Prodaje" />
+            </div>
         </div>
     );
 };

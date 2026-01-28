@@ -212,39 +212,39 @@ const Messages = () => {
                 {/* Messages List */}
                 <div className="space-y-4">
                     {messages.length === 0 ? (
-                        <Card className="flex flex-col items-center justify-center py-24 text-center border-dashed border-2">
-                            <div className="h-20 w-20 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                                <Inbox className="h-10 w-10 text-gray-300" />
+                        <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[3rem] border border-dashed border-slate-200 shadow-sm">
+                            <div className="h-24 w-24 rounded-full bg-slate-50 flex items-center justify-center mb-8 shadow-inner">
+                                <Inbox className="h-10 w-10 text-slate-300" />
                             </div>
-                            <h3 className="text-xl font-semibold text-gray-900">Nema novih poruka</h3>
-                            <p className="text-muted-foreground max-w-sm mt-2">
-                                Trenutno je vaš inbox prazan. Nove poruke s kontakt forme pojavit će se ovdje.
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">VAŠ INBOX JE PRAZAN</h3>
+                            <p className="text-slate-500 max-w-xs mt-3 font-medium leading-relaxed">
+                                Nove poruke s kontakt forme pojavit će se ovdje automatski.
                             </p>
-                        </Card>
+                        </div>
                     ) : (
-                        <div className="grid gap-4">
-                            {messages.map((msg, index) => (
+                        <div className="grid gap-6">
+                            {messages.map((msg) => (
                                 <Card
                                     key={msg.id}
-                                    className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg border-border/60"
+                                    className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200 border-none bg-white rounded-[2.5rem]"
                                 >
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute top-0 left-0 w-2 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                                    <div className="p-6">
-                                        <div className="flex flex-col md:flex-row gap-6">
+                                    <div className="p-8">
+                                        <div className="flex flex-col lg:flex-row gap-8">
                                             {/* Avatar & Info */}
-                                            <div className="flex items-start gap-4 min-w-[200px]">
-                                                <div className="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-white">
+                                            <div className="flex items-start gap-5 min-w-[240px]">
+                                                <div className="h-16 w-16 shrink-0 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white font-black text-2xl shadow-xl transform group-hover:rotate-6 transition-transform">
                                                     {msg.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <h3 className="font-bold text-gray-900 leading-none pb-1">{msg.name}</h3>
-                                                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                                                        <span className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer">
+                                                    <h3 className="text-lg font-black text-slate-900 tracking-tight leading-none pt-1">{msg.name}</h3>
+                                                    <div className="flex flex-col gap-2 pt-2">
+                                                        <span className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-primary transition-colors cursor-pointer truncate">
                                                             <Mail className="w-3.5 h-3.5" /> {msg.email}
                                                         </span>
                                                         {msg.phone && (
-                                                            <span className="flex items-center gap-1.5">
+                                                            <span className="flex items-center gap-2 text-xs font-bold text-slate-400">
                                                                 <Phone className="w-3.5 h-3.5" /> {msg.phone}
                                                             </span>
                                                         )}
@@ -253,63 +253,46 @@ const Messages = () => {
                                             </div>
 
                                             {/* Message Body */}
-                                            <div className="flex-1 min-w-0 py-1 md:px-4 md:border-l md:border-gray-100">
-                                                <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed whitespace-pre-wrap">
+                                            <div className="flex-1 min-w-0 py-2 lg:px-8 lg:border-l lg:border-slate-100">
+                                                <div className="text-slate-600 font-medium leading-relaxed whitespace-pre-wrap text-sm lg:text-base">
                                                     {msg.message}
                                                 </div>
                                             </div>
 
                                             {/* Actions & Date */}
-                                            <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start gap-4 min-w-[140px] pl-4 md:border-l md:border-gray-100 md:bg-gray-50/50 md:-my-6 md:-mr-6 md:p-6">
-                                                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-white px-2.5 py-1 rounded-full border shadow-sm">
+                                            <div className="flex sm:flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-start gap-6 min-w-[160px] lg:pl-4 lg:border-l lg:border-slate-100">
+                                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
                                                     <Clock className="w-3.5 h-3.5" />
                                                     {format(new Date(msg.date), "dd. MMM, HH:mm", { locale: hr })}
                                                 </div>
 
-                                                <div className="flex items-center gap-1 pt-2">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-9 w-9 text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors"
-                                                                onClick={() => openReply(msg)}
-                                                            >
-                                                                <Reply className="w-4 h-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Odgovori</TooltipContent>
-                                                    </Tooltip>
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-12 w-12 rounded-2xl text-blue-600 bg-blue-50/50 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                        onClick={() => openReply(msg)}
+                                                    >
+                                                        <Reply className="w-5 h-5" />
+                                                    </Button>
 
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-9 w-9 text-green-600 hover:text-green-700 hover:bg-green-50 transition-colors"
-                                                                onClick={() => openForward(msg)}
-                                                            >
-                                                                <Forward className="w-4 h-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Proslijedi</TooltipContent>
-                                                    </Tooltip>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-12 w-12 rounded-2xl text-emerald-600 bg-emerald-50/50 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                        onClick={() => openForward(msg)}
+                                                    >
+                                                        <Forward className="w-5 h-5" />
+                                                    </Button>
 
-                                                    <Separator orientation="vertical" className="h-6 mx-1" />
-
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                                                onClick={() => handleDelete(msg.id)}
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Obriši poruku</TooltipContent>
-                                                    </Tooltip>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-12 w-12 rounded-2xl text-rose-500 bg-rose-50/50 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                                        onClick={() => handleDelete(msg.id)}
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>

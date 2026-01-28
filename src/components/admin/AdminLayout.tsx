@@ -29,12 +29,17 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     ];
 
     const SidebarContent = () => (
-        <div className="flex flex-col h-full">
-            <div className="p-6 border-b border-gray-100">
-                <h1 className="text-2xl font-bold text-primary font-heading">Dišpet Admin</h1>
+        <div className="flex flex-col h-full bg-white">
+            <div className="p-8 border-b border-gray-100/80">
+                <Link to="/admin" onClick={() => setOpen(false)} className="block group">
+                    <h1 className="text-2xl font-black text-slate-900 font-heading tracking-tighter flex items-center gap-2 group-hover:text-primary transition-colors">
+                        DIŠPET <span className="text-primary">ADMIN</span>
+                    </h1>
+                </Link>
             </div>
 
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 ml-4">Main Menu</p>
                 {menuItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path ||
@@ -43,12 +48,17 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                     return (
                         <Link key={item.path} to={item.path} onClick={() => setOpen(false)}>
                             <div className={cn(
-                                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium",
+                                "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 font-semibold text-sm",
                                 isActive
-                                    ? "bg-primary text-white shadow-md shadow-primary/20"
-                                    : "text-gray-600 hover:bg-gray-50 hover:text-primary"
+                                    ? "bg-primary text-white shadow-xl shadow-primary/25 translate-x-1"
+                                    : "text-slate-500 hover:bg-slate-50 hover:text-primary"
                             )}>
-                                <Icon className="w-5 h-5" />
+                                <div className={cn(
+                                    "p-1.5 rounded-lg transition-colors",
+                                    isActive ? "bg-white/20" : "bg-slate-100 group-hover:bg-primary/10"
+                                )}>
+                                    <Icon className="w-4 h-4" />
+                                </div>
                                 {item.label}
                             </div>
                         </Link>
@@ -56,50 +66,57 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-gray-100 space-y-2">
-                <Button variant="outline" className="w-full justify-start gap-3" asChild>
+            <div className="p-6 border-t border-slate-50 space-y-3">
+                <Button variant="outline" className="w-full justify-start gap-3 rounded-xl border-slate-200 hover:bg-slate-50 hover:border-primary/30 transition-all font-semibold" asChild>
                     <Link to="/">
-                        <ExternalLink className="w-5 h-5" />
-                        View Site
+                        <ExternalLink className="w-4 h-4 text-slate-400" />
+                        View Website
                     </Link>
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 gap-3" onClick={logout}>
-                    <LogOut className="w-5 h-5" />
-                    Logout
+                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl gap-3 font-semibold" onClick={logout}>
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
                 </Button>
             </div>
         </div>
     );
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-[#F8FAFC]">
             {/* Desktop Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
+            <aside className="w-72 bg-white border-r border-slate-200/60 hidden lg:flex flex-col z-40">
                 <SidebarContent />
             </aside>
 
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                {/* Mobile Header */}
-                <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-primary font-heading">Dišpet Admin</h1>
+            <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                {/* Mobile Header (Sticky & Glassy) */}
+                <header className="lg:hidden sticky top-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 p-4 flex items-center justify-between z-30">
+                    <Link to="/admin">
+                        <h1 className="text-xl font-black text-slate-900 font-heading tracking-tighter">
+                            DIŠPET <span className="text-primary">ADMIN</span>
+                        </h1>
+                    </Link>
                     <Sheet open={open} onOpenChange={setOpen}>
                         <SheetTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <Menu className="w-6 h-6" />
+                            <Button variant="secondary" size="icon" className="rounded-xl shadow-sm border border-slate-200/60">
+                                <Menu className="w-5 h-5 text-slate-700" />
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-64 bg-white">
+                        <SheetContent side="left" className="p-0 w-72 bg-white border-r-0">
                             <SidebarContent />
                         </SheetContent>
                     </Sheet>
                 </header>
 
-                {/* Main Content */}
-                <main className="flex-1 overflow-y-auto w-full">
-                    <div className="p-4 md:p-8 pb-24 md:pb-8 max-w-[100vw] overflow-x-hidden">
+                {/* Main Content Area */}
+                <main className="flex-1 overflow-y-auto w-full scroll-smooth">
+                    <div className="max-w-[1600px] mx-auto p-5 md:p-10 lg:p-12 pb-24 lg:pb-12">
                         {children}
                     </div>
                 </main>
+
+                {/* Bottom padding helper for mobile */}
+                <div className="lg:hidden h-px w-full" />
             </div>
         </div>
     );
