@@ -146,16 +146,8 @@ export const generateImageWithGemini = async (prompt: string, stylePrompt: strin
             // Fallback 1: Nano Banana (Gemini 2.5 Flash Image)
             return await executeGeneration("gemini-2.5-flash-image");
         } catch (fallbackError: any) {
-            console.warn("Nano Banana failed, attempting stable fallback...", fallbackError);
-
-            try {
-                // Fallback 2: Stable multimodal model (Gemini 1.5 Pro)
-                // Note: Image gen support varies by region/tier for 1.5 Pro
-                return await executeGeneration("gemini-1.5-pro-002");
-            } catch (stableError: any) {
-                console.error("All generation models failed:", stableError);
-                throw new Error(`Image generation failed across all models. Error: ${stableError.message}`);
-            }
+            console.error("All generation models failed:", fallbackError);
+            throw new Error(`Image generation failed across all models. Error: ${fallbackError.message}`);
         }
     }
 };
