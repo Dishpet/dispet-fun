@@ -1,16 +1,23 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const path = require('path');
-const helmet = require('helmet');
-const nodemailer = require('nodemailer');
-const fs = require('fs');
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import path from 'path';
+import helmet from 'helmet';
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import FormData from 'form-data';
+
+// ES Module __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Try loading .env.server, fallback to default .env
 if (fs.existsSync('.env.server')) {
-    require('dotenv').config({ path: '.env.server' });
+    dotenv.config({ path: '.env.server' });
 } else {
-    require('dotenv').config();
+    dotenv.config();
 }
 
 const app = express();
@@ -35,7 +42,7 @@ const getWpAuthHeader = () => {
 
 // Middleware
 app.use(helmet({
-    contentSecurityPolicy: false, // Disabled for now to avoid breaking external scripts (Stripe, Google)
+    contentSecurityPolicy: false,
 }));
 app.use(cors({
     exposedHeaders: ['X-WP-Total', 'X-WP-TotalPages']
@@ -62,32 +69,29 @@ app.get('/api/health', (req, res) => {
 app.post('/api/contact', async (req, res) => {
     const { name, email, phone, message } = req.body;
 
-    // Basic Validation
     if (!name || !email || !message) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
     console.log(`Received Contact Form Submission from: ${name} (${email})`);
 
-    // SMTP Configuration
     const smtpConfig = {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 465,
-        secure: true, // true for 465, false for other ports
+        secure: true,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
         },
     };
 
-    // If SMTP credentials exist, send email
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         try {
             const transporter = nodemailer.createTransport(smtpConfig);
 
             await transporter.sendMail({
                 from: `"Dišpet Web" <${process.env.SMTP_USER}>`,
-                to: 'info@dispet.fun', // The destination address
+                to: 'info@dispet.fun',
                 replyTo: email,
                 subject: `Nova poruka s weba: ${name}`,
                 text: `
@@ -111,14 +115,13 @@ ${message}
             console.log('Email sent successfully via SMTP.');
         } catch (error) {
             console.error('SMTP Error:', error);
-            // Don't fail the request to the user, but log the error (or secure-log it)
         }
     } else {
         console.warn('No SMTP configuration found. Message logged to console only.');
         console.log('Message Content:', message);
     }
 
-    // Store message locally for Admin Dashboard
+    // Store message locally
     try {
         const newMessage = {
             id: Date.now(),
@@ -142,8 +145,7 @@ ${message}
             }
         }
 
-        messages.unshift(newMessage); // Add to beginning
-        // Keep only last 100 messages
+        messages.unshift(newMessage);
         if (messages.length > 100) messages = messages.slice(0, 100);
 
         fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
@@ -152,7 +154,6 @@ ${message}
         console.error('Failed to save message locally:', fsError);
     }
 
-    // Always return success to the frontend if the payload was valid
     res.json({ success: true, message: 'Message received' });
 });
 
@@ -295,7 +296,6 @@ app.post('/api/order-notification', async (req, res) => {
 
     console.log(`Received Order Notification for Order #${orderId}`);
 
-    // Build the email HTML
     let itemsHtml = '';
     for (const item of items) {
         const imageUrl = item.image || '';
@@ -356,7 +356,6 @@ app.post('/api/order-notification', async (req, res) => {
     </div>
     `;
 
-    // Send email if SMTP is configured
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         try {
             const transporter = nodemailer.createTransport({
@@ -395,7 +394,6 @@ app.post('/api/upload-design', async (req, res) => {
         return res.status(400).json({ error: 'No image provided' });
     }
 
-    // Check for WP credentials
     const wpApiUrl = process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json';
     const wcKey = process.env.WC_CONSUMER_KEY;
     const wcSecret = process.env.WC_CONSUMER_SECRET;
@@ -406,7 +404,6 @@ app.post('/api/upload-design', async (req, res) => {
     }
 
     try {
-        // Extract base64 data from data URI
         const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (!matches || matches.length !== 3) {
             return res.status(400).json({ error: 'Invalid image format' });
@@ -416,7 +413,6 @@ app.post('/api/upload-design', async (req, res) => {
         const base64Data = matches[2];
         const buffer = Buffer.from(base64Data, 'base64');
 
-        // Determine file extension
         let extension = 'png';
         if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
         else if (mimeType.includes('webp')) extension = 'webp';
@@ -425,8 +421,6 @@ app.post('/api/upload-design', async (req, res) => {
 
         console.log(`Uploading design to WordPress: ${finalFilename}`);
 
-        // Upload to WordPress Media Library
-        const FormData = require('form-data');
         const form = new FormData();
         form.append('file', buffer, {
             filename: finalFilename,
@@ -465,12 +459,9 @@ app.post('/api/upload-design', async (req, res) => {
 
 const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
-// Proxies all requests starting with /api to the WordPress API
 app.all('/api/*', async (req, res) => {
     try {
-        // Use req.params[0] to get the wildcard part (e.g., 'wc/v3/products')
         const subPath = req.params[0];
-        // Ensure subPath starts with a slash
         const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
         const targetUrl = `${WP_API_URL}${apiPath}`;
 
@@ -487,7 +478,6 @@ app.all('/api/*', async (req, res) => {
         } else if (apiPath.startsWith('/wp/')) {
             authHeader = getWpAuthHeader();
         } else {
-            // Default to WooCommerce keys for any other /api/* calls
             queryAuth = {
                 consumer_key: process.env.WC_CONSUMER_KEY,
                 consumer_secret: process.env.WC_CONSUMER_SECRET
@@ -543,11 +533,9 @@ app.all('/api/*', async (req, res) => {
 
 // --- STATIC ASSETS & FALLBACK ---
 
-// Serve static files from the React app
 const distPath = path.resolve(__dirname, 'dist');
 const distIndexPath = path.join(distPath, 'index.html');
 
-// Check if dist folder exists
 if (!fs.existsSync(distPath)) {
     console.error(`[ERROR] dist folder not found at: ${distPath}`);
     console.error('[ERROR] Please run "npm run build" first');
@@ -560,7 +548,6 @@ if (!fs.existsSync(distPath)) {
 
 app.use(express.static(distPath));
 
-// Catch-all handler: for any request that doesn't match an API route, send back React's index.html
 app.get('*', (req, res) => {
     if (fs.existsSync(distIndexPath)) {
         res.sendFile(distIndexPath);
