@@ -13,7 +13,6 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { AttributeSync } from "@/components/admin/AttributeSync";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 const COLOR_MAP: Record<string, string> = {
     'Crna': '#231f20',
@@ -94,15 +93,15 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
     };
 
     return (
-        <Card className="mb-6 overflow-hidden border-none shadow-xl shadow-slate-200/50 bg-white rounded-[2rem] transition-all hover:shadow-2xl hover:shadow-primary/5 group">
-            <div className="p-6 flex flex-col lg:flex-row items-start lg:items-center gap-6">
+        <Card className="mb-6 overflow-hidden border-none shadow-lg shadow-slate-200/30 bg-white rounded-[2rem] transition-all hover:shadow-xl hover:shadow-primary/5 group">
+            <div className="p-4 md:p-6 flex flex-col lg:flex-row items-start lg:items-center gap-4 md:gap-6">
                 {/* Image */}
-                <div className="h-24 w-24 rounded-3xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl md:rounded-3xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-500">
                     {product.images?.[0] ? (
                         <img src={product.images[0].src} alt={product.name} className="h-full w-full object-cover" />
                     ) : (
                         <div className="h-full w-full flex items-center justify-center text-slate-300">
-                            <Package className="w-10 h-10 opacity-50" />
+                            <Package className="w-8 h-8 md:w-10 md:h-10 opacity-50" />
                         </div>
                     )}
                 </div>
@@ -115,8 +114,8 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                         </Badge>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {product.id}</span>
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 truncate leading-tight mb-1">{product.name}</h3>
-                    <p className="text-lg font-bold text-primary italic">€{product.price}</p>
+                    <h3 className="text-lg md:text-xl font-black text-slate-900 truncate leading-tight mb-1">{product.name}</h3>
+                    <p className="text-base md:text-lg font-bold text-primary italic">€{product.price}</p>
                 </div>
 
                 {/* Stock Input (Simple Product) */}
@@ -128,7 +127,7 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                         <div className="relative">
                             <Input
                                 type="number"
-                                className="w-full h-12 rounded-xl bg-slate-50 border-slate-100 focus:bg-white transition-colors font-bold pl-4"
+                                className="w-full h-12 rounded-full bg-slate-50 border-slate-100 focus:bg-white transition-colors font-bold pl-6"
                                 value={stockQuantity}
                                 onChange={(e) => setStockQuantity(parseInt(e.target.value) || 0)}
                             />
@@ -137,16 +136,17 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 w-full lg:w-auto mt-4 lg:mt-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-50">
+                <div className="flex items-center gap-2 lg:gap-3 w-full lg:w-auto mt-2 lg:mt-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-50">
                     {isVariable && (
                         <Button
                             variant="secondary"
                             size="lg"
                             onClick={handleFetchVariations}
-                            className="flex-1 lg:flex-none gap-2 rounded-xl font-bold text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-900 border-none transition-all shadow-sm"
+                            className="flex-1 lg:flex-none h-11 lg:h-12 gap-2 rounded-full font-bold text-[10px] lg:text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-900 border-none transition-all shadow-sm"
                         >
                             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            Varijacije
+                            <span className="hidden sm:inline">Varijacije</span>
+                            <span className="sm:hidden">Opcije</span>
                         </Button>
                     )}
 
@@ -154,7 +154,7 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-12 w-12 rounded-xl border-slate-100 hover:border-blue-100 hover:bg-blue-50 text-blue-600 transition-all shadow-sm"
+                            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full border-slate-100 hover:border-blue-100 hover:bg-blue-50 text-blue-600 transition-all shadow-sm"
                             onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                         >
                             <Edit className="w-4 h-4" />
@@ -162,7 +162,7 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                         <Button
                             variant="outline"
                             size="icon"
-                            className="h-12 w-12 rounded-xl border-slate-100 hover:border-red-100 hover:bg-red-50 text-red-600 transition-all shadow-sm"
+                            className="h-11 w-11 lg:h-12 lg:w-12 rounded-full border-slate-100 hover:border-red-100 hover:bg-red-50 text-red-600 transition-all shadow-sm"
                             onClick={() => onDelete(product.id)}
                         >
                             <Trash2 className="w-4 h-4" />
@@ -172,12 +172,12 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                             disabled={saving}
                             size="lg"
                             className={cn(
-                                "h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg transition-all",
-                                saving ? "opacity-70" : "hover:shadow-primary/30"
+                                "h-11 lg:h-12 px-4 lg:px-6 rounded-full font-bold text-[10px] lg:text-xs uppercase tracking-wider shadow-md transition-all",
+                                saving ? "opacity-70" : "hover:shadow-primary/20"
                             )}
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                            Spremi
+                            <span className="hidden sm:inline">Spremi</span>
                         </Button>
                     </div>
                 </div>
@@ -227,7 +227,7 @@ const ProductRow = ({ product, onDelete, onUpdate }: { product: WCProduct, onDel
                                             <div className="col-span-4">
                                                 <Input
                                                     type="number"
-                                                    className="h-10 rounded-xl bg-slate-50 text-center border-none font-bold focus:bg-white transition-all"
+                                                    className="h-10 rounded-full bg-slate-50 text-center border-none font-bold focus:bg-white transition-all px-4"
                                                     value={variationStock[v.id] || 0}
                                                     onChange={(e) => setVariationStock(prev => ({ ...prev, [v.id]: parseInt(e.target.value) || 0 }))}
                                                 />
@@ -248,6 +248,7 @@ const Products = () => {
     const [products, setProducts] = useState<WCProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [showAttributes, setShowAttributes] = useState(false);
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -301,26 +302,34 @@ const Products = () => {
                     <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte svojim proizvodima i zalihama.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider border-slate-200 hover:bg-slate-50 transition-all">
-                                Atributi
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                            <AttributeSync />
-                        </DialogContent>
-                    </Dialog>
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowAttributes(!showAttributes)}
+                        className={cn(
+                            "h-12 px-6 rounded-full font-bold text-xs uppercase tracking-wider border-slate-200 transition-all",
+                            showAttributes ? "bg-slate-100 border-primary/20" : "hover:bg-slate-50"
+                        )}
+                    >
+                        {showAttributes ? "Zatvori Atribute" : "Sinkroniziraj Atribute"}
+                    </Button>
                     <Button
                         onClick={() => navigate("/admin/products/new")}
-                        className="h-12 px-6 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
+                        className="h-12 px-6 rounded-full font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all"
                     >
                         <Plus className="w-4 h-4 mr-2 stroke-[3]" /> Novi Proizvod
                     </Button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40 max-w-xl group focus-within:border-primary/30 transition-all">
+            <Collapsible open={showAttributes}>
+                <CollapsibleContent>
+                    <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 mb-10 overflow-hidden">
+                        <AttributeSync />
+                    </div>
+                </CollapsibleContent>
+            </Collapsible>
+
+            <div className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/30 max-w-xl group focus-within:border-primary/30 transition-all">
                 <Search className="w-5 h-5 text-slate-400 ml-2 group-focus-within:text-primary transition-colors" />
                 <Input
                     placeholder="Pretraži proizvode..."
@@ -347,9 +356,14 @@ const Products = () => {
                             />
                         ))}
                         {filteredProducts.length === 0 && (
-                            <div className="text-center py-12 bg-white rounded-lg border border-dashed">
-                                <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                <p className="text-muted-foreground">No products found matching your search.</p>
+                            <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[3rem] border border-dashed border-slate-200 shadow-sm animate-in fade-in duration-700">
+                                <div className="h-24 w-24 rounded-full bg-slate-50 flex items-center justify-center mb-8 shadow-inner">
+                                    <Package className="h-10 w-10 text-slate-300" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">NEMA PROIZVODA</h3>
+                                <p className="text-slate-500 max-w-xs mt-3 font-medium leading-relaxed">
+                                    Nismo pronašli nijedan proizvod koji odgovara vašoj pretrazi.
+                                </p>
                             </div>
                         )}
                     </>

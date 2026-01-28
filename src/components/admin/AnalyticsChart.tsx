@@ -17,8 +17,8 @@ const AnalyticsChart = ({ data, title }: AnalyticsChartProps) => {
                         <span className="text-sm font-black text-slate-900 tracking-tight">Real-time Prodaja</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                    <Badge variant="outline" className="rounded-lg border-none bg-white font-bold text-[10px] uppercase tracking-wider shadow-sm text-slate-600">Zadnjih 30 dana</Badge>
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-full border border-slate-100">
+                    <Badge variant="outline" className="rounded-full border-none bg-white font-bold text-[10px] uppercase tracking-wider shadow-sm text-slate-600">Zadnjih 30 dana</Badge>
                 </div>
             </div>
 

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { createProduct, updateProduct } from "@/integrations/wordpress/woocommerce";
 import { WCProduct } from "@/integrations/wordpress/types";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Image as ImageIcon, Box, List, Tag, Info } from "lucide-react";
+import { Loader2, Save, Image as ImageIcon, Box, List, Tag, Info, ShoppingBag } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MediaPicker } from "./MediaPicker";
 import ReactQuill from "react-quill";
@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VariationManager } from "./VariationManager";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface ProductEditorProps {
     product?: WCProduct | null;
@@ -127,60 +129,62 @@ export const ProductEditor = ({ product, initialImage, onSuccess }: ProductEdito
     };
 
     return (
-        <div className="space-y-6 pb-10">
-            {/* Mobile-friendly sticky header */}
-            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 p-4 sm:p-6 -mx-4 sm:mx-0 rounded-none sm:rounded-2xl shadow-lg">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight truncate">
-                            {product ? name || 'Uređivanje Proizvoda' : 'Novi Proizvod'}
-                        </h2>
-                        <p className="text-sm text-slate-500 font-medium mt-1">
-                            {productType === 'variable' ? 'Varijabilni Proizvod' : 'Jednostavni Proizvod'}
-                        </p>
+        <div className="space-y-8 pb-32 animate-fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 mb-8 sticky top-4 z-40 gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        <ShoppingBag className="w-6 h-6 text-primary" />
                     </div>
-                    <Button
-                        onClick={() => handleSubmit()}
-                        disabled={loading}
-                        className="w-full sm:w-auto h-12 px-8 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20"
-                    >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
-                        Spremi
-                    </Button>
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900 font-heading uppercase tracking-tight">
+                            {product ? name : 'Novi Proizvod'}
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-slate-200 text-slate-400">
+                                {productType === 'variable' ? 'Varijabilni' : 'Jednostavni'}
+                            </Badge>
+                            {product && (
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {product.id}</span>
+                            )}
+                        </div>
+                    </div>
                 </div>
+                <Button
+                    onClick={() => handleSubmit()}
+                    disabled={loading}
+                    className="w-full sm:w-auto px-8 h-12 rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center"
+                >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
+                    Spremi Promjene
+                </Button>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                {/* Mobile-optimized tabs */}
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 mb-8 h-auto">
+                <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto mb-10 bg-slate-100/50 p-2 rounded-full gap-2">
                     <TabsTrigger
                         value="general"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                        className="rounded-full h-12 font-bold text-xs uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all"
                     >
-                        <Tag className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Osnovno</span>
+                        <Tag className="w-4 h-4 mr-2" /> Opće
                     </TabsTrigger>
                     <TabsTrigger
                         value="inventory"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                        className="rounded-full h-12 font-bold text-xs uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all"
                     >
-                        <Box className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Zalihe</span>
+                        <Box className="w-4 h-4 mr-2" /> Zaliha
                     </TabsTrigger>
                     <TabsTrigger
                         value="media"
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all"
+                        className="rounded-full h-12 font-bold text-xs uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all"
                     >
-                        <ImageIcon className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Mediji</span>
+                        <ImageIcon className="w-4 h-4 mr-2" /> Mediji
                     </TabsTrigger>
                     <TabsTrigger
                         value="variations"
                         disabled={productType !== 'variable'}
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-3 font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+                        className="rounded-full h-12 font-bold text-xs uppercase tracking-wider data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all disabled:opacity-30"
                     >
-                        <List className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Varijacije</span>
+                        <List className="w-4 h-4 mr-2" /> Varijacije
                     </TabsTrigger>
                 </TabsList>
 
@@ -199,7 +203,7 @@ export const ProductEditor = ({ product, initialImage, onSuccess }: ProductEdito
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="e.g. Vintage T-Shirt"
-                                        className="text-lg font-medium"
+                                        className="text-lg font-medium rounded-full px-6"
                                     />
                                 </div>
                                 <div className="space-y-2">

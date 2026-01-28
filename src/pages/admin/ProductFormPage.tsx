@@ -7,6 +7,7 @@ import { WCProduct } from "@/integrations/wordpress/types";
 import { AdminDesignGenerator } from "@/components/admin/AdminDesignGenerator";
 import { ProductMockupPreview } from "@/components/admin/ProductMockupPreview";
 import { ProductEditor } from "@/components/admin/ProductEditor";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
 const ProductFormPage = () => {
@@ -64,77 +65,85 @@ const ProductFormPage = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-24">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/admin/products")}>
-                    <ArrowLeft className="w-5 h-5" />
-                </Button>
-                <h1 className="text-2xl font-bold font-heading">
-                    {id ? "Edit Product" : "Create New Product"}
-                </h1>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-8">
-
-                {!id && view === 'selection' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8">
-                        <div
-                            className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-all group"
-                            onClick={() => setView('generator')}
-                        >
-                            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
-                                <Sparkles className="w-8 h-8 text-blue-600" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Generate with AI</h3>
-                            <p className="text-gray-500">
-                                Use Nano Banana to create a unique design based on Roko's style.
-                            </p>
-                        </div>
-
-                        <div
-                            className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-gray-400 hover:bg-gray-50 cursor-pointer transition-all group"
-                            onClick={() => setView('editor')}
-                        >
-                            <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-gray-200 transition-colors">
-                                <Upload className="w-8 h-8 text-gray-600" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">Manual Upload</h3>
-                            <p className="text-gray-500">
-                                Skip generation and upload your own product images manually.
-                            </p>
-                        </div>
+        <div className="max-w-5xl mx-auto space-y-10 animate-fade-in pb-20">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" onClick={() => navigate("/admin/products")} className="rounded-full h-12 w-12 border-slate-200 hover:bg-slate-50">
+                        <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <div>
+                        <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                            {id ? "UREDI PROIZVOD" : "NOVI PROIZVOD"}
+                        </h1>
+                        <p className="text-slate-500 text-lg font-medium mt-1">Konfigurirajte detalje proizvoda i zalihe.</p>
                     </div>
-                )}
-
-                {!id && view === 'generator' && (
-                    <AdminDesignGenerator
-                        onImageSelect={(url) => {
-                            setGeneratedImage(url);
-                            setView('preview');
-                        }}
-                        onCancel={() => setView('selection')}
-                    />
-                )}
-
-                {!id && view === 'preview' && (
-                    <ProductMockupPreview
-                        generatedDesign={generatedImage}
-                        onConfirm={(finalMockup) => {
-                            setGeneratedImage(finalMockup);
-                            setView('editor');
-                        }}
-                        onBack={() => setView('generator')}
-                    />
-                )}
-
-                {(id || view === 'editor') && (
-                    <ProductEditor
-                        product={product}
-                        initialImage={generatedImage}
-                        onSuccess={handleSuccess}
-                    />
-                )}
+                </div>
             </div>
+
+            <Card className="border-none shadow-xl shadow-slate-200/40 bg-white rounded-[2.5rem] overflow-hidden">
+                <div className="p-8 md:p-10">
+
+                    {!id && view === 'selection' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8">
+                            <div
+                                className="border-2 border-dashed border-slate-100 rounded-[2rem] p-10 text-center hover:border-blue-500/30 hover:bg-blue-50/30 cursor-pointer transition-all group shadow-sm hover:shadow-md"
+                                onClick={() => setView('generator')}
+                            >
+                                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
+                                    <Sparkles className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Generate with AI</h3>
+                                <p className="text-gray-500">
+                                    Use Nano Banana to create a unique design based on Roko's style.
+                                </p>
+                            </div>
+
+                            <div
+                                className="border-2 border-dashed border-slate-100 rounded-[2rem] p-10 text-center hover:border-slate-300 hover:bg-slate-50/50 cursor-pointer transition-all group shadow-sm hover:shadow-md"
+                                onClick={() => setView('editor')}
+                            >
+                                <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-gray-200 transition-colors">
+                                    <Upload className="w-8 h-8 text-gray-600" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Manual Upload</h3>
+                                <p className="text-gray-500">
+                                    Skip generation and upload your own product images manually.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {!id && view === 'generator' && (
+                        <AdminDesignGenerator
+                            onImageSelect={(url) => {
+                                setGeneratedImage(url);
+                                setView('preview');
+                            }}
+                            onCancel={() => setView('selection')}
+                        />
+                    )}
+
+                    {!id && view === 'preview' && (
+                        <ProductMockupPreview
+                            generatedDesign={generatedImage}
+                            onConfirm={(finalMockup) => {
+                                setGeneratedImage(finalMockup);
+                                setView('editor');
+                            }}
+                            onBack={() => setView('generator')}
+                        />
+                    )}
+
+                    {(id || view === 'editor') && (
+                        <ProductEditor
+                            product={product}
+                            initialImage={generatedImage}
+                            onSuccess={handleSuccess}
+                        />
+                    )}
+                </div>
+            </Card>
         </div>
     );
 };

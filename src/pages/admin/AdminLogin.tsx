@@ -53,7 +53,7 @@ export const AdminLogin = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 placeholder="Enter username"
-                                className="w-full"
+                                className="w-full rounded-full px-6"
                             />
                         </div>
                         <div className="space-y-2">
@@ -63,10 +63,10 @@ export const AdminLogin = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Enter password"
-                                className="w-full"
+                                className="w-full rounded-full px-6"
                             />
                         </div>
-                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-full h-11">
                             Access Dashboard
                         </Button>
                     </form>

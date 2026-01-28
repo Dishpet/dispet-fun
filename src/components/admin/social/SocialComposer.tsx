@@ -377,10 +377,10 @@ Design requirements:
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
 
             {/* Toolbar / Controls */}
-            <div className="lg:col-span-1 border rounded-xl bg-white p-4 space-y-6 overflow-y-auto shadow-sm h-full flex flex-col">
+            <div className="lg:col-span-1 border rounded-2xl bg-white p-4 space-y-6 overflow-y-auto shadow-sm h-full flex flex-col">
 
                 {/* 1. Generator Controls (Top) */}
-                <div className="space-y-4 p-4 bg-gray-50 rounded-xl border">
+                <div className="space-y-4 p-4 bg-gray-50 rounded-2xl border">
                     <h3 className="font-bold flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-primary" />
                         Design Generator
@@ -389,7 +389,7 @@ Design requirements:
                     <div className="space-y-2">
                         <Textarea
                             placeholder="What should Roko do? (e.g. playing guitar)"
-                            className="h-20 text-xs resize-none bg-white font-sans"
+                            className="h-20 text-xs resize-none bg-white font-sans rounded-2xl px-4 py-3"
                             value={rokoPrompt}
                             onChange={(e) => setRokoPrompt(e.target.value)}
                         />
@@ -434,7 +434,7 @@ Design requirements:
                     </div>
 
                     <Button
-                        className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold shadow-md"
+                        className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-700 text-white font-bold shadow-md rounded-full"
                         onClick={handleGenerateBackground}
                         disabled={isGenerating}
                     >
@@ -450,7 +450,7 @@ Design requirements:
                         <Button
                             onClick={addTextLayer}
                             variant="outline"
-                            className="justify-start"
+                            className="justify-start rounded-full"
                             disabled={!bgImage}
                             title={!bgImage ? "Generate a design first" : "Add Text Layer"}
                         >
@@ -459,7 +459,7 @@ Design requirements:
                         <Button
                             onClick={() => fileInputRef.current?.click()}
                             variant="outline"
-                            className="justify-start"
+                            className="justify-start rounded-full"
                             disabled={includeRoko}
                             title={includeRoko ? "Roko is being generated" : "Upload Image"}
                         >
@@ -485,16 +485,16 @@ Design requirements:
                     <div className="space-y-4 border-t pt-4 flex-1">
                         <div className="flex justify-between items-center">
                             <h4 className="font-semibold text-sm">Edit Layer</h4>
-                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => removeLayer(selectedLayer.id)}>
+                            <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeLayer(selectedLayer.id)}>
                                 <Trash2 className="w-4 h-4" />
                             </Button>
                         </div>
                         {selectedLayer.type === 'text' && (
                             <>
-                                <Input value={selectedLayer.content} onChange={(e) => updateLayer(selectedLayer.id, { content: e.target.value })} />
+                                <Input value={selectedLayer.content} onChange={(e) => updateLayer(selectedLayer.id, { content: e.target.value })} className="rounded-full px-4" />
                                 <div className="flex gap-2">
-                                    <Button size="sm" variant={selectedLayer.fontFamily === 'DynaPuff' ? 'default' : 'outline'} onClick={() => updateLayer(selectedLayer.id, { fontFamily: 'DynaPuff' })}>DynaPuff</Button>
-                                    <Button size="sm" variant={selectedLayer.fontFamily === 'Nunito' ? 'default' : 'outline'} onClick={() => updateLayer(selectedLayer.id, { fontFamily: 'Nunito' })}>Nunito</Button>
+                                    <Button size="sm" variant={selectedLayer.fontFamily === 'DynaPuff' ? 'default' : 'outline'} onClick={() => updateLayer(selectedLayer.id, { fontFamily: 'DynaPuff' })} className="rounded-full px-4">DynaPuff</Button>
+                                    <Button size="sm" variant={selectedLayer.fontFamily === 'Nunito' ? 'default' : 'outline'} onClick={() => updateLayer(selectedLayer.id, { fontFamily: 'Nunito' })} className="rounded-full px-4">Nunito</Button>
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
                                     {['#000000', '#FFFFFF', '#FFD700', '#FF0055', '#3b82f6'].map(c => (

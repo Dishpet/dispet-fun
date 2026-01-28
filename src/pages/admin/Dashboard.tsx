@@ -38,32 +38,26 @@ const Dashboard = () => {
                 const totalSales = validOrders.reduce((acc: number, curr: any) => acc + parseFloat(curr.total), 0);
                 const totalOrdersCount = validOrders.length;
 
+                // Sort valid orders by date ASCENDING for the chart
+                const chronologicalOrders = [...validOrders].sort((a, b) =>
+                    new Date(a.date_created).getTime() - new Date(b.date_created).getTime()
+                );
 
                 // Group by date for the chart
-                // Helper to format date key and preserve original date for sorting
+                // Helper to format date key
                 const getDayKey = (dateStr: string) => new Date(dateStr).toLocaleDateString('hr-HR', { day: 'numeric', month: 'short' });
 
-                // Aggregate sales by day with date tracking
-                const salesByDay: Record<string, { total: number, timestamp: number }> = {};
-                validOrders.forEach((o: any) => {
+                // Aggregate sales by day in chronological order
+                const salesByDay: Record<string, number> = {};
+                chronologicalOrders.forEach((o: any) => {
                     const key = getDayKey(o.date_created);
-                    const timestamp = new Date(o.date_created).getTime();
-
-                    if (!salesByDay[key]) {
-                        salesByDay[key] = { total: 0, timestamp };
-                    }
-                    salesByDay[key].total += parseFloat(o.total);
+                    salesByDay[key] = (salesByDay[key] || 0) + parseFloat(o.total);
                 });
 
-                // Convert to array and sort chronologically (oldest to newest)
-                const formattedData = Object.keys(salesByDay)
-                    .map(date => ({
-                        date,
-                        total: salesByDay[date].total,
-                        timestamp: salesByDay[date].timestamp
-                    }))
-                    .sort((a, b) => a.timestamp - b.timestamp) // Sort by timestamp ascending
-                    .map(({ date, total }) => ({ date, total })); // Remove timestamp from final data
+                const formattedData = Object.keys(salesByDay).map(date => ({
+                    date,
+                    total: salesByDay[date]
+                }));
 
                 setStats({
                     totalSales,
@@ -99,14 +93,14 @@ const Dashboard = () => {
                     <p className="text-slate-500 text-lg font-medium mt-1">Pregled vašeg poslovanja u zadnjih 30 dana.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" className="rounded-xl font-bold text-xs uppercase tracking-wider" onClick={() => window.location.reload()}>
+                    <Button variant="outline" className="rounded-full font-bold text-xs uppercase tracking-wider" onClick={() => window.location.reload()}>
                         Osvježi
                     </Button>
                 </div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                <Card className="relative overflow-hidden border-none shadow-2xl shadow-blue-500/10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                <Card className="relative overflow-hidden border-none shadow-xl shadow-blue-500/5 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] transition-transform hover:scale-[1.01]">
                     <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
                         <DollarSign size={80} strokeWidth={1} />
                     </div>
@@ -119,7 +113,7 @@ const Dashboard = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden border-none shadow-2xl shadow-indigo-500/10 bg-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                <Card className="relative overflow-hidden border-none shadow-xl shadow-indigo-500/5 bg-white rounded-[2rem] transition-transform hover:scale-[1.01]">
                     <div className="absolute bottom-0 right-0 p-4 text-indigo-50 opacity-10">
                         <ShoppingBag size={100} strokeWidth={1} />
                     </div>
@@ -132,7 +126,7 @@ const Dashboard = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden border-none shadow-2xl shadow-purple-500/10 bg-slate-900 text-white rounded-[2rem] transition-transform hover:scale-[1.02]">
+                <Card className="relative overflow-hidden border-none shadow-xl shadow-purple-500/5 bg-slate-900 text-white rounded-[2rem] transition-transform hover:scale-[1.01]">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-slate-400 text-xs font-bold uppercase tracking-widest">Prosjek</CardTitle>
                     </CardHeader>
@@ -155,7 +149,7 @@ const Dashboard = () => {
                         <Button
                             variant="default"
                             size="sm"
-                            className="w-full bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-[10px] uppercase tracking-wider shadow-sm"
+                            className="w-full bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-full font-bold text-[10px] uppercase tracking-wider shadow-sm"
                             onClick={() => window.open('https://wp.dispet.fun/wp-admin/admin.php?page=googlesitekit-dashboard', '_blank')}
                         >
                             Site Kit <ExternalLink size={10} className="ml-2" />
@@ -164,7 +158,7 @@ const Dashboard = () => {
                 </Card>
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/30">
                 <AnalyticsChart data={chartData} title="Statistika Prodaje" />
             </div>
         </div>

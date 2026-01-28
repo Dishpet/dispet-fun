@@ -99,7 +99,7 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <h3 className="font-bold text-lg">Media Library</h3>
+                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Media Library</h3>
                 <div className="flex gap-2 items-center">
                     <span className="text-sm text-gray-500 mr-2">
                         {selectedItems.length > 0 ? `${selectedItems.length} selected` : ''}
@@ -114,7 +114,7 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                             disabled={uploading}
                         />
                         <label htmlFor="media-upload">
-                            <Button variant="outline" size="sm" className="cursor-pointer" asChild disabled={uploading}>
+                            <Button variant="outline" size="sm" className="cursor-pointer rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider" asChild disabled={uploading}>
                                 <span>
                                     {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                                     Upload
@@ -125,7 +125,7 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                 </div>
             </div>
 
-            <div className="bg-gray-50 border rounded-lg p-4 min-h-[400px] flex flex-col">
+            <div className="bg-slate-50 border-none rounded-[2rem] p-6 min-h-[400px] flex flex-col shadow-inner">
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center min-h-[300px]">
                         <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -138,7 +138,7 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                                     <div
                                         key={item.id}
                                         className={cn(
-                                            "relative aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition-all group bg-white",
+                                            "relative aspect-square rounded-2xl overflow-hidden border-2 cursor-pointer transition-all group bg-white shadow-sm",
                                             isSelected(item.id) ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-gray-300"
                                         )}
                                         onClick={() => handleSelect(item)}
@@ -167,12 +167,13 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                         {/* Pagination Controls */}
                         <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-auto">
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                className="rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100"
                                 onClick={handlePrev}
                                 disabled={page <= 1 || loading}
                             >
-                                <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                                <ChevronLeft className="w-4 h-4 mr-1" /> Prethodna
                             </Button>
 
                             <span className="text-sm text-gray-500">
@@ -180,12 +181,13 @@ export const MediaLibrary = ({ onSelect, multiSelect = false }: MediaLibraryProp
                             </span>
 
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                className="rounded-full h-10 px-6 font-bold text-xs uppercase tracking-wider bg-white shadow-sm hover:bg-slate-100"
                                 onClick={handleNext}
                                 disabled={page >= totalPages || loading}
                             >
-                                Next <ChevronRight className="w-4 h-4 ml-1" />
+                                Sljedeća <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
                         </div>
                     </>

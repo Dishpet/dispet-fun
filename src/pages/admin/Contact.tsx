@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Save, MapPin, Mail, Phone, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, MapPin, Mail, Phone, Plus, Trash2, Globe, Building2 } from "lucide-react";
 import { getPosts, getPostBySlug, createPost, updatePost } from "@/integrations/wordpress/posts";
 import { WPPost } from "@/integrations/wordpress/types";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const CONFIG_SLUG = "config-contact";
 
@@ -21,7 +24,6 @@ const DEFAULT_CONTACT: ContactConfig = {
     phones: ["(+385) 555 6666"]
 };
 
-// Legacy interface for backward compatibility migration
 interface LegacyContactConfig {
     location: string;
     email?: string;
@@ -44,16 +46,13 @@ export default function AdminContact() {
     const loadConfig = async () => {
         setLoading(true);
         try {
-            // Use specific slug fetch for reliability, WITH AUTH to find private/draft posts
             const found = await getPostBySlug(CONFIG_SLUG, true);
-
             if (found) {
                 setConfigPost(found);
                 try {
                     const cleanJson = found.content.rendered.replace(/<[^>]*>?/gm, '');
                     const parsed = JSON.parse(cleanJson) as LegacyContactConfig;
                     if (parsed && typeof parsed === 'object') {
-                        // Migrate legacy single strings to arrays if needed
                         const emails = parsed.emails || (parsed.email ? [parsed.email] : DEFAULT_CONTACT.emails);
                         const phones = parsed.phones || (parsed.phone ? [parsed.phone] : DEFAULT_CONTACT.phones);
 
@@ -62,18 +61,14 @@ export default function AdminContact() {
                             emails,
                             phones
                         });
-                        setLoading(false);
-                        return;
                     }
                 } catch (e) {
                     console.error("Failed to parse contact config", e);
                 }
             }
-
-            // Fallback (Defaults already set in state)
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Failed to load configuration", variant: "destructive" });
+            toast({ title: "Greška", description: "Neuspješno učitavanje konfiguracije", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -87,22 +82,22 @@ export default function AdminContact() {
             if (configPost) {
                 await updatePost(configPost.id, {
                     content: jsonString,
-                    status: 'publish' // Ensure it's public so frontend can read it
+                    status: 'publish'
                 });
-                toast({ title: "Saved", description: "Contact info updated." });
+                toast({ title: "Spremljeno", description: "Kontakt podaci su ažurirani." });
             } else {
                 const newPost = await createPost({
                     title: "System Config: Contact",
                     content: jsonString,
                     slug: CONFIG_SLUG,
-                    status: 'publish' // Public for frontend access
+                    status: 'publish'
                 });
                 setConfigPost(newPost);
-                toast({ title: "Created", description: "Configuration initialized." });
+                toast({ title: "Kreirano", description: "Konfiguracija je inicijalizirana." });
             }
         } catch (error) {
             console.error(error);
-            toast({ title: "Error", description: "Failed to save configuration", variant: "destructive" });
+            toast({ title: "Greška", description: "Neuspješno spremanje", variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -131,96 +126,143 @@ export default function AdminContact() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="space-y-10 animate-fade-in pb-20 max-w-5xl">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 pb-8">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Contact Settings</h2>
-                    <p className="text-sm text-gray-500">Manage contact information displayed on the website.</p>
+                    <h1 className="text-4xl font-black font-heading text-slate-900 tracking-tight uppercase">
+                        KONTAKT INFO
+                    </h1>
+                    <p className="text-slate-500 text-lg font-medium mt-1">Upravljajte kontakt informacijama prikazanim na webu.</p>
                 </div>
-                <Button onClick={handleSave} disabled={loading || saving}>
-                    {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Changes
+                <Button
+                    onClick={handleSave}
+                    disabled={loading || saving}
+                    className="h-12 px-8 rounded-full bg-primary hover:bg-primary/90 font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10 transition-all text-white"
+                >
+                    {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2 stroke-[3]" />}
+                    Spremi Promjene
                 </Button>
             </div>
 
             {loading ? (
-                <div className="py-20 flex justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <div className="py-20 flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-200" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Učitavanje podataka...</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Location Section */}
-                    <div className="space-y-4 p-6 border rounded-xl bg-white shadow-sm h-fit">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            <h3 className="font-semibold">Location</h3>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="location">Address / City</Label>
-                            <Input
-                                id="location"
-                                value={config.location}
-                                onChange={(e) => setConfig({ ...config, location: e.target.value })}
-                                placeholder="e.g. Split, Croatia"
-                            />
-                            <p className="text-xs text-gray-400">Fixed to one location.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        {/* Emails Section */}
-                        <div className="space-y-4 p-6 border rounded-xl bg-white shadow-sm">
-                            <div className="flex items-center justify-between pb-2 border-b">
-                                <div className="flex items-center gap-2">
-                                    <Mail className="w-5 h-5 text-primary" />
-                                    <h3 className="font-semibold">Email Addresses</h3>
+                    <Card className="border-none shadow-xl shadow-blue-500/5 bg-white rounded-[2.5rem] overflow-hidden">
+                        <CardHeader className="p-8 pb-4">
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                                    <MapPin className="w-6 h-6 text-blue-600" />
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={addEmail}>
-                                    <Plus className="w-4 h-4 mr-1" /> Add
-                                </Button>
+                                <div>
+                                    <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Lokacija</CardTitle>
+                                    <CardDescription className="text-xs font-bold uppercase tracking-wider text-slate-400">Adresa Sjedišta</CardDescription>
+                                </div>
                             </div>
-                            <div className="space-y-3">
+                        </CardHeader>
+                        <CardContent className="p-8 pt-0 space-y-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Adresa / Grad</Label>
+                                <div className="relative">
+                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                    <Input
+                                        value={config.location}
+                                        onChange={(e) => setConfig({ ...config, location: e.target.value })}
+                                        placeholder="npr. Split, Hrvatska"
+                                        className="h-12 pl-11 rounded-full bg-slate-50 border-none shadow-sm font-bold"
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="space-y-8">
+                        {/* Emails Section */}
+                        <Card className="border-none shadow-xl shadow-indigo-500/5 bg-white rounded-[2.5rem] overflow-hidden">
+                            <CardHeader className="p-8 pb-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                                            <Mail className="w-6 h-6 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Email</CardTitle>
+                                            <CardDescription className="text-xs font-bold uppercase tracking-wider text-slate-400">Kontakt Adrese</CardDescription>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={addEmail} className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider text-indigo-600 hover:bg-indigo-50">
+                                        <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-8 pt-0 space-y-4">
                                 {config.emails.map((email, index) => (
-                                    <div key={index} className="flex gap-2">
+                                    <div key={index} className="flex gap-2 group">
                                         <Input
                                             value={email}
                                             onChange={(e) => updateEmail(index, e.target.value)}
-                                            placeholder="info@example.com"
+                                            placeholder="info@primjer.com"
+                                            className="h-12 rounded-full bg-slate-50 border-none shadow-sm font-bold flex-1 px-6"
                                         />
-                                        <Button variant="ghost" size="icon" onClick={() => removeEmail(index)} disabled={config.emails.length === 1}>
-                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removeEmail(index)}
+                                            disabled={config.emails.length === 1}
+                                            className="h-12 w-12 rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
 
                         {/* Phones Section */}
-                        <div className="space-y-4 p-6 border rounded-xl bg-white shadow-sm">
-                            <div className="flex items-center justify-between pb-2 border-b">
-                                <div className="flex items-center gap-2">
-                                    <Phone className="w-5 h-5 text-primary" />
-                                    <h3 className="font-semibold">Phone Numbers</h3>
+                        <Card className="border-none shadow-xl shadow-emerald-500/5 bg-white rounded-[2.5rem] overflow-hidden">
+                            <CardHeader className="p-8 pb-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                                            <Phone className="w-6 h-6 text-emerald-600" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">Telefon</CardTitle>
+                                            <CardDescription className="text-xs font-bold uppercase tracking-wider text-slate-400">Kontakt Brojevi</CardDescription>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={addPhone} className="h-8 rounded-full font-bold text-[10px] uppercase tracking-wider text-emerald-600 hover:bg-emerald-50">
+                                        <Plus className="w-3.5 h-3.5 mr-1" /> Dodaj
+                                    </Button>
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={addPhone}>
-                                    <Plus className="w-4 h-4 mr-1" /> Add
-                                </Button>
-                            </div>
-                            <div className="space-y-3">
+                            </CardHeader>
+                            <CardContent className="p-8 pt-0 space-y-4">
                                 {config.phones.map((phone, index) => (
-                                    <div key={index} className="flex gap-2">
+                                    <div key={index} className="flex gap-2 group">
                                         <Input
                                             value={phone}
                                             onChange={(e) => updatePhone(index, e.target.value)}
-                                            placeholder="+385 00 000 000"
+                                            placeholder="+385 91 123 4567"
+                                            className="h-12 rounded-full bg-slate-50 border-none shadow-sm font-bold flex-1 px-6"
                                         />
-                                        <Button variant="ghost" size="icon" onClick={() => removePhone(index)} disabled={config.phones.length === 1}>
-                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => removePhone(index)}
+                                            disabled={config.phones.length === 1}
+                                            className="h-12 w-12 rounded-full text-rose-500 hover:bg-rose-50 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             )}

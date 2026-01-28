@@ -58,9 +58,9 @@
     --gradient-overlay: linear-gradient(135deg, hsla(285 100% 46% / 0.9), hsla(218 100% 37% / 0.9));
 
     /* Shadows */
-    --shadow-soft: 0 2px 8px hsla(210 19% 8% / 0.08);
-    --shadow-medium: 0 4px 16px hsla(210 19% 8% / 0.12);
-    --shadow-strong: 0 8px 32px hsla(210 19% 8% / 0.16);
+    --shadow-soft: 0 2px 10px hsla(210 19% 8% / 0.04);
+    --shadow-medium: 0 4px 20px hsla(210 19% 8% / 0.06);
+    --shadow-strong: 0 8px 30px hsla(210 19% 8% / 0.08);
 
     /* Transitions */
     --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -113,9 +113,9 @@
     --gradient-secondary: linear-gradient(135deg, hsl(165 100% 50%), hsl(206 100% 66%));
     --gradient-overlay: linear-gradient(135deg, hsla(285 100% 46% / 0.9), hsla(218 100% 37% / 0.9));
 
-    --shadow-soft: 0 2px 8px hsla(0 0% 0% / 0.2);
-    --shadow-medium: 0 4px 16px hsla(0 0% 0% / 0.3);
-    --shadow-strong: 0 8px 32px hsla(0 0% 0% / 0.4);
+    --shadow-soft: 0 2px 10px hsla(0 0% 0% / 0.1);
+    --shadow-medium: 0 4px 20px hsla(0 0% 0% / 0.15);
+    --shadow-strong: 0 8px 30px hsla(0 0% 0% / 0.2);
 
     --sidebar-background: 210 19% 8%;
     --sidebar-foreground: 60 6% 94%;
@@ -210,15 +210,5 @@
 
   .glow {
     box-shadow: 0 0 20px hsla(343, 80%, 63%, 0.4);
-  }
-
-  /* Force all buttons in admin to be fully rounded */
-  button:not(.no-round) {
-    border-radius: 9999px !important;
-  }
-
-  /* Also apply to button-styled elements */
-  [role="button"]:not(.no-round) {
-    border-radius: 9999px !important;
   }
 }

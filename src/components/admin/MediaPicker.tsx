@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { MediaLibrary } from "./MediaLibrary";
 import { WPMedia } from "@/integrations/wordpress/types";
 import { Image, X } from "lucide-react";
@@ -77,23 +78,43 @@ export const MediaPicker = ({ value, onChange, onSelectMedia, multiple = false }
         <div className="space-y-4">
             {renderPreview()}
 
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                        <Image className="w-4 h-4 mr-2" />
-                        {value && (Array.isArray(value) ? value.length > 0 : value) ? "Change Image(s)" : "Select Image(s)"}
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="w-[90vw] max-w-[90vw] sm:w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 overflow-x-hidden">
-                    <DialogTitle>Select Media</DialogTitle>
-                    <MediaLibrary onSelect={handleSelect} multiSelect={multiple} />
-                    {multiple && (
-                        <div className="mt-4 flex justify-end">
-                            <Button onClick={() => setOpen(false)}>Done</Button>
-                        </div>
+            <div className="space-y-4">
+                <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setOpen(!open)}
+                    className={cn(
+                        "w-full h-12 rounded-xl font-bold text-xs uppercase tracking-wider border-slate-200 transition-all",
+                        open ? "bg-slate-100" : "hover:bg-slate-50"
                     )}
-                </DialogContent>
-            </Dialog>
+                >
+                    <Image className="w-4 h-4 mr-2" />
+                    {open ? "Zatvori Galeriju" : (value && (Array.isArray(value) ? value.length > 0 : value) ? "Promijeni Sliku" : "Odaberi Sliku")}
+                </Button>
+
+                <Collapsible open={open}>
+                    <CollapsibleContent>
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-4 px-2">
+                                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Medijska Biblioteka</h4>
+                                {multiple && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setOpen(false)}
+                                        className="h-8 rounded-lg font-bold text-[10px] uppercase tracking-wider text-primary"
+                                    >
+                                        Završi odabir
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                <MediaLibrary onSelect={handleSelect} multiSelect={multiple} />
+                            </div>
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
+            </div>
         </div>
     );
 };
