@@ -26,6 +26,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         { icon: Handshake, label: "Partners", path: "/admin/partners" },
         { icon: Phone, label: "Contact Info", path: "/admin/contact" },
         { icon: Share2, label: "Social Media", path: "/admin/social" },
+        { icon: Settings, label: "Settings", path: "/admin/settings" },
     ];
 
     const SidebarContent = () => (

@@ -1,13 +1,31 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getPostBySlug } from "@/integrations/wordpress/posts";
+import { cleanWordPressJson } from "@/lib/utils";
 
 // Fetch API Key from environment variable
+// Fetch API Key from environment variable or WP Config
 export const getGoogleApiKey = async (): Promise<string | null> => {
-    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
-    if (!apiKey) {
-        console.error("VITE_GOOGLE_API_KEY not set in .env");
-        return null;
+    // 1. Try Environment Variable (Build time)
+    let apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    if (apiKey) return apiKey;
+
+    // 2. Try WordPress Configuration (Runtime override)
+    try {
+        console.log("Environment API Key not found, checking WordPress config...");
+        const configPost = await getPostBySlug("config-api-keys", true); // useAuth=true to fetch private posts
+        if (configPost) {
+            const parsed = cleanWordPressJson(configPost.content.rendered);
+            if (parsed && typeof parsed === 'object' && parsed.googleApiKey) {
+                console.log("API Key loaded from WordPress config.");
+                return parsed.googleApiKey;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to fetch API key from WP config:", error);
     }
-    return apiKey;
+
+    console.error("GOOGLE_API_KEY not found in ENV or WordPress Config.");
+    return null;
 };
 
 // Initialize Gemini Client
