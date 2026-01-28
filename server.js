@@ -8,6 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import FormData from 'form-data';
+import { Buffer } from 'buffer';
 
 // Wrap everything in try-catch to see errors
 try {
@@ -532,6 +533,9 @@ ${message}
     });
 
     // --- PROXY API ROUTES ---
+
+    const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+
     // Use app.use for robust middleware handling in Express 4/5
     app.use('/api', async (req, res) => {
         // Skip if already handled (however, app.use usually runs first? 
