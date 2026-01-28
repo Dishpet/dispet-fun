@@ -73,17 +73,23 @@ try {
         dotenv.config();
     }
 
-    // Log which critical env vars are available
-    console.log('[STARTUP] WP_API_URL:', process.env.WP_API_URL ? 'SET' : 'NOT SET');
-    console.log('[STARTUP] WC_CONSUMER_KEY:', process.env.WC_CONSUMER_KEY ? 'SET' : 'NOT SET');
+    // Scrub environment variables for invisible characters and quotes
+    const scrub = (v) => (v || '').toString().trim().replace(/['"]/g, '');
+    if (process.env.WP_API_URL) process.env.WP_API_URL = scrub(process.env.WP_API_URL);
+    if (process.env.WC_CONSUMER_KEY) process.env.WC_CONSUMER_KEY = scrub(process.env.WC_CONSUMER_KEY);
+    if (process.env.WC_CONSUMER_SECRET) process.env.WC_CONSUMER_SECRET = scrub(process.env.WC_CONSUMER_SECRET);
+    if (process.env.WP_APP_USER) process.env.WP_APP_USER = scrub(process.env.WP_APP_USER);
+    if (process.env.WP_APP_PASS) process.env.WP_APP_PASS = scrub(process.env.WP_APP_PASS);
+
+    console.log('[STARTUP] Critical Env Vars Loaded');
 
 
     const app = express();
     const PORT = process.env.PORT || 3000;
-    const MESSAGES_FILE = path.join(process.cwd(), 'data', 'messages.json');
+    const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
 
     // Ensure the data directory exists for local message storage
-    const dataDir = path.join(process.cwd(), 'data');
+    const dataDir = path.join(__dirname, 'data');
     if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
     }
@@ -550,8 +556,8 @@ ${message}
                 testResult = {
                     status: response.status,
                     statusText: response.statusText,
-                    dataMsg: response.data?.message || 'No message',
-                    dataType: typeof response.data
+                    dataType: typeof response.data,
+                    isArray: Array.isArray(response.data)
                 };
             } catch (e) {
                 testResult = { error: e.message };
@@ -561,6 +567,7 @@ ${message}
         res.json({
             envLoaded: loadedEnv,
             hasKey: !!key,
+            keySummary: key ? `${key.substring(0, 5)}...` : 'none',
             wpUrl,
             testResult,
             cwd: process.cwd(),
@@ -572,39 +579,33 @@ ${message}
 
     const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
 
-    // Use app.use for robust middleware handling in Express 4/5
-    app.use('/api', async (req, res) => {
-        // Skip if already handled (however, app.use usually runs first? 
-        // No, in Express, routes are matched in order. 
-        // If we place this AT THE END, it catches everything not yet handled!)
-
-        // Note: req.url in app.use is relative to the mount point (/api)
-        // So if request is /api/wc/products, req.url is /wc/products
+    // Use app.use as a catch-all proxy for /api requests not handled by specialized routes
+    app.use('/api', async (req, res, next) => {
         const subPath = req.url;
         const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
 
+        // SAFETY: Skip internal routes already handled by specific handlers above
+        const internalRoutes = ['/messages', '/health', '/debug-auth', '/contact', '/upload-design'];
+        if (internalRoutes.some(route => apiPath.startsWith(route))) {
+            return next();
+        }
+
         // Construct base Target URL
         let targetUrl = `${WP_API_URL}${apiPath}`;
-
         console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
         let authHeader = null;
 
-        // Authentication Logic
-        if (apiPath.startsWith('/wc/')) {
+        // WooCommerce Authentication Logic (supports both /wc/ and /wc-analytics/)
+        if (apiPath.startsWith('/wc')) {
             const key = process.env.WC_CONSUMER_KEY;
             const secret = process.env.WC_CONSUMER_SECRET;
 
             if (key && secret) {
-                // Method 1: Basic Auth Header (Standard)
                 const authString = Buffer.from(`${key}:${secret}`).toString('base64');
                 authHeader = `Basic ${authString}`;
-
-                // Method 2: Query Params (Fallback for Header Stripping Proxies)
-                const separator = targetUrl.includes('?') ? '&' : '?';
-                targetUrl = `${targetUrl}${separator}consumer_key=${key}&consumer_secret=${secret}`;
             } else {
-                console.warn('[Proxy] Missing WC credentials for WooCommerce request');
+                console.warn('[Proxy] Missing WC credentials');
             }
         } else if (apiPath.startsWith('/wp/')) {
             authHeader = getWpAuthHeader();
