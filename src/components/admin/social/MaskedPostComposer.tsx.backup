@@ -1,0 +1,439 @@
+import { useState, useRef, useMemo, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ArrowLeft, Upload, Download, Image as ImageIcon, RefreshCcw, Move, MousePointer2, Type } from "lucide-react";
+import { SocialTemplate } from "./SocialTemplateSelector";
+import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Import Masks
+import mask1 from "@/assets/elements/masks/mask-1.svg";
+import mask2 from "@/assets/elements/masks/mask-2.svg";
+import mask3 from "@/assets/elements/masks/mask-3.svg";
+import mask4 from "@/assets/elements/masks/mask-4.svg";
+import mask5 from "@/assets/elements/masks/mask-5.svg";
+import mask6 from "@/assets/elements/masks/mask-6.svg";
+
+// Import Elements for decoration
+import cokacRozi from "@/assets/elements/cokac-1-rozi.svg";
+import kuglicaPlava from "@/assets/elements/kuglica-plava-01.svg";
+import element26 from "@/assets/elements/element-26.svg";
+import element28 from "@/assets/elements/element-28.svg";
+import kapljicaZelena from "@/assets/elements/kapljica-zelena-01.svg";
+import kuglicaZuta from "@/assets/elements/kuglica-zuta-01.svg";
+
+interface MaskedPostComposerProps {
+    template: SocialTemplate;
+    onBack: () => void;
+}
+
+const DECORATION_ELEMENTS = [
+    cokacRozi,
+    kuglicaPlava,
+    element26,
+    element28,
+    kapljicaZelena,
+    kuglicaZuta
+];
+
+type InteractionMode = 'image' | 'mask' | 'text';
+
+type BackgroundType = 'dark' | 'home' | 'shop';
+
+const BACKGROUND_OPTIONS: Record<BackgroundType, { name: string; style: string }> = {
+    dark: { name: 'Dark Blue', style: '#0f172a' },
+    home: { name: 'Home Gradient', style: 'linear-gradient(to bottom right, #0044bf, #ad00e9)' },
+    shop: { name: 'Shop Gradient', style: 'linear-gradient(to bottom right, #00ffbf, #0089cd)' }
+};
+
+const TEXT_COLORS = [
+    { name: 'White', value: '#ffffff' },
+    { name: 'Black', value: '#000000' },
+    { name: 'Pink', value: '#ec4899' },
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Yellow', value: '#fbbf24' },
+    { name: 'Green', value: '#10b981' },
+];
+
+export const MaskedPostComposer = ({ template, onBack }: MaskedPostComposerProps) => {
+    const [image, setImage] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const [decorations, setDecorations] = useState<any[]>([]);
+
+    // Interaction State
+    const [activeMode, setActiveMode] = useState<InteractionMode>('image');
+    const [background, setBackground] = useState<BackgroundType>('dark');
+    const [selectedMaskId, setSelectedMaskId] = useState<number>(template.maskId || 1);
+
+    // Text State
+    const [textEnabled, setTextEnabled] = useState(false);
+    const [textContent, setTextContent] = useState('Dišpet');
+    const [textPos, setTextPos] = useState({ x: 0, y: 0 });
+    const [textRotation, setTextRotation] = useState(0);
+    const [textSize, setTextSize] = useState(48);
+    const [textColor, setTextColor] = useState('#ffffff');
+
+    // Mask State (relative to default config)
+    const [maskOffset, setMaskOffset] = useState({ x: 0, y: 0 });
+    const [maskScale, setMaskScale] = useState(1);
+    const [maskRotation, setMaskRotation] = useState(0);
+
+    // Image State (transform)
+    const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
+    const [imageScale, setImageScale] = useState(1);
+    const [imageRotation, setImageRotation] = useState(0);
+
+    // Drag tracking
+    const isDragging = useRef(false);
+    const lastMousePos = useRef({ x: 0, y: 0 });
+
+    const maskMap: Record<number, string> = {
+        1: mask1,
+        2: mask2,
+        3: mask3,
+        4: mask4,
+        5: mask5,
+        6: mask6,
+    };
+
+    // Configuration for "Bigger and Not Centered" (Back to 150-175% range)
+    const maskSettings: Record<number, { size: string, position: string }> = {
+        1: { size: '150%', position: '45% 45%' },
+        2: { size: '160%', position: '70% 70%' },
+        3: { size: '140%', position: '50% 85%' }, // Changed center to 50% for calc compat
+        4: { size: '155%', position: '30% 55%' },
+        5: { size: '175%', position: '50% 20%' }, // Changed center to 50% for calc compat
+        6: { size: '150%', position: '55% 30%' },
+    };
+
+    const currentMask = maskMap[selectedMaskId];
+    const defaultConfig = maskSettings[selectedMaskId];
+
+    // Initialize random decorations (No safe zones, fully random)
+    const generateDecorations = () => {
+        const count = Math.floor(Math.random() * 3) + 3; // 3 to 5 elements
+        return Array.from({ length: count }).map((_, i) => ({
+            id: i,
+            src: DECORATION_ELEMENTS[Math.floor(Math.random() * DECORATION_ELEMENTS.length)],
+            top: `${Math.random() * 90}%`,
+            left: `${Math.random() * 90}%`,
+            size: `${Math.random() * 100 + 50}px`,
+            rotation: '0deg', // As requested: no rotation for smaller elements
+            zIndex: 20
+        }));
+    };
+
+    useEffect(() => {
+        setDecorations(generateDecorations());
+        // Reset transforms when template changes
+        setMaskOffset({ x: 0, y: 0 });
+        setMaskScale(1);
+        setMaskRotation(0);
+        setImagePos({ x: 0, y: 0 });
+        setImageScale(1);
+        setImageRotation(0);
+        setTextPos({ x: 0, y: 0 });
+        setTextRotation(0);
+        setSelectedMaskId(template.maskId || 1);
+    }, [template.id]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setImage(event.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleDownload = async () => {
+        toast({
+            title: "Download Feature",
+            description: "To save: Right click the image and select 'Save Image As'.",
+        });
+    };
+
+    const regenerateDecorations = () => {
+        setDecorations(generateDecorations());
+    }
+
+    // Interaction Handlers
+    const handleMouseDown = (e: React.MouseEvent) => {
+        isDragging.current = true;
+        lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging.current) return;
+
+        const deltaX = e.clientX - lastMousePos.current.x;
+        const deltaY = e.clientY - lastMousePos.current.y;
+        lastMousePos.current = { x: e.clientX, y: e.clientY };
+
+        // Helper to rotate vector
+        const rotateVector = (dx: number, dy: number, angleDeg: number) => {
+            const rad = (angleDeg * Math.PI) / 180;
+            return {
+                x: dx * Math.cos(rad) - dy * Math.sin(rad),
+                y: dx * Math.sin(rad) + dy * Math.cos(rad)
+            };
+        };
+
+        if (activeMode === 'image') {
+            // Image transform frame is rotated by -maskRotation
+            // We need to apply inverse rotation (+maskRotation) to screen delta to align with local axes
+            const rotatedDelta = rotateVector(deltaX, deltaY, maskRotation);
+            setImagePos(prev => ({ x: prev.x + rotatedDelta.x, y: prev.y + rotatedDelta.y }));
+        } else if (activeMode === 'mask') {
+            // Mask transform frame is rotated by +maskRotation
+            // We need to apply inverse rotation (-maskRotation) to screen delta
+            const rotatedDelta = rotateVector(deltaX, deltaY, -maskRotation);
+            setMaskOffset(prev => ({ x: prev.x + rotatedDelta.x, y: prev.y + rotatedDelta.y }));
+        } else if (activeMode === 'text') {
+            // Text is not rotated by mask, so no compensation needed
+            setTextPos(prev => ({ x: prev.x + deltaX, y: prev.y + deltaY }));
+        }
+    };
+
+    const handleMouseUp = () => {
+        isDragging.current = false;
+    };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        e.stopPropagation();
+
+        if (e.shiftKey) {
+            // Rotation Logic
+            const rotateAmount = e.deltaY > 0 ? -5 : 5;
+            if (activeMode === 'image') {
+                setImageRotation(prev => prev + rotateAmount);
+            } else if (activeMode === 'mask') {
+                setMaskRotation(prev => prev + rotateAmount);
+            } else if (activeMode === 'text') {
+                setTextRotation(prev => prev + rotateAmount);
+            }
+        } else {
+            // Zoom/Scale Logic
+            const scaleFactor = e.deltaY > 0 ? 0.95 : 1.05;
+            if (activeMode === 'image') {
+                setImageScale(prev => Math.max(0.2, Math.min(5, prev * scaleFactor)));
+            } else if (activeMode === 'mask') {
+                setMaskScale(prev => Math.max(0.5, Math.min(3, prev * scaleFactor)));
+            }
+            // Text doesn't use scroll for zoom, we have a slider
+        }
+    };
+
+    // Determine container aspect ratio style
+    const containerStyle = useMemo(() => {
+        return {
+            aspectRatio: `${template.width}/${template.height}`,
+            height: '100%',
+            maxHeight: '600px',
+            width: 'auto',
+            maxWidth: '100%',
+            background: BACKGROUND_OPTIONS[background].style,
+            position: 'relative' as const,
+            cursor: activeMode === 'text' ? 'text' : (activeMode === 'image' ? 'move' : 'crosshair')
+        };
+    }, [template.width, template.height, activeMode, background]);
+
+    // Calculate Mask Styles
+    // We treat 'currentSettings.position' as the base.
+    // Since it's a string like '45% 45%', adding pixels requires calc().
+    const maskStyle = {
+        maskImage: `url("${currentMask}")`,
+        WebkitMaskImage: `url("${currentMask}")`,
+        maskSize: `calc(${defaultConfig.size} * ${maskScale})`,
+        WebkitMaskSize: `calc(${defaultConfig.size} * ${maskScale})`,
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
+        // Combine base % position with pixel offset
+        maskPosition: `calc(${defaultConfig.position.split(' ')[0]} + ${maskOffset.x}px) calc(${defaultConfig.position.split(' ')[1] || '50%'} + ${maskOffset.y}px)`,
+        WebkitMaskPosition: `calc(${defaultConfig.position.split(' ')[0]} + ${maskOffset.x}px) calc(${defaultConfig.position.split(' ')[1] || '50%'} + ${maskOffset.y}px)`,
+        // Make the mask container larger than the canvas to handle rotation without clipping corners
+        width: '150%',
+        height: '150%',
+        left: '-25%',
+        top: '-25%',
+        position: 'absolute' as const,
+        zIndex: 10,
+        transform: `rotate(${maskRotation}deg)`,
+        transformOrigin: 'center'
+    };
+
+    return (
+        <div className="h-[calc(100vh-100px)] flex flex-col">
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" onClick={onBack} className="rounded-full">
+                    <ArrowLeft className="w-5 h-5 mr-2" /> Back
+                </Button>
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">{template.name}</h2>
+                    <p className="text-slate-500 text-sm">Upload a photo to see the magic.</p>
+                </div>
+            </div>
+
+            <div className="flex-1 flex gap-8 min-h-0">
+                {/* 1. Controls Area */}
+                <div className="flex-[0_0_60%] flex flex-col gap-6 p-1">
+                    <Card className="p-6 space-y-6 rounded-3xl border-none shadow-xl shadow-slate-200/50">
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-slate-900 mb-4">Editing Mode</h3>
+                            <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as InteractionMode)} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2 rounded-full h-12 bg-slate-100">
+                                    <TabsTrigger value="image" className="rounded-full flex gap-2">
+                                        <Move className="w-4 h-4" /> Move Image
+                                    </TabsTrigger>
+                                    <TabsTrigger value="mask" className="rounded-full flex gap-2">
+                                        <MousePointer2 className="w-4 h-4" /> Move Mask
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                            <p className="text-xs text-slate-500 mt-2 text-center">
+                                Drag to move • Scroll to zoom • Shift+Scroll to rotate
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 border-t pt-4 border-slate-100">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4 text-purple-600" />
+                                1. Upload Photo
+                            </h3>
+                            <div
+                                onClick={triggerFileInput}
+                                className="border-2 border-dashed border-slate-200 rounded-2xl h-24 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-purple-200 transition-all group"
+                            >
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+                                <Upload className="w-6 h-6 text-slate-300 group-hover:text-purple-500 mb-1 transition-colors" />
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-purple-600">Click to Upload</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <RefreshCcw className="w-4 h-4 text-purple-600" />
+                                2. Decor
+                            </h3>
+                            <Button onClick={regenerateDecorations} variant="outline" className="w-full rounded-full h-10">
+                                Shuffle Decorations
+                            </Button>
+                        </div>
+
+                        <div className="space-y-2 border-t pt-4 border-slate-100">
+                            <h3 className="font-bold text-slate-900">3. Background</h3>
+                            <div className="grid grid-cols-3 gap-2">
+                                {(Object.keys(BACKGROUND_OPTIONS) as BackgroundType[]).map((bg) => (
+                                    <button
+                                        key={bg}
+                                        onClick={() => setBackground(bg)}
+                                        className={`relative h-16 rounded-xl border-2 transition-all overflow-hidden ${background === bg
+                                            ? 'border-purple-500 shadow-lg scale-105'
+                                            : 'border-slate-200 hover:border-purple-300'
+                                            }`}
+                                        style={{ background: BACKGROUND_OPTIONS[bg].style }}
+                                    >
+                                        {background === bg && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="w-6 h-6 rounded-full bg-white shadow-lg flex items-center justify-center">
+                                                    <div className="w-3 h-3 rounded-full bg-purple-600" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-slate-400 text-center">
+                                {BACKGROUND_OPTIONS[background].name}
+                            </p>
+                        </div>
+
+                        {image && (
+                            <div className="pt-4 border-t border-slate-100">
+                                <Button onClick={handleDownload} className="w-full rounded-full h-12 font-bold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-200">
+                                    <Download className="w-4 h-4 mr-2" /> Download Design
+                                </Button>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+
+                {/* 2. Canvas Area */}
+                <div className="flex-1 bg-slate-100 rounded-[2.5rem] flex items-center justify-center p-8 overflow-hidden shadow-inner relative select-none">
+                    <div
+                        ref={canvasRef}
+                        className="relative shadow-2xl shadow-slate-400/50 overflow-hidden flex items-center justify-center group"
+                        style={containerStyle}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
+                    >
+                        {/* Layer 1: The Masked Area */}
+                        {/* We wrap the image in a div that HAS the mask styles */}
+                        <div style={maskStyle}>
+                            {image ? (
+                                <img
+                                    src={image}
+                                    className="w-full h-full object-cover"
+                                    style={{
+                                        // Counter-rotate the mask rotation so the image stays 'upright' relative to screen if desired, 
+                                        // PLUS its own rotation.
+                                        // Removed 0.67 factor to fix rotation cropping - image will start "zoomed in" (covering 150% area)
+                                        transform: `rotate(${-maskRotation}deg) translate(${imagePos.x}px, ${imagePos.y}px) rotate(${imageRotation}deg) scale(${imageScale})`,
+                                        transformOrigin: 'center',
+                                        transition: isDragging.current ? 'none' : 'transform 0.1s ease-out'
+                                    }}
+                                    alt="User Upload"
+                                    draggable={false}
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-white opacity-10" />
+                            )}
+                        </div>
+
+                        {/* Layer 2: Decorations (z-20, ON TOP) */}
+                        {decorations.map(deco => (
+                            <img
+                                key={deco.id}
+                                src={deco.src}
+                                className="absolute pointer-events-none opacity-90"
+                                style={{
+                                    top: deco.top,
+                                    left: deco.left,
+                                    width: deco.size,
+                                    transform: `translate(-50%, -50%) rotate(${deco.rotation})`,
+                                    zIndex: 20
+                                }}
+                            />
+                        ))}
+
+                        {!image && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                                <div className="text-center">
+                                    <span className="font-bold text-white/20 uppercase tracking-widest text-4xl block">Preview</span>
+                                    <span className="text-white/20 text-sm">Upload to fill mask</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};

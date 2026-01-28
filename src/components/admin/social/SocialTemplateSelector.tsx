@@ -3,12 +3,8 @@ import { Check, Smartphone, Monitor, LayoutGrid, Image as ImageIcon } from "luci
 
 export type SocialPlatform = 'instagram' | 'facebook';
 
-export type SocialTemplateId =
-    | 'ig-square' | 'ig-portrait' | 'ig-story'
-    | 'fb-landscape' | 'fb-portrait' | 'fb-square';
-
 export interface SocialTemplate {
-    id: SocialTemplateId;
+    id: string;
     name: string;
     width: number;
     height: number;
@@ -16,6 +12,7 @@ export interface SocialTemplate {
     icon?: any;
     description: string;
     gradient: string;
+    maskId: number;
 }
 
 export const INSTAGRAM_TEMPLATES: SocialTemplate[] = [
@@ -27,7 +24,8 @@ export const INSTAGRAM_TEMPLATES: SocialTemplate[] = [
         platform: 'instagram',
         icon: LayoutGrid,
         description: 'Classic 1:1 format. Perfect for feed posts.',
-        gradient: 'from-purple-500 via-pink-500 to-orange-500'
+        gradient: 'from-purple-500 via-pink-500 to-orange-500',
+        maskId: 1
     },
     {
         id: 'ig-portrait',
@@ -37,7 +35,8 @@ export const INSTAGRAM_TEMPLATES: SocialTemplate[] = [
         platform: 'instagram',
         icon: ImageIcon,
         description: 'Tall 4:5 format. Takes up more screen space.',
-        gradient: 'from-purple-500 via-pink-500 to-orange-500'
+        gradient: 'from-purple-500 via-pink-500 to-orange-500',
+        maskId: 1
     },
     {
         id: 'ig-story',
@@ -47,7 +46,8 @@ export const INSTAGRAM_TEMPLATES: SocialTemplate[] = [
         platform: 'instagram',
         icon: Smartphone,
         description: 'Full screen 9:16. For Stories and Reels.',
-        gradient: 'from-purple-500 via-pink-500 to-orange-500'
+        gradient: 'from-purple-500 via-pink-500 to-orange-500',
+        maskId: 1
     }
 ];
 
@@ -60,7 +60,8 @@ export const FACEBOOK_TEMPLATES: SocialTemplate[] = [
         platform: 'facebook',
         icon: Monitor,
         description: 'Standard horizontal format. Best for shared links.',
-        gradient: 'from-blue-600 to-blue-400'
+        gradient: 'from-blue-600 to-blue-400',
+        maskId: 1
     },
     {
         id: 'fb-portrait',
@@ -70,7 +71,8 @@ export const FACEBOOK_TEMPLATES: SocialTemplate[] = [
         platform: 'facebook',
         icon: Smartphone,
         description: 'Mobile-first vertical format.',
-        gradient: 'from-blue-600 to-blue-400'
+        gradient: 'from-blue-600 to-blue-400',
+        maskId: 1
     },
     {
         id: 'fb-square',
@@ -80,7 +82,8 @@ export const FACEBOOK_TEMPLATES: SocialTemplate[] = [
         platform: 'facebook',
         icon: LayoutGrid,
         description: 'Versatile 1:1 format.',
-        gradient: 'from-blue-600 to-blue-400'
+        gradient: 'from-blue-600 to-blue-400',
+        maskId: 1
     }
 ];
 
