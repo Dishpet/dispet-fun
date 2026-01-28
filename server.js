@@ -79,10 +79,10 @@ try {
 
     const app = express();
     const PORT = process.env.PORT || 3000;
-    const MESSAGES_FILE = path.join(__dirname, 'data', 'messages.json');
+    const MESSAGES_FILE = path.join(process.cwd(), 'data', 'messages.json');
 
     // Ensure the data directory exists for local message storage
-    const dataDir = path.join(__dirname, 'data');
+    const dataDir = path.join(process.cwd(), 'data');
     if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
     }
@@ -532,101 +532,105 @@ ${message}
     });
 
     // --- PROXY API ROUTES ---
+    // Use app.use for robust middleware handling in Express 4/5
+    app.use('/api', async (req, res) => {
+        // Skip if already handled (however, app.use usually runs first? 
+        // No, in Express, routes are matched in order. 
+        // If we place this AT THE END, it catches everything not yet handled!)
 
-    const WP_API_URL = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+        // Note: req.url in app.use is relative to the mount point (/api)
+        // So if request is /api/wc/products, req.url is /wc/products
+        const subPath = req.url;
+        const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
 
+        // Construct base Target URL
+        let targetUrl = `${WP_API_URL}${apiPath}`;
 
+        console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
-    // Express 5 uses {*param} syntax for wildcards
-    app.all('/api/{*path}', async (req, res) => {
-        try {
-            // In Express 5, the wildcard can be an array or string
-            let subPath = req.params.path;
-            // If it's an array, join it
-            if (Array.isArray(subPath)) {
-                subPath = subPath.join('/');
-            }
-            // Ensure it's a string
-            subPath = String(subPath || '');
-            const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
-            const targetUrl = `${WP_API_URL}${apiPath}`;
+        let authHeader = null;
 
+        // Authentication Logic
+        if (apiPath.startsWith('/wc/')) {
+            const key = process.env.WC_CONSUMER_KEY;
+            const secret = process.env.WC_CONSUMER_SECRET;
 
+            if (key && secret) {
+                // Method 1: Basic Auth Header (Standard)
+                const authString = Buffer.from(`${key}:${secret}`).toString('base64');
+                authHeader = `Basic ${authString}`;
 
-
-            console.log(`[Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
-
-            let authHeader = null;
-            let queryAuth = {}; // Kept empty unless needed for fallback
-
-            if (apiPath.startsWith('/wc/')) {
-                // Use Basic Auth for WooCommerce (Standard & More Secure)
-                const key = process.env.WC_CONSUMER_KEY;
-                const secret = process.env.WC_CONSUMER_SECRET;
-                if (key && secret) {
-                    const authString = Buffer.from(`${key}:${secret}`).toString('base64');
-                    authHeader = `Basic ${authString}`;
-                } else {
-                    console.warn('[Proxy] Missing WC credentials for WooCommerce request');
-                }
-            } else if (apiPath.startsWith('/wp/')) {
-                authHeader = getWpAuthHeader();
+                // Method 2: Query Params (Fallback for Header Stripping Proxies)
+                const separator = targetUrl.includes('?') ? '&' : '?';
+                targetUrl = `${targetUrl}${separator}consumer_key=${key}&consumer_secret=${secret}`;
             } else {
-                // For generic API calls, try WC Auth as fallback
-                const key = process.env.WC_CONSUMER_KEY;
-                const secret = process.env.WC_CONSUMER_SECRET;
-                if (key && secret) {
-                    const authString = Buffer.from(`${key}:${secret}`).toString('base64');
-                    authHeader = `Basic ${authString}`;
-                }
+                console.warn('[Proxy] Missing WC credentials for WooCommerce request');
             }
-
-            const headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            };
-
-            if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
-                headers['Content-Type'] = 'application/json';
+        } else if (apiPath.startsWith('/wp/')) {
+            authHeader = getWpAuthHeader();
+        } else {
+            // Fallback
+            const key = process.env.WC_CONSUMER_KEY;
+            const secret = process.env.WC_CONSUMER_SECRET;
+            if (key && secret) {
+                const authString = Buffer.from(`${key}:${secret}`).toString('base64');
+                authHeader = `Basic ${authString}`;
             }
+        }
 
-            if (req.headers['content-disposition']) {
-                headers['Content-Disposition'] = req.headers['content-disposition'];
-            }
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        };
 
-            if (authHeader) {
-                headers['Authorization'] = authHeader;
-            }
+        if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
+            headers['Content-Type'] = 'application/json';
+        }
 
-            const axiosConfig = {
-                method: req.method,
-                url: targetUrl,
-                headers,
-                params: { ...req.query, ...queryAuth }
-            };
+        if (req.headers['content-disposition']) {
+            headers['Content-Disposition'] = req.headers['content-disposition'];
+        }
 
-            if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-                axiosConfig.data = req.body;
-            }
+        if (authHeader) {
+            headers['Authorization'] = authHeader;
+        }
 
+        const axiosConfig = {
+            method: req.method,
+            url: targetUrl,
+            headers: headers,
+            data: req.method !== 'GET' ? req.body : undefined,
+            validateStatus: () => true, // Don't throw on 4xx/5xx
+        };
+
+        // Handle specific fetch behavior if needed, but axios is fine.
+        // We need to return the response.
+
+        // ... (We need to copy the axios call from the previous implementation)
+        // I will include it here in ReplacementContent to be safe
+        try {
             const response = await axios(axiosConfig);
 
-            if (response.headers['x-wp-total']) {
-                res.setHeader('X-WP-Total', response.headers['x-wp-total']);
-            }
-            if (response.headers['x-wp-totalpages']) {
-                res.setHeader('X-WP-TotalPages', response.headers['x-wp-totalpages']);
-            }
+            // Forward status and headers
+            res.status(response.status);
 
-            res.status(response.status).json(response.data);
+            // Forward headers carefully
+            Object.keys(response.headers).forEach(key => {
+                // Skip dangerous headers
+                if (['content-length', 'connection', 'host', 'transfer-encoding'].includes(key.toLowerCase())) return;
+                res.setHeader(key, response.headers[key]);
+            });
+
+            res.send(response.data);
         } catch (error) {
-            console.error('Proxy Error:', error.message);
+            console.error(`[Proxy Error] ${error.message}`);
             if (error.response) {
-                res.status(error.response.status).json(error.response.data);
+                res.status(error.response.status).send(error.response.data);
             } else {
-                res.status(500).json({ error: 'Proxy request failed', details: error.message });
+                res.status(500).json({ error: 'Proxy Error', message: error.message });
             }
         }
     });
+
 
     // --- STATIC ASSETS & FALLBACK ---
 

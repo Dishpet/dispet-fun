@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { createProduct, updateProduct } from "@/integrations/wordpress/woocommerce";
 import { WCProduct } from "@/integrations/wordpress/types";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, Image as ImageIcon, Box, List, Tag } from "lucide-react";
+import { Loader2, Save, Image as ImageIcon, Box, List, Tag, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MediaPicker } from "./MediaPicker";
 import ReactQuill from "react-quill";
@@ -187,26 +187,38 @@ export const ProductEditor = ({ product, initialImage, onSuccess }: ProductEdito
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border">
-                                <div className="space-y-2">
-                                    <Label>Regular Price (€)</Label>
-                                    <Input
-                                        type="number"
-                                        value={regularPrice}
-                                        onChange={(e) => setRegularPrice(e.target.value)}
-                                        placeholder="0.00"
-                                    />
+                            {productType === 'simple' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border">
+                                    <div className="space-y-2">
+                                        <Label>Regular Price (€)</Label>
+                                        <Input
+                                            type="number"
+                                            value={regularPrice}
+                                            onChange={(e) => setRegularPrice(e.target.value)}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Sale Price (€) <span className="text-gray-400 font-normal">(Optional)</span></Label>
+                                        <Input
+                                            type="number"
+                                            value={price}
+                                            onChange={(e) => setPrice(e.target.value)}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Sale Price (€) <span className="text-gray-400 font-normal">(Optional)</span></Label>
-                                    <Input
-                                        type="number"
-                                        value={price}
-                                        onChange={(e) => setPrice(e.target.value)}
-                                        placeholder="0.00"
-                                    />
+                            ) : (
+                                <div className="p-4 bg-blue-50 text-blue-800 rounded-lg border border-blue-100 mb-6">
+                                    <h4 className="font-semibold flex items-center gap-2">
+                                        <Info className="w-4 h-4" />
+                                        Variable Product Pricing
+                                    </h4>
+                                    <p className="text-sm mt-1 opacity-90">
+                                        Prices for variable products are managed in the <strong>Variations</strong> tab.
+                                    </p>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="space-y-2">
                                 <Label>Short Description</Label>
