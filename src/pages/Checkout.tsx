@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, User, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { createOrder } from "@/integrations/wordpress/woocommerce";
+import { createOrder, executeHeadlessPayment } from "@/integrations/wordpress/woocommerce";
 import { PageHero } from "@/components/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadStripe } from "@stripe/stripe-js";
@@ -137,7 +137,7 @@ const Checkout = () => {
         ]
       };
 
-      const response: any = await createOrder(orderData);
+      const response: any = await executeHeadlessPayment(orderData, token.id);
 
       if (response.id) {
         // Send order notification with design details for printing team

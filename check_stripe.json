@@ -1,0 +1,4 @@
+{
+    "file": "check_stripe.php",
+    "code": "<?php\necho class_exists('WC_Gateway_Stripe') ? 'YES' : 'NO';\n"
+}

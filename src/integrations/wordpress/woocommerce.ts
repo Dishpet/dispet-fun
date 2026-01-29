@@ -98,3 +98,16 @@ export const verifyCredentials = async (username: string, password: string) => {
         }
     });
 };
+
+export const executeHeadlessPayment = async (orderData: any, stripeToken: string) => {
+    const headers = getAuthHeaders();
+    return wpFetch('/antigravity/v1/checkout-payment', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            order_data: orderData,
+            stripe_token: stripeToken
+        }),
+    });
+};
+

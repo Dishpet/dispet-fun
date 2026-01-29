@@ -583,7 +583,7 @@ ${message}
                 const authString = Buffer.from(`${key}:${secret}`).toString('base64');
                 authHeader = `Basic ${authString}`;
             }
-        } else if (apiPath.includes('/wp/')) {
+        } else if (apiPath.includes('/wp/') || apiPath.includes('/antigravity/')) {
             authHeader = getWpAuthHeader();
         }
 
