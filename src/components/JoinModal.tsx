@@ -238,7 +238,7 @@ export const JoinModal = ({ isOpen, onClose }: JoinModalProps) => {
                                     useOneTap
                                     theme="filled_blue"
                                     shape="pill"
-                                    width="100%"
+                                    width="300"
                                 />
                             </div>
 
