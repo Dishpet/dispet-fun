@@ -134,42 +134,12 @@ function ag_headless_checkout_handler($request) {
             $product = wc_get_product($product_id);
 
             if ($product) {
-                // Try to resolve exact variation if it's a variable product but we only have parent ID
-                if ($product->is_type('variable') && empty($item['variation_id'])) {
-                    $variations = $product->get_available_variations();
-                    foreach ($variations as $variation) {
-                        $match_found = false;
-                        foreach ($variation['attributes'] as $attr_slug => $attr_val) {
-                            if (empty($attr_val)) continue; // Wildcard matches anything
-                            
-                            $value_matched = false;
-                            foreach ($item['meta_data'] as $meta) {
-                                // Strict value checking (e.g. matching Hex or Size string)
-                                if (strcasecmp($meta['value'], $attr_val) === 0) {
-                                    $value_matched = true;
-                                    break;
-                                }
-                            }
-                            if (!$value_matched) {
-                                // Attribute mismatch
-                                continue 2; // Continue to next variation
-                            }
-                            // If we matched this attribute, set flag (but keep checking others)
-                            $match_found = true;
-                        }
-                        
-                        // If we completed the attribute loop without continuing, it's a match
-                        if ($match_found || empty($variation['attributes'])) {
-                            $product = wc_get_product($variation['variation_id']);
-                            break;
-                        }
-                    }
-
-                }
-
-                $item_id = $order->add_product($product, $qty); // Add content
+                // Simplified: Add product directly (fallback to Parent ID if no variation_id)
+                $item_id = $order->add_product($product, $qty, [
+                    'variation' => isset($item['variation_id']) ? $item['variation_id'] : []
+                ]);
                 
-                // Add Meta Data (Color, Size, Design) directly to the item
+                // Save Meta Data (Size, Color, Design)
                 if ($item_id && !empty($item['meta_data'])) {
                     $order_item = $order->get_item($item_id);
                     if ($order_item) {
