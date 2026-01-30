@@ -99,7 +99,16 @@ function ag_headless_checkout_handler($request) {
                 if (function_exists('wc_get_notices')) {
                      $notices = wc_get_notices('error');
                      if (!empty($notices)) {
-                         $errorMessage .= " " . implode(" ", array_map('strip_tags', $notices));
+                         $notice_messages = [];
+                         foreach ($notices as $notice) {
+                             if (is_array($notice)) {
+                                 // Sometimes notices are ['notice' => 'Message', 'data' => ...]
+                                 $notice_messages[] = isset($notice['notice']) ? strip_tags($notice['notice']) : '';
+                             } else {
+                                 $notice_messages[] = strip_tags($notice);
+                             }
+                         }
+                         $errorMessage .= " " . implode(" ", array_filter($notice_messages));
                          wc_clear_notices();
                      }
                 }
