@@ -30,6 +30,15 @@ add_action('rest_api_init', function () {
 });
 
 function ag_headless_checkout_handler($request) {
+    // Initialize WC Session if not present (Required for wc_add_notice to work without crashing)
+    if (function_exists('WC') && empty(WC()->session)) {
+        // We need to look for a session class. Usually WC_Session_Handler
+        if (class_exists('WC_Session_Handler')) {
+            WC()->session = new WC_Session_Handler();
+            WC()->session->init();
+        }
+    }
+
     $params = $request->get_json_params();
     $token = $params['stripe_token'];
     $order_data = $params['order_data'];
