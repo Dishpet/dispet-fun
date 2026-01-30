@@ -194,11 +194,10 @@ const INITIAL_PRODUCTS = {
         stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
-        variations: [] as any[],
     },
     hoodie: {
         id: 'hoodie-001',
-        name: 'Dišpet Hoodie',
+        name: 'Dišpet Duksica', // Updated to match WP
         price: 45.00,
         description: 'Premium teška hoodica, savršena za svaku priliku.',
         colors: SHARED_COLORS,
@@ -209,7 +208,7 @@ const INITIAL_PRODUCTS = {
     },
     cap: {
         id: 'cap-001',
-        name: 'Dišpet Cap',
+        name: 'Dišpet Šilterica', // Updated to match WP
         price: 20.00,
         description: 'Klasična šilterica koja upotpunjuje svaki stil.',
         colors: SHARED_COLORS,
@@ -220,7 +219,7 @@ const INITIAL_PRODUCTS = {
     },
     bottle: {
         id: 'bottle-001',
-        name: 'Dišpet termosica',
+        name: 'Dišpet Termosica', // Updated to match WP
         price: 20.00,
         description: 'Termo boca od nehrđajućeg čelika.',
         colors: [
@@ -265,7 +264,6 @@ const Shop = () => {
     const [expandedCollection, setExpandedCollection] = useState<string>('Logotip');
     const [activeTab, setActiveTab] = useState<'details' | 'features' | 'reviews'>('details');
     const [quantity, setQuantity] = useState(1);
-    const [areModelsLoaded, setAreModelsLoaded] = useState(false);
 
     const { addToCart } = useCart();
     const { toast } = useToast();
@@ -684,7 +682,7 @@ const Shop = () => {
             >
 
                 {/* Navigation Arrows */}
-                {viewMode === 'customizing' && !isFullScreen && areModelsLoaded && (
+                {viewMode === 'customizing' && !isFullScreen && (
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-50 flex justify-between px-4 md:px-8 pointer-events-none">
                         <button
                             onClick={() => cycleProduct('prev')}
@@ -746,7 +744,6 @@ const Shop = () => {
                                 cap: shopConfig?.cap?.restricted_designs,
                                 bottle: shopConfig?.bottle?.restricted_designs
                             }), [shopConfig])}
-                            onAllLoaded={() => setAreModelsLoaded(true)}
                         />
 
                     </div>
@@ -755,7 +752,7 @@ const Shop = () => {
 
 
                 {/* Overlay Text (Title & Price) */}
-                {viewMode === 'customizing' && areModelsLoaded && (
+                {viewMode === 'customizing' && (
                     <div className="absolute inset-0 z-20 pointer-events-none container mx-auto px-6 md:px-8">
                         <div className="relative w-full h-full flex flex-col justify-between pt-20 md:pt-28 pb-48">
                             {/* Top Area titles */}
@@ -785,7 +782,7 @@ const Shop = () => {
                 {/* FLOATING CONTROLS - z-50 to be on top of everything */}
 
                 {/* 3. Central Controls (Bottom Center) */}
-                {viewMode === 'customizing' && areModelsLoaded && (
+                {viewMode === 'customizing' && (
                     <div className="absolute bottom-4 left-0 right-0 z-50 flex flex-col items-center justify-end pointer-events-none">
                         <div className="pointer-events-auto w-full max-w-4xl px-4 flex flex-col items-center gap-4">
 
@@ -930,388 +927,385 @@ const Shop = () => {
             {/* Placeholder to prevent layout shift when header becomes fixed */}
             {isFullScreen && <div className="h-[92vh] md:h-[85vh]" />}
 
-            {areModelsLoaded && (
-                viewMode === 'showcase' ? (
-                    <div className="w-full relative z-40 bg-white -mt-2 pt-12 md:pt-24">
+            {viewMode === 'showcase' ? (
+                <div className="w-full relative z-40 bg-white -mt-2 pt-12 md:pt-24">
 
-                        {/* Banner Image */}
-                        <div className="w-full h-auto">
-                            <picture>
-                                <source media="(max-width: 768px)" srcSet={mobileBannerImage} />
-                                <img
-                                    src={bannerImage}
-                                    alt="Shop Banner"
-                                    className="w-full h-full object-cover block"
-                                />
-                            </picture>
-                        </div>
-
-                        <div className="container mx-auto px-4 py-8 md:py-16 relative z-50 text-center pointer-events-none">
-                            <h2 className="text-4xl md:text-6xl font-black text-[#43bfe6] font-['DynaPuff'] tracking-wide mb-6 drop-shadow-sm">
-                                Izaberi artikal i pronađi svoj stil
-                            </h2>
-                            <p className="text-sm md:text-base font-medium text-gray-500 max-w-4xl mx-auto leading-relaxed">
-                                Sav prihod od prodaje ide organizaciji Dišpeta.
-                            </p>
-
-                            {/* Logo Variations GIF */}
-                            <div className="w-full max-w-2xl mx-auto mt-8">
-                                <img
-                                    src={logoVariationsGif}
-                                    alt="Logo Variations"
-                                    className="w-full h-auto block"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Banner Video */}
-                        <div className="w-full h-auto">
-                            <video
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
+                    {/* Banner Image */}
+                    <div className="w-full h-auto">
+                        <picture>
+                            <source media="(max-width: 768px)" srcSet={mobileBannerImage} />
+                            <img
+                                src={bannerImage}
+                                alt="Shop Banner"
                                 className="w-full h-full object-cover block"
-                            >
-                                <source src={bannerVideo} type="video/webm" />
-                            </video>
+                            />
+                        </picture>
+                    </div>
+
+                    <div className="container mx-auto px-4 py-8 md:py-16 relative z-50 text-center pointer-events-none">
+                        <h2 className="text-4xl md:text-6xl font-black text-[#43bfe6] font-['DynaPuff'] tracking-wide mb-6 drop-shadow-sm">
+                            Izaberi artikal i pronađi svoj stil
+                        </h2>
+                        <p className="text-sm md:text-base font-medium text-gray-500 max-w-4xl mx-auto leading-relaxed">
+                            Sav prihod od prodaje ide organizaciji Dišpeta.
+                        </p>
+
+                        {/* Logo Variations GIF */}
+                        <div className="w-full max-w-2xl mx-auto mt-8">
+                            <img
+                                src={logoVariationsGif}
+                                alt="Logo Variations"
+                                className="w-full h-auto block"
+                            />
                         </div>
                     </div>
-                ) : (
-                    <div className="container mx-auto px-4 py-12 md:py-20 bg-gray-50 -mt-10 relative z-40 rounded-[3rem] shadow-2xl">
-                        <div className="max-w-4xl mx-auto space-y-8">
 
-                            {/* 1. Top Section: Controls (Size + Quantity + Cart) */}
-                            <div className="flex flex-col xl:flex-row items-stretch xl:items-end gap-6 my-8">
+                    {/* Banner Video */}
+                    <div className="w-full h-auto">
+                        <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover block"
+                        >
+                            <source src={bannerVideo} type="video/webm" />
+                        </video>
+                    </div>
+                </div>
+            ) : (
+                <div className="container mx-auto px-4 py-12 md:py-20 bg-gray-50 -mt-10 relative z-40 rounded-[3rem] shadow-2xl">
+                    <div className="max-w-4xl mx-auto space-y-8">
 
-                                {/* Controls Wrapper */}
-                                <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto shrink-0 justify-center">
+                        {/* 1. Top Section: Controls (Size + Quantity + Cart) */}
+                        <div className="flex flex-col xl:flex-row items-stretch xl:items-end gap-6 my-8">
 
-                                    {/* Size Picker */}
-                                    {selectedProduct !== 'cap' && selectedProduct !== 'bottle' && (
-                                        <div className="flex-1 sm:flex-none flex flex-col gap-3 min-w-[200px]">
-                                            <div className="flex justify-between items-center px-1">
-                                                <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
-                                            </div>
-                                            <div className="flex justify-between items-center bg-white rounded-full border border-gray-100 shadow-sm p-1.5 h-[62px]">
-                                                {SIZES.map((size) => (
-                                                    <button
-                                                        key={size}
-                                                        onClick={() => setSelectedSize(size)}
-                                                        className={`h-full aspect-square rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
-                                                            ? 'bg-black text-white shadow-md'
-                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
-                                                            }`}
-                                                    >
-                                                        {size}
-                                                    </button>
-                                                ))}
-                                            </div>
+                            {/* Controls Wrapper */}
+                            <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto shrink-0 justify-center">
+
+                                {/* Size Picker */}
+                                {selectedProduct !== 'cap' && selectedProduct !== 'bottle' && (
+                                    <div className="flex-1 sm:flex-none flex flex-col gap-3 min-w-[200px]">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                    )}
-
-                                    {/* Quantity Picker */}
-                                    <div className="flex-1 sm:flex-none flex flex-col gap-3 min-w-[140px]">
-                                        <label className="text-sm font-bold uppercase tracking-wider text-gray-400 px-1 font-['DynaPuff']">Količina</label>
-                                        <div className="flex items-center justify-between gap-1 bg-white rounded-full border border-gray-100 shadow-sm p-1.5 h-[62px] sm:h-[62px]">
-                                            <button
-                                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                                className="w-12 h-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded-full transition-all active:scale-95"
-                                            >
-                                                <Minus className="w-5 h-5" />
-                                            </button>
-                                            <span className="flex-1 text-center font-black text-xl text-gray-900 font-['DynaPuff']">{quantity}</span>
-                                            <button
-                                                onClick={() => setQuantity(quantity + 1)}
-                                                className="w-12 h-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded-full transition-all active:scale-95"
-                                            >
-                                                <Plus className="w-5 h-5" />
-                                            </button>
+                                        <div className="flex justify-between items-center bg-white rounded-full border border-gray-100 shadow-sm p-1.5 h-[62px]">
+                                            {SIZES.map((size) => (
+                                                <button
+                                                    key={size}
+                                                    onClick={() => setSelectedSize(size)}
+                                                    className={`h-full aspect-square rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                        ? 'bg-black text-white shadow-md'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-black'
+                                                        }`}
+                                                >
+                                                    {size}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Add to Cart Button */}
-                                <div className="flex-1 w-full min-w-[280px] group/btn">
-                                    <Button
-                                        size="lg"
-                                        disabled={activeProductData.stockStatus === 'outofstock'}
-                                        className={`w-full h-[62px] text-xl font-bold rounded-full transition-all flex items-center justify-center gap-3 relative overflow-hidden font-['DynaPuff'] border-2 border-transparent shadow-none ${activeProductData.stockStatus === 'outofstock'
-                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
-                                            : 'text-white'}`}
-                                        style={activeProductData.stockStatus !== 'outofstock' ? {
-                                            background: `
+                                {/* Quantity Picker */}
+                                <div className="flex-1 sm:flex-none flex flex-col gap-3 min-w-[140px]">
+                                    <label className="text-sm font-bold uppercase tracking-wider text-gray-400 px-1 font-['DynaPuff']">Količina</label>
+                                    <div className="flex items-center justify-between gap-1 bg-white rounded-full border border-gray-100 shadow-sm p-1.5 h-[62px] sm:h-[62px]">
+                                        <button
+                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                            className="w-12 h-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded-full transition-all active:scale-95"
+                                        >
+                                            <Minus className="w-5 h-5" />
+                                        </button>
+                                        <span className="flex-1 text-center font-black text-xl text-gray-900 font-['DynaPuff']">{quantity}</span>
+                                        <button
+                                            onClick={() => setQuantity(quantity + 1)}
+                                            className="w-12 h-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 rounded-full transition-all active:scale-95"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Add to Cart Button */}
+                            <div className="flex-1 w-full min-w-[280px] group/btn">
+                                <Button
+                                    size="lg"
+                                    disabled={activeProductData.stockStatus === 'outofstock'}
+                                    className={`w-full h-[62px] text-xl font-bold rounded-full transition-all flex items-center justify-center gap-3 relative overflow-hidden font-['DynaPuff'] border-2 border-transparent shadow-none ${activeProductData.stockStatus === 'outofstock'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                                        : 'text-white'}`}
+                                    style={activeProductData.stockStatus !== 'outofstock' ? {
+                                        background: `
                                             linear-gradient(135deg, #00ffbf, #0089cd) padding-box,
                                             conic-gradient(from var(--border-angle, 0deg), #ad00e9 0%, transparent 10%, transparent 90%, #ad00e9 100%) border-box
                                         `,
-                                            transition: '--border-angle 0.15s ease'
-                                        } : undefined}
-                                        onMouseMove={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            const x = e.clientX - rect.left - rect.width / 2;
-                                            const y = e.clientY - rect.top - rect.height / 2;
-                                            const angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
-                                            e.currentTarget.style.setProperty('--border-angle', `${angle}deg`);
-                                        }}
-                                        onClick={handleAddToCart}
+                                        transition: '--border-angle 0.15s ease'
+                                    } : undefined}
+                                    onMouseMove={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const x = e.clientX - rect.left - rect.width / 2;
+                                        const y = e.clientY - rect.top - rect.height / 2;
+                                        const angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
+                                        e.currentTarget.style.setProperty('--border-angle', `${angle}deg`);
+                                    }}
+                                    onClick={handleAddToCart}
+                                >
+                                    {activeProductData.stockStatus === 'outofstock' ? (
+                                        <span>Nema na zalihi</span>
+                                    ) : (
+                                        <>
+                                            <ShoppingBag className="w-6 h-6 transition-transform group-hover/btn:rotate-12" />
+                                            <span>Dodaj u košaricu</span>
+                                            <div className="w-px h-6 bg-white/20 mx-2" />
+                                            <span className="tabular-nums">{(activeProductData.price * quantity).toFixed(2)}€</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* 2. Bottom Section: Tabs */}
+                        <div className="rounded-3xl overflow-hidden min-h-[400px]">
+                            {/* Tab Headers */}
+                            <div className="flex border-b border-gray-200/50 overflow-x-auto bg-white/50 backdrop-blur-sm rounded-t-3xl">
+                                {[
+                                    { id: 'details', label: 'Detalji' },
+                                    { id: 'features', label: 'Značajke' },
+                                    { id: 'reviews', label: `Recenzije (${activeProductData.ratingCount})` }
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id as any)}
+                                        className={`flex-1 py-4 px-2 md:px-8 text-sm md:text-lg font-bold font-heading transition-colors whitespace-nowrap ${activeTab === tab.id
+                                            ? 'text-[#e83e70] border-b-4 border-[#e83e70] bg-[#e83e70]/10'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
+                                            }`}
                                     >
-                                        {activeProductData.stockStatus === 'outofstock' ? (
-                                            <span>Nema na zalihi</span>
-                                        ) : (
-                                            <>
-                                                <ShoppingBag className="w-6 h-6 transition-transform group-hover/btn:rotate-12" />
-                                                <span>Dodaj u košaricu</span>
-                                                <div className="w-px h-6 bg-white/20 mx-2" />
-                                                <span className="tabular-nums">{(activeProductData.price * quantity).toFixed(2)}€</span>
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
 
-                            {/* 2. Bottom Section: Tabs */}
-                            <div className="rounded-3xl overflow-hidden min-h-[400px]">
-                                {/* Tab Headers */}
-                                <div className="flex border-b border-gray-200/50 overflow-x-auto bg-white/50 backdrop-blur-sm rounded-t-3xl">
-                                    {[
-                                        { id: 'details', label: 'Detalji' },
-                                        { id: 'features', label: 'Značajke' },
-                                        { id: 'reviews', label: `Recenzije (${activeProductData.ratingCount})` }
-                                    ].map((tab) => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex-1 py-4 px-2 md:px-8 text-sm md:text-lg font-bold font-heading transition-colors whitespace-nowrap ${activeTab === tab.id
-                                                ? 'text-[#e83e70] border-b-4 border-[#e83e70] bg-[#e83e70]/10'
-                                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
-                                                }`}
-                                        >
-                                            {tab.label}
-                                        </button>
-                                    ))}
-                                </div>
+                            {/* Tab Content */}
+                            <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-b-3xl">
+                                {activeTab === 'details' && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <h3 className="text-3xl font-black font-heading mb-6 text-gray-900">{activeProductData.name}</h3>
+                                        <p className="text-gray-600 leading-relaxed text-lg mb-8">
+                                            {activeProductData.description || "Vrhunska kvaliteta i udobnost. Naši proizvodi izrađeni su od najfinijih materijala, pružajući savršen balans između stila i funkcionalnosti. Idealno za svakodnevno nošenje ili posebne prilike."}
+                                        </p>
 
-                                {/* Tab Content */}
-                                <div className="bg-white/80 backdrop-blur-md p-8 md:p-12 rounded-b-3xl">
-                                    {activeTab === 'details' && (
-                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                            <h3 className="text-3xl font-black font-heading mb-6 text-gray-900">{activeProductData.name}</h3>
-                                            <p className="text-gray-600 leading-relaxed text-lg mb-8">
-                                                {activeProductData.description || "Vrhunska kvaliteta i udobnost. Naši proizvodi izrađeni su od najfinijih materijala, pružajući savršen balans između stila i funkcionalnosti. Idealno za svakodnevno nošenje ili posebne prilike."}
-                                            </p>
+                                        {selectedProduct === 'bottle' ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#e83e70] font-black text-2xl mb-1">500ml</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Kapacitet</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#43bfe6] font-black text-2xl mb-1">Inox</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Materijal</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#ad00e9] font-black text-2xl mb-1">12h/24h</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Toplo/Hladno</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-green-500 font-black text-2xl mb-1">283g</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Težina</div>
+                                                </div>
+                                            </div>
+                                        ) : (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#e83e70] font-black text-2xl mb-1">100%</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Pamuk</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#43bfe6] font-black text-2xl mb-1">2%</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Skupljanje</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#ad00e9] font-black text-2xl mb-1">40°C</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Pranje</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-green-500 font-black text-2xl mb-1">HR</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Proizvodnja</div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#e83e70] font-black text-2xl mb-1">100%</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Poliester</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#43bfe6] font-black text-2xl mb-1">DTF</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Print</div>
+                                                </div>
+                                                <div className="bg-gray-50 p-4 rounded-2xl text-center">
+                                                    <div className="text-[#ad00e9] font-black text-2xl mb-1">EU</div>
+                                                    <div className="text-gray-500 text-xs font-bold uppercase">Kvaliteta</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                            {selectedProduct === 'bottle' ? (
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#e83e70] font-black text-2xl mb-1">500ml</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Kapacitet</div>
+                                {activeTab === 'features' && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 grid md:grid-cols-2 gap-8">
+                                        {selectedProduct === 'bottle' ? (
+                                            <ul className="space-y-4">
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
                                                     </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#43bfe6] font-black text-2xl mb-1">Inox</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Materijal</div>
+                                                    <span className="font-medium text-gray-700 text-lg">Nepropusno (Leakproof)</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
                                                     </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#ad00e9] font-black text-2xl mb-1">12h/24h</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Toplo/Hladno</div>
+                                                    <span className="font-medium text-gray-700 text-lg">Toplinska izolacija: 12h</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
                                                     </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-green-500 font-black text-2xl mb-1">283g</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Težina</div>
+                                                    <span className="font-medium text-gray-700 text-lg">Hladna izolacija: 24h</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Dvostruka stijenka s bakrenom izolacijom</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Dimenzije: ø70×263 mm</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-400 shrink-0">
+                                                        <X className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Nije za mikrovalnu</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-400 shrink-0">
+                                                        <X className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Nije za perilicu posuđa</span>
+                                                </li>
+                                            </ul>
+                                        ) : (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') ? (
+                                            <ul className="space-y-4">
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Sastav: 100% Pamuk</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Skupljanje: po visini 2%, po dužini 2%</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Održavanje: Pranje na 40°C, Glačanje</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Proizvođač: Tina-co Solin d.o.o.</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Stavlja na tržište: 021 d.o.o.</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
+                                                </li>
+                                            </ul>
+                                        ) : (
+                                            <ul className="space-y-4">
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">100% Poliester</span>
+                                                </li>
+                                                <li className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                                        <Check className="w-6 h-6" />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
+                                                </li>
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'reviews' && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                        {activeProductData.ratingCount > 0 ? (
+                                            <>
+                                                <div className="flex items-center gap-4 mb-8 p-6 bg-yellow-50 rounded-2xl border border-yellow-100">
+                                                    <div className="text-5xl font-black text-yellow-500">{activeProductData.averageRating.toFixed(1)}</div>
+                                                    <div>
+                                                        <div className="flex text-yellow-500 mb-1">
+                                                            {[1, 2, 3, 4, 5].map(i => (
+                                                                <Star
+                                                                    key={i}
+                                                                    className={`w-5 h-5 ${i <= Math.round(activeProductData.averageRating) ? 'fill-current' : 'text-gray-300'}`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <div className="text-gray-600 font-medium">Temeljeno na {activeProductData.ratingCount} recenzija</div>
                                                     </div>
                                                 </div>
-                                            ) : (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') ? (
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#e83e70] font-black text-2xl mb-1">100%</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Pamuk</div>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#43bfe6] font-black text-2xl mb-1">2%</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Skupljanje</div>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#ad00e9] font-black text-2xl mb-1">40°C</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Pranje</div>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-green-500 font-black text-2xl mb-1">HR</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Proizvodnja</div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#e83e70] font-black text-2xl mb-1">100%</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Poliester</div>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#43bfe6] font-black text-2xl mb-1">DTF</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Print</div>
-                                                    </div>
-                                                    <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                                                        <div className="text-[#ad00e9] font-black text-2xl mb-1">EU</div>
-                                                        <div className="text-gray-500 text-xs font-bold uppercase">Kvaliteta</div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
 
-                                    {activeTab === 'features' && (
-                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 grid md:grid-cols-2 gap-8">
-                                            {selectedProduct === 'bottle' ? (
-                                                <ul className="space-y-4">
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Nepropusno (Leakproof)</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Toplinska izolacija: 12h</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Hladna izolacija: 24h</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Dvostruka stijenka s bakrenom izolacijom</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Dimenzije: ø70×263 mm</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-400 shrink-0">
-                                                            <X className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Nije za mikrovalnu</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-400 shrink-0">
-                                                            <X className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Nije za perilicu posuđa</span>
-                                                    </li>
-                                                </ul>
-                                            ) : (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') ? (
-                                                <ul className="space-y-4">
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Sastav: 100% Pamuk</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Skupljanje: po visini 2%, po dužini 2%</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Održavanje: Pranje na 40°C, Glačanje</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Proizvođač: Tina-co Solin d.o.o.</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Stavlja na tržište: 021 d.o.o.</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
-                                                    </li>
-                                                </ul>
-                                            ) : (
-                                                <ul className="space-y-4">
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">100% Poliester</span>
-                                                    </li>
-                                                    <li className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                                            <Check className="w-6 h-6" />
-                                                        </div>
-                                                        <span className="font-medium text-gray-700 text-lg">Tehnika tiska: DTF</span>
-                                                    </li>
-                                                </ul>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {activeTab === 'reviews' && (
-                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                                            {activeProductData.ratingCount > 0 ? (
-                                                <>
-                                                    <div className="flex items-center gap-4 mb-8 p-6 bg-yellow-50 rounded-2xl border border-yellow-100">
-                                                        <div className="text-5xl font-black text-yellow-500">{activeProductData.averageRating.toFixed(1)}</div>
-                                                        <div>
-                                                            <div className="flex text-yellow-500 mb-1">
-                                                                {[1, 2, 3, 4, 5].map(i => (
-                                                                    <Star
-                                                                        key={i}
-                                                                        className={`w-5 h-5 ${i <= Math.round(activeProductData.averageRating) ? 'fill-current' : 'text-gray-300'}`}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            <div className="text-gray-600 font-medium">Temeljeno na {activeProductData.ratingCount} recenzija</div>
-                                                        </div>
+                                                {/* Sample Review - kept static for now as actual review text isn't fetched yet */}
+                                                <div className="border-b border-gray-100 pb-6">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="font-bold text-gray-900">Marko P.</div>
+                                                        <span className="text-sm text-gray-400">Prije 2 dana</span>
                                                     </div>
-
-                                                    {/* Sample Review - kept static for now as actual review text isn't fetched yet */}
-                                                    <div className="border-b border-gray-100 pb-6">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <div className="font-bold text-gray-900">Marko P.</div>
-                                                            <span className="text-sm text-gray-400">Prije 2 dana</span>
-                                                        </div>
-                                                        <div className="flex text-yellow-400 mb-2">
-                                                            {[1, 2, 3, 4, 5].map(i => <Star key={i} className="fill-current w-4 h-4" />)}
-                                                        </div>
-                                                        <p className="text-gray-600">"Vrhunska hoodica, print je jasan i boje su žive. Dostava je bila super brza!"</p>
+                                                    <div className="flex text-yellow-400 mb-2">
+                                                        {[1, 2, 3, 4, 5].map(i => <Star key={i} className="fill-current w-4 h-4" />)}
                                                     </div>
-                                                </>
-                                            ) : (
-                                                <div className="text-center py-12">
-                                                    <div className="flex justify-center mb-4">
-                                                        <Star className="w-12 h-12 text-gray-300" />
-                                                    </div>
-                                                    <h3 className="text-xl font-bold text-gray-900 mb-2">Još nema recenzija</h3>
-                                                    <p className="text-gray-500">
-                                                        Budite prvi koji će recenzirati “{activeProductData.name}”
-                                                    </p>
+                                                    <p className="text-gray-600">"Vrhunska hoodica, print je jasan i boje su žive. Dostava je bila super brza!"</p>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center py-12">
+                                                <div className="flex justify-center mb-4">
+                                                    <Star className="w-12 h-12 text-gray-300" />
+                                                </div>
+                                                <h3 className="text-xl font-bold text-gray-900 mb-2">Još nema recenzija</h3>
+                                                <p className="text-gray-500">
+                                                    Budite prvi koji će recenzirati “{activeProductData.name}”
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
-                )
-
+                </div>
             )}
         </div>
     );

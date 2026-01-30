@@ -1646,7 +1646,6 @@ interface ShopSceneProps {
         cap?: string[];
         bottle?: string[];
     };
-    onAllLoaded?: () => void;
 }
 
 export const ShopScene = ({
@@ -1671,8 +1670,7 @@ export const ShopScene = ({
     onCycleDesignUpdate,
     designReplacements,
     productAllowedColors,
-    productRestrictedDesigns,
-    onAllLoaded
+    productRestrictedDesigns
 }: ShopSceneProps) => {
 
 
@@ -1713,15 +1711,11 @@ export const ShopScene = ({
         setLoadedModels(prev => {
             const newSet = new Set(prev);
             newSet.add(modelId);
-            // Check if ALL models are loaded
-            if (newSet.size === MODEL_LOAD_ORDER.length && onAllLoaded) {
-                onAllLoaded();
-            }
             return newSet;
         });
         // Move to next model in queue
         setCurrentLoadIndex(prev => Math.min(prev + 1, MODEL_LOAD_ORDER.length));
-    }, [onAllLoaded]);
+    }, []);
 
     // Check if a specific model should render (is allowed to load)
     const shouldRenderModel = useCallback((modelId: string) => {
@@ -1884,8 +1878,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/cap_webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label="Dišpet Cap"
-                                                price={productData.cap?.price || 20}
+                                                label="KAPA"
+                                                price={productData.cap?.price || 25}
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={false}
@@ -1927,7 +1921,7 @@ export const ShopScene = ({
                                                 modelUrl="/models/bottle-webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label="Dišpet termosica"
+                                                label="BOCA"
                                                 price={productData.bottle?.price || 20}
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
@@ -1972,8 +1966,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/tshirt_webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label="Dišpet T-shirt"
-                                                price={productData.tshirt?.price || 25}
+                                                label="MAJICA"
+                                                price={productData.tshirt?.price || 35}
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
@@ -2019,8 +2013,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/hoodie-webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label="Dišpet Hoodie"
-                                                price={productData.hoodie?.price || 45}
+                                                label="HOODICA"
+                                                price={productData.hoodie?.price || 50}
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
