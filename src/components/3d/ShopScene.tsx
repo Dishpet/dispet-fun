@@ -1580,7 +1580,7 @@ const ProductModel = ({
 
             {/* Hover Labels - Product Name and Price (Showcase mode only) */}
             {mode === 'showcase' && hovered && (
-                <group position={[0, textYOffset / (scale || 1), 2.0 / (scale || 1)]}>
+                <group position={[0, textYOffset / (scale || 1) + 0.2, 2.0 / (scale || 1)]}>
                     {/* Product Name */}
                     <Text
                         font="/fonts/DynaPuff-Bold.ttf"
@@ -1588,6 +1588,9 @@ const ProductModel = ({
                         color="#ffffff"
                         anchorX="center"
                         anchorY="bottom"
+                        textAlign="center"
+                        maxWidth={2}
+                        lineHeight={1.1}
                     >
                         {label}
                     </Text>
@@ -1654,54 +1657,79 @@ export const ShopScene = ({
     isCustomizing,
     selectedColor,
     designs,
+    selectedDesign,
     activeZone,
-    mode = 'showcase',
-    isFullscreen,
-    products: productData,
+    mode = 'customizing',
+    isFullscreen = false,
+    products: productData = {},
+    colorToLogoMap,
+    hasUserInteracted = false,
     logoList,
     hoodieBackList,
     vintageList,
     allDesignsList,
-    designReplacements,
+    designColorMap,
+    urlToFilename,
     onCycleDesignUpdate,
+    designReplacements,
     productAllowedColors,
-    productRestrictedDesigns,
-    colorToLogoMap,
-    hasUserInteracted,
-    designColorMap, // Added back
-    urlToFilename   // Added back
-}: any) => {
+    productRestrictedDesigns
+}: ShopSceneProps) => {
 
 
-    // Filter out restricted designs for Cap
-    const capRestricted = productRestrictedDesigns?.cap || [];
+    // Memoize the clean list for Cap - filter out restricted designs from shop config
     const capCleanList = useMemo(() => {
-        if (!allDesignsList) return [];
-        return allDesignsList.filter((d: string) => {
-            const filename = d.split('/').pop()?.split('?')[0] || '';
-            return !capRestricted.includes(filename);
+        const restricted = productRestrictedDesigns?.cap || ['street-5.png'];
+        return (allDesignsList || logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
         });
-    }, [allDesignsList, capRestricted]);
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
 
-    // Filter out restricted designs for Bottle
-    const bottleRestricted = productRestrictedDesigns?.bottle || [];
+    // Memoize the clean list for Bottle - filter out restricted designs from shop config
     const bottleCleanList = useMemo(() => {
-        // Bottle usually uses logos, check restricted list against logoList
-        // or if we want ALL designs for bottle? Usually just logos.
-        // Let's assume bottle uses logoList but filtered.
-        if (!logoList) return [];
-        return logoList.filter((d: string) => {
-            const filename = d.split('/').pop()?.split('?')[0] || '';
-            return !bottleRestricted.includes(filename);
+        const restricted = productRestrictedDesigns?.bottle || [];
+        if (restricted.length === 0) {
+            return allDesignsList || logoList || [];
+        }
+        return (allDesignsList || logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
         });
-    }, [logoList, bottleRestricted]);
-
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
 
     // Compatibility shim
-    const effectiveDesigns = designs || { front: '', back: '' };
+    const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
 
     // Always default to tshirt if null, but parent should handle this.
     const activeId = selectedProduct || 'tshirt';
+
+    // Sequential Loading State: Track which models are ready to render
+    // Order: cap (smallest) -> bottle -> tshirt -> hoodie (largest)
+    const [loadedModels, setLoadedModels] = useState<Set<string>>(new Set());
+    const [currentLoadIndex, setCurrentLoadIndex] = useState(0);
+
+    // Callback when a model finishes loading - trigger next model load
+    const handleModelLoaded = useCallback((modelId: string) => {
+        setLoadedModels(prev => {
+            const newSet = new Set(prev);
+            newSet.add(modelId);
+            return newSet;
+        });
+        // Move to next model in queue
+        setCurrentLoadIndex(prev => Math.min(prev + 1, MODEL_LOAD_ORDER.length));
+    }, []);
+
+    // Check if a specific model should render (is allowed to load)
+    const shouldRenderModel = useCallback((modelId: string) => {
+        const modelIndex = MODEL_LOAD_ORDER.findIndex(m => m.id === modelId);
+        return modelIndex <= currentLoadIndex;
+    }, [currentLoadIndex]);
+
+    // Check if a model has finished loading (for entrance animation)
+    const isModelLoaded = useCallback((modelId: string) => {
+        return loadedModels.has(modelId);
+    }, [loadedModels]);
 
     // Define products order
     const products: ('hoodie' | 'tshirt' | 'cap' | 'bottle')[] = ['hoodie', 'tshirt', 'cap', 'bottle'];
@@ -1843,9 +1871,9 @@ export const ShopScene = ({
 
                         return (
                             <group position={[0, -1.0, 0]}>
-                                {/* Cap */}
+                                {/* Cap - Loads FIRST (smallest) */}
                                 <Suspense fallback={null}>
-                                    {(() => {
+                                    {shouldRenderModel('cap') && (() => {
                                         const { pos, scale, isActive } = getProductState('cap');
                                         return (
                                             <ProductModel
@@ -1854,7 +1882,7 @@ export const ShopScene = ({
                                                 position={pos}
                                                 scale={scale}
                                                 label="Dišpet\nŠilterica"
-                                                price={productData.cap?.price || 20}
+                                                price={productData.cap?.price || 25}
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={false}
@@ -1870,9 +1898,11 @@ export const ShopScene = ({
                                                 mode={mode}
                                                 isFullscreen={isFullscreen}
                                                 textYOffset={0.4}
+                                                isLoaded={isModelLoaded('cap')}
+                                                onLoadComplete={() => handleModelLoaded('cap')}
                                                 hasUserInteracted={hasUserInteracted}
-                                                designColorMap={null} // Optional, simplified
-                                                urlToFilename={null}
+                                                designColorMap={designColorMap}
+                                                urlToFilename={urlToFilename}
                                                 cycleDuration={6000}
                                                 cycleOffset={0}
                                                 productId="cap"
@@ -1884,9 +1914,9 @@ export const ShopScene = ({
                                     })()}
                                 </Suspense>
 
-                                {/* Bottle */}
+                                {/* Bottle - Loads SECOND */}
                                 <Suspense fallback={null}>
-                                    {(() => {
+                                    {shouldRenderModel('bottle') && (() => {
                                         const { pos, scale, isActive } = getProductState('bottle');
                                         return (
                                             <ProductModel
@@ -1910,6 +1940,8 @@ export const ShopScene = ({
                                                 activeZone={activeZone}
                                                 mode={mode}
                                                 isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('bottle')}
+                                                onLoadComplete={() => handleModelLoaded('bottle')}
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
@@ -1927,9 +1959,9 @@ export const ShopScene = ({
                                     })()}
                                 </Suspense>
 
-                                {/* T-Shirt */}
+                                {/* T-Shirt - Loads THIRD */}
                                 <Suspense fallback={null}>
-                                    {(() => {
+                                    {shouldRenderModel('tshirt') && (() => {
                                         const { pos, scale, isActive } = getProductState('tshirt');
                                         return (
                                             <ProductModel
@@ -1938,7 +1970,7 @@ export const ShopScene = ({
                                                 position={pos}
                                                 scale={scale}
                                                 label="Dišpet\nT-shirt"
-                                                price={productData.tshirt?.price || 25}
+                                                price={productData.tshirt?.price || 35}
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
@@ -1954,6 +1986,8 @@ export const ShopScene = ({
                                                 activeZone={activeZone}
                                                 mode={mode}
                                                 isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('tshirt')}
+                                                onLoadComplete={() => handleModelLoaded('tshirt')}
                                                 colorToLogoMap={colorToLogoMap} // Pass map for strict sync
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
@@ -1972,9 +2006,9 @@ export const ShopScene = ({
                                     })()}
                                 </Suspense>
 
-                                {/* Hoodie */}
+                                {/* Hoodie - Loads LAST (largest) */}
                                 <Suspense fallback={null}>
-                                    {(() => {
+                                    {shouldRenderModel('hoodie') && (() => {
                                         const { pos, scale, isActive } = getProductState('hoodie');
                                         return (
                                             <ProductModel
@@ -1982,8 +2016,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/hoodie-webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label="Dišpet\nDuksica"
-                                                price={productData.hoodie?.price || 45}
+                                                label="HOODICA"
+                                                price={productData.hoodie?.price || 50}
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
@@ -1998,6 +2032,8 @@ export const ShopScene = ({
                                                 activeZone={activeZone}
                                                 mode={mode}
                                                 isFullscreen={isFullscreen}
+                                                isLoaded={isModelLoaded('hoodie')}
+                                                onLoadComplete={() => handleModelLoaded('hoodie')}
                                                 colorToLogoMap={colorToLogoMap}
                                                 hasUserInteracted={hasUserInteracted}
                                                 designColorMap={designColorMap}
