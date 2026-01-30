@@ -34,7 +34,7 @@ const Checkout = () => {
     address: "",
     city: "",
     postalCode: "",
-    country: "Hrvatska",
+    country: "HR",
   });
 
   // Force Login Check
@@ -56,7 +56,7 @@ const Checkout = () => {
         address: user.billing?.address_1 || prev.address,
         city: user.billing?.city || prev.city,
         postalCode: user.billing?.postcode || prev.postalCode,
-        country: user.billing?.country || prev.country
+        country: user.billing?.country || "HR" // Default to HR code
       }));
     }
   }, [user, navigate]);
