@@ -574,19 +574,22 @@ ${message}
 
         let authHeader = null;
 
-        // WooCommerce Authentication (covers /wc/v3, /wc-analytics, etc)
+
+        // Authenticate based on route
         if (apiPath.includes('/wc')) {
+            // WooCommerce Routes -> Use Consumer Key/Secret
             const key = process.env.WC_CONSUMER_KEY;
             const secret = process.env.WC_CONSUMER_SECRET;
-
             if (key && secret) {
                 const authString = Buffer.from(`${key}:${secret}`).toString('base64');
                 authHeader = `Basic ${authString}`;
             }
         } else if (apiPath.includes('/wp/') || apiPath.includes('/antigravity/')) {
+            // Standard WP Routes & Antigravity Extensions -> Use App Password
             authHeader = getWpAuthHeader();
         }
 
+        // Prepare Headers
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Node.js Proxy)',
             'Accept': 'application/json'
@@ -596,6 +599,7 @@ ${message}
             headers['Content-Type'] = req.headers['content-type'];
         }
 
+        // Apply Auth Header
         if (authHeader) {
             headers['Authorization'] = authHeader;
         }
