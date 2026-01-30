@@ -325,8 +325,8 @@ const Shop = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // Use the public antigravity endpoint instead of WooCommerce API
-                const res = await fetch('/wp-json/antigravity/v1/products');
+                // Use the public antigravity endpoint via /api proxy
+                const res = await fetch('/api/antigravity/v1/products');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const wpProducts = await res.json();
                 console.log('Fetched products:', wpProducts);

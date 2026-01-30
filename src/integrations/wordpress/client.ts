@@ -1,8 +1,10 @@
-// In development, use Vite proxy at /wp-json. In production, /wp-json is handled by server config.
-export const WP_API_URL = '/wp-json';
+// In development/production, use /api which is proxied by Vite (dev) or server.js (prod)
+export const WP_API_URL = '/api';
 
 export const wpFetch = async (endpoint: string, options: RequestInit = {}) => {
-    // Endpoints use WP REST API structure: /wp-json/wc/v3/products, /wp-json/wp/v2/users, etc.
+    // Endpoints should not include /api here if they are relative to WP_API_URL
+    // But existing calls probably pass /wc/v3/...
+
     const url = `${WP_API_URL}${endpoint}`;
 
     // Add timestamp to query params to bust cache for GET requests
