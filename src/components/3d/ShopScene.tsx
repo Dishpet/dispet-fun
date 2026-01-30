@@ -1879,7 +1879,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/cap_webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label={'Dišpet\nŠilterica'}
+                                                label={`Dišpet
+Šilterica`}
                                                 price={productData.cap?.price || 25}
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
@@ -1922,7 +1923,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/bottle-webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label={'Dišpet\nTermosica'}
+                                                label={`Dišpet
+Termosica`}
                                                 price={productData.bottle?.price || 20}
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
@@ -1952,7 +1954,7 @@ export const ShopScene = ({
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
                                                 designReplacements={designReplacements}
-                                                textYOffset={0.65}
+                                                textYOffset={2.5}
                                             />
                                         );
                                     })()}
@@ -1968,7 +1970,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/tshirt_webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label={'Dišpet\nT-shirt'}
+                                                label={`Dišpet
+T-shirt`}
                                                 price={productData.tshirt?.price || 35}
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
@@ -2015,7 +2018,8 @@ export const ShopScene = ({
                                                 modelUrl="/models/hoodie-webshop.glb"
                                                 position={pos}
                                                 scale={scale}
-                                                label={'Dišpet\nDuksica'}
+                                                label={`Dišpet
+Duksica`}
                                                 price={productData.hoodie?.price || 50}
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
