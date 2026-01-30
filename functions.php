@@ -270,8 +270,33 @@ function ag_get_shop_config() {
     $default_config = ag_get_default_shop_config();
     $saved_config = get_option('ag_shop_config', []);
     
-    // Merge saved config with defaults (saved takes precedence)
-    $config = array_replace_recursive($default_config, $saved_config);
+    // Smart Merge: We want defaults for missing keys, but SAVED lists should overwrite default lists completely (no index merging)
+    $config = $default_config;
+
+    if (!empty($saved_config)) {
+        foreach ($saved_config as $key => $value) {
+            // Top Level: tshirt, hoodie, etc.
+            if (isset($config[$key]) && is_array($config[$key]) && is_array($value)) {
+                if (in_array($key, ['tshirt', 'hoodie', 'cap', 'bottle'])) {
+                    // Product Config: Merge keys, but replace arrays
+                    foreach ($value as $subKey => $subVal) {
+                        $config[$key][$subKey] = $subVal;
+                    }
+                } elseif ($key === 'design_color_map') {
+                    // Design Map: Merge keys (designs), replace color lists
+                    foreach ($value as $dKey => $dVal) {
+                        $config[$key][$dKey] = $dVal;
+                    }
+                } else {
+                    // Others (alternatives): Replace entirely
+                    $config[$key] = $value;
+                }
+            } else {
+                // Scalar or new top-level key: Replace
+                $config[$key] = $value;
+            }
+        }
+    }
     
     return rest_ensure_response($config);
 }
