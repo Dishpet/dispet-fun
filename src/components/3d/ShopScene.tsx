@@ -1952,6 +1952,7 @@ export const ShopScene = ({
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
                                                 designReplacements={designReplacements}
+                                                textYOffset={0.65}
                                             />
                                         );
                                     })()}
