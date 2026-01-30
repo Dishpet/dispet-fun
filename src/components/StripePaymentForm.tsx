@@ -8,6 +8,13 @@ interface StripePaymentFormProps {
     onPaymentSuccess: (token: any) => void;
     amount: number;
     isProcessing: boolean;
+    billingDetails?: {
+        name: string;
+        address_line1: string;
+        address_city: string;
+        address_zip: string;
+        address_country: string;
+    };
 }
 
 const inputStyle = {
@@ -26,7 +33,7 @@ const inputStyle = {
     },
 };
 
-export const StripePaymentForm = ({ onPaymentSuccess, amount, isProcessing }: StripePaymentFormProps) => {
+export const StripePaymentForm = ({ onPaymentSuccess, amount, isProcessing, billingDetails }: StripePaymentFormProps) => {
     const stripe = useStripe();
     const elements = useElements();
     const { toast } = useToast();
@@ -42,7 +49,10 @@ export const StripePaymentForm = ({ onPaymentSuccess, amount, isProcessing }: St
         const cardNumberElement = elements.getElement(CardNumberElement);
         if (!cardNumberElement) return;
 
-        const { error, token } = await stripe.createToken(cardNumberElement);
+        // Use billing details if provided
+        const options = billingDetails ? billingDetails : {};
+
+        const { error, token } = await stripe.createToken(cardNumberElement, options);
 
         if (error) {
             setCardError(error.message || 'Došlo je do greške s karticom.');

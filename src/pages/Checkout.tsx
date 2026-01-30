@@ -333,6 +333,13 @@ const Checkout = () => {
                       amount={total}
                       onPaymentSuccess={handleStripePayment}
                       isProcessing={loading}
+                      billingDetails={{
+                        name: `${formData.firstName} ${formData.lastName}`,
+                        address_line1: formData.address,
+                        address_city: formData.city,
+                        address_zip: formData.postalCode,
+                        address_country: formData.country,
+                      }}
                     />
                   </div>
 
