@@ -307,6 +307,9 @@ function ag_get_shop_config() {
 function ag_save_shop_config($request) {
     $data = $request->get_json_params();
     
+    // Debug Logging
+    error_log('AG_SAVE_CONFIG: Received data keys: ' . implode(', ', array_keys($data)));
+
     if (empty($data)) {
         return new WP_Error('invalid_data', 'No configuration data provided', ['status' => 400]);
     }
@@ -320,7 +323,15 @@ function ag_save_shop_config($request) {
         $sanitized[$product_key] = $product_config;
     }
     
-    update_option('ag_shop_config', $sanitized);
+    error_log('AG_SAVE_CONFIG: Saving sanitized keys: ' . implode(', ', array_keys($sanitized)));
+    
+    $updated = update_option('ag_shop_config', $sanitized);
+    
+    if ($updated) {
+        error_log('AG_SAVE_CONFIG: Update option successful.');
+    } else {
+        error_log('AG_SAVE_CONFIG: Update option returned false (no change or failed).');
+    }
     
     return rest_ensure_response(['success' => true, 'message' => 'Configuration saved']);
 }
