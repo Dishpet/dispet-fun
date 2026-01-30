@@ -91,8 +91,9 @@ export const getCustomer = async (id: number) => {
 export const verifyCredentials = async (username: string, password: string) => {
     // Basic Auth for standard WP User verification
     // Not using getAuthHeaders() because we want to test the *provided* credentials, not the admin ones
+    // context=edit returns roles and capabilities
     const hash = btoa(unescape(encodeURIComponent(`${username}:${password}`)));
-    return wpFetch('/wp/v2/users/me', {
+    return wpFetch('/wp/v2/users/me?context=edit', {
         headers: {
             Authorization: `Basic ${hash}`,
         }
