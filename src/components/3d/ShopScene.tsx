@@ -1954,7 +1954,7 @@ Termosica`}
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
                                                 designReplacements={designReplacements}
-                                                textYOffset={2.5}
+                                                textYOffset={1.65}
                                             />
                                         );
                                     })()}
