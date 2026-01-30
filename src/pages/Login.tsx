@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,10 @@ import { verifyCredentials, getCustomer, syncGoogleUserToWP } from "@/integratio
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const redirectPath = queryParams.get('redirect') || '/account';
+
     const { login } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
@@ -90,7 +94,7 @@ const Login = () => {
                 description: `Dobrodošli, ${decoded.name}!`,
             });
 
-            navigate("/account");
+            navigate(redirectPath);
         } catch (error) {
             console.error("Google Login Error", error);
             toast({
@@ -132,7 +136,7 @@ const Login = () => {
                     description: `Dobrodošli natrag, ${customerData.first_name || customerData.username}!`,
                 });
 
-                navigate("/account");
+                navigate(redirectPath);
             } else {
                 throw new Error("Invalid response");
             }

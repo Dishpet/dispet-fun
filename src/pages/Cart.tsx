@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Trash2, ShoppingBag, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { PageHero } from "@/components/PageHero";
 
@@ -11,6 +12,22 @@ const Cart = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { cartItems, removeFromCart, updateQuantity, cartSubtotal, shippingCost, cartTotal } = useCart();
+
+  const { user } = useAuth();
+
+  const handleCheckout = () => {
+    if (!user) {
+      toast({
+        title: "Potrebna prijava",
+        description: "Za nastavak kupovine molimo prijavite se ili kreirajte račun.",
+        variant: "default"
+      });
+      // Redirect to Login, but tell it to come back to Checkout after
+      navigate("/login?redirect=/checkout");
+    } else {
+      navigate("/checkout");
+    }
+  };
 
   const handleRemoveItem = (id: string) => {
     removeFromCart(id);
@@ -161,7 +178,7 @@ const Cart = () => {
                   variant="default"
                   size="lg"
                   className="w-full bg-gradient-to-r from-[#00ffbf] to-[#0089cd] hover:opacity-90 transition-opacity"
-                  onClick={() => navigate("/checkout")}
+                  onClick={handleCheckout}
                 >
                   Nastavi na naplatu
                 </Button>
