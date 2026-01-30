@@ -574,9 +574,14 @@ ${message}
 
         let authHeader = null;
 
+        // Check if client sent their own Authorization header (user-specific auth)
+        const clientAuth = req.headers['authorization'];
 
-        // Authenticate based on route
-        if (apiPath.includes('/wc')) {
+        if (clientAuth) {
+            // Forward client's auth (e.g., user logging in or admin performing actions)
+            authHeader = clientAuth;
+            console.log('[Proxy] Using client Authorization header');
+        } else if (apiPath.includes('/wc')) {
             // WooCommerce Routes -> Use Consumer Key/Secret
             const key = process.env.WC_CONSUMER_KEY;
             const secret = process.env.WC_CONSUMER_SECRET;
