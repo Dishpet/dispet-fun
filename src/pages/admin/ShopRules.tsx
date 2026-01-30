@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Save, RefreshCcw, Palette, Layers, Ban, Wand2, Clock, X, Plus, Image as ImageIcon, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-const WP_API_URL = '/wp-json'; // Uses Vite proxy in development
+const WP_API_URL = '/api'; // Uses proxy in dev and prod
 
 // Import designs from local assets (same as Shop.tsx)
 // @ts-ignore
