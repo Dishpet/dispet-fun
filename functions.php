@@ -33,6 +33,40 @@ add_action('rest_api_init', function () {
     });
 }, 15);
 
+// Allow Basic Auth for standard REST API endpoints (Custom Implementation)
+add_filter('determine_current_user', function ($user_id) {
+    if (!empty($user_id)) return $user_id;
+
+    $auth_header = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : false;
+    
+    // Apache fix
+    if (!$auth_header && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
+
+    if ($auth_header && strpos($auth_header, 'Basic ') === 0) {
+        $creds = explode(':', base64_decode(substr($auth_header, 6)));
+        if (count($creds) === 2) {
+            $username = $creds[0];
+            $password = $creds[1];
+            
+            // Debug: Check what we received (don't log full password in production usually, but here necessary)
+            error_log("AG_AUTH_DEBUG: Attempting login for user: $username");
+            
+            $user = wp_authenticate($username, $password);
+            
+            if (!is_wp_error($user)) {
+                error_log("AG_AUTH_DEBUG: Login SUCCESS for user: $username");
+                return $user->ID;
+            } else {
+                error_log("AG_AUTH_DEBUG: Login FAILED for user: $username. Error: " . $user->get_error_message());
+            }
+        }
+    }
+    
+    return $user_id;
+}, 20);
+
 add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/get-theme-file', array(
         'methods'  => 'GET',
@@ -61,7 +95,7 @@ add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/shop-config', array(
         'methods'  => 'POST',
         'callback' => 'ag_save_shop_config',
-        'permission_callback' => function () { return current_user_can('manage_options'); } // Admin only write
+        'permission_callback' => '__return_true' // Security handled manually inside callback
     ));
 
     // --- Media Library API (Designs) ---
@@ -77,6 +111,50 @@ add_action('rest_api_init', function () {
         'callback' => 'ag_get_public_products',
         'permission_callback' => '__return_true' // Public read
     ));
+
+    // --- MESSAGES API (Contact Form) ---
+    register_rest_route('antigravity/v1', '/messages', array(
+        'methods'  => 'GET',
+        'callback' => 'ag_get_messages',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+
+    register_rest_route('antigravity/v1', '/contact', array(
+        'methods'  => 'POST',
+        'callback' => 'ag_handle_contact_form',
+        'permission_callback' => '__return_true' // Public
+    ));
+
+    register_rest_route('antigravity/v1', '/messages/(?P<id>\d+)', array(
+        'methods'  => 'DELETE',
+        'callback' => 'ag_delete_message',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+
+    register_rest_route('antigravity/v1', '/messages/reply', array(
+        'methods'  => 'POST',
+        'callback' => 'ag_reply_message',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+
+    register_rest_route('antigravity/v1', '/messages/forward', array(
+        'methods'  => 'POST',
+        'callback' => 'ag_forward_message',
+        'permission_callback' => function () { return current_user_can('manage_options'); }
+    ));
+});
+
+// Register Custom Post Type for Messages
+add_action('init', function() {
+    register_post_type('ag_message', [
+        'labels' => ['name' => 'Messages', 'singular_name' => 'Message'],
+        'public' => false,
+        'show_ui' => true,
+        'supports' => ['title', 'editor', 'custom-fields'],
+        'capability_type' => 'post',
+        'capabilities' => ['create_posts' => 'do_not_allow'], // Prevent manual creation in UI
+        'map_meta_cap' => true,
+    ]);
 });
 
 // Public products endpoint - returns basic product info without auth
@@ -270,23 +348,84 @@ function ag_get_shop_config() {
     $default_config = ag_get_default_shop_config();
     $saved_config = get_option('ag_shop_config', []);
     
-    // Merge saved config with defaults (saved takes precedence)
-    $config = array_replace_recursive($default_config, $saved_config);
+    // Smart Merge: We want defaults for missing keys, but SAVED lists should overwrite default lists completely (no index merging)
+    $config = $default_config;
+
+    if (!empty($saved_config)) {
+        foreach ($saved_config as $key => $value) {
+            // Top Level: tshirt, hoodie, etc.
+            if (isset($config[$key]) && is_array($config[$key]) && is_array($value)) {
+                if (in_array($key, ['tshirt', 'hoodie', 'cap', 'bottle'])) {
+                    // Product Config: Merge keys, but replace arrays
+                    foreach ($value as $subKey => $subVal) {
+                        $config[$key][$subKey] = $subVal;
+                    }
+                } elseif ($key === 'design_color_map') {
+                    // Design Map: Merge keys (designs), replace color lists
+                    foreach ($value as $dKey => $dVal) {
+                        $config[$key][$dKey] = $dVal;
+                    }
+                } else {
+                    // Others (alternatives): Replace entirely
+                    $config[$key] = $value;
+                }
+            } else {
+                // Scalar or new top-level key: Replace
+                $config[$key] = $value;
+            }
+        }
+    }
     
     return rest_ensure_response($config);
 }
 
 /**
  * Save shop configuration to wp_options
+ * With manual Basic Auth verification to bypass plugin requirement
  */
 function ag_save_shop_config($request) {
+    // 1. Manually verify Basic Auth
+    // Use the APPLICATION PASSWORD defined in your .env.server or manually check admin creds
+    // Ideally we check if user is logged in, but if that fails, we check the header ourselves.
+    
+    $is_authorized = false;
+    
+    // Check if standard WP auth worked
+    if (current_user_can('manage_options')) {
+        $is_authorized = true;
+    } 
+    else {
+        // Fallback: Check Basic Auth Header manually
+        $auth_header = $request->get_header('authorization');
+        
+        if ($auth_header && strpos($auth_header, 'Basic ') === 0) {
+            $creds = explode(':', base64_decode(substr($auth_header, 6)));
+            if (count($creds) === 2) {
+                $username = $creds[0];
+                $password = $creds[1];
+                
+                $user = wp_authenticate($username, $password);
+                if (!is_wp_error($user) && user_can($user, 'manage_options')) {
+                    $is_authorized = true;
+                }
+            }
+        }
+    }
+
+    if (!$is_authorized) {
+        return new WP_Error('rest_forbidden', 'You do not have permissions to view this resource.', ['status' => 401]);
+    }
+
     $data = $request->get_json_params();
     
+    // Debug Logging
+    error_log('AG_SAVE_CONFIG: Auth success. Received data keys: ' . implode(', ', array_keys($data)));
+
     if (empty($data)) {
         return new WP_Error('invalid_data', 'No configuration data provided', ['status' => 400]);
     }
     
-    // Sanitize and validate (basic)
+    // Sanitize and validate
     $sanitized = [];
     foreach ($data as $product_key => $product_config) {
         if (!in_array($product_key, ['tshirt', 'hoodie', 'cap', 'bottle', 'alternatives', 'design_color_map'])) {
@@ -295,9 +434,27 @@ function ag_save_shop_config($request) {
         $sanitized[$product_key] = $product_config;
     }
     
-    update_option('ag_shop_config', $sanitized);
+    error_log('AG_SAVE_CONFIG: Saving sanitized keys: ' . implode(', ', array_keys($sanitized)));
     
-    return rest_ensure_response(['success' => true, 'message' => 'Configuration saved']);
+    $updated = update_option('ag_shop_config', $sanitized);
+    
+    // Force get the option to verify what was saved
+    $verify = get_option('ag_shop_config', []);
+    $verify_keys = is_array($verify) ? array_keys($verify) : [];
+    
+    if ($updated) {
+        error_log('AG_SAVE_CONFIG: Update option successful.');
+    } else {
+        error_log('AG_SAVE_CONFIG: Update option returned false (no change or failed).');
+    }
+    
+    return rest_ensure_response([
+        'success' => true, 
+        'message' => 'Configuration saved',
+        'updated' => $updated,
+        'saved_keys' => $verify_keys,
+        'tshirt_colors_count' => isset($verify['tshirt']['allowed_colors']) ? count($verify['tshirt']['allowed_colors']) : 0
+    ]);
 }
 
 /**
@@ -413,4 +570,127 @@ function ag_get_design_images($request) {
     }
     
     return rest_ensure_response($designs);
+}
+
+/**
+ * Handle Contact Form Submission
+ */
+function ag_handle_contact_form($request) {
+    $params = $request->get_json_params();
+    $name = sanitize_text_field($params['name'] ?? '');
+    $email = sanitize_email($params['email'] ?? '');
+    $phone = sanitize_text_field($params['phone'] ?? '');
+    $message = sanitize_textarea_field($params['message'] ?? '');
+
+    if (empty($name) || empty($email) || empty($message)) {
+        return new WP_Error('missing_fields', 'Required fields are missing', ['status' => 400]);
+    }
+
+    // 1. Send Email to Admin
+    $admin_email = get_option('admin_email');
+    $subject = "Nova poruka s weba: $name";
+    $body = "Ime: $name\nEmail: $email\nTelefon: $phone\n\nPoruka:\n$message";
+    $headers = ['Content-Type: text/plain; charset=UTF-8', "Reply-To: $name <$email>"];
+
+    wp_mail($admin_email, $subject, $body, $headers);
+
+    // 2. Save to Database (Custom Post Type)
+    $post_id = wp_insert_post([
+        'post_type' => 'ag_message',
+        'post_title' => "$name ($email)",
+        'post_content' => $message,
+        'post_status' => 'publish',
+        'meta_input' => [
+            'ag_sender_name' => $name,
+            'ag_sender_email' => $email,
+            'ag_sender_phone' => $phone,
+            'ag_read_status' => '0'
+        ]
+    ]);
+
+    if (is_wp_error($post_id)) {
+        return new WP_Error('save_failed', 'Failed to save message', ['status' => 500]);
+    }
+
+    return rest_ensure_response(['success' => true, 'id' => $post_id]);
+}
+
+/**
+ * Get Messages for Admin
+ */
+function ag_get_messages() {
+    $args = [
+        'post_type' => 'ag_message',
+        'posts_per_page' => 100,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC'
+    ];
+
+    $query = new WP_Query($args);
+    $messages = [];
+
+    foreach ($query->posts as $post) {
+        $messages[] = [
+            'id' => $post->ID,
+            'name' => get_post_meta($post->ID, 'ag_sender_name', true) ?: 'Nepoznato',
+            'email' => get_post_meta($post->ID, 'ag_sender_email', true) ?: '',
+            'phone' => get_post_meta($post->ID, 'ag_sender_phone', true) ?: '',
+            'message' => $post->post_content,
+            'date' => $post->post_date, // ISO format from DB
+            'read' => get_post_meta($post->ID, 'ag_read_status', true) === '1'
+        ];
+    }
+
+    return rest_ensure_response($messages);
+}
+
+/**
+ * Delete Message
+ */
+function ag_delete_message($request) {
+    $id = (int) $request['id'];
+    if (!$id) return new WP_Error('invalid_id', 'Invalid Message ID', ['status' => 400]);
+
+    $post = get_post($id);
+    if (!$post || $post->post_type !== 'ag_message') {
+        return new WP_Error('not_found', 'Message not found', ['status' => 404]);
+    }
+
+    $deleted = wp_delete_post($id, true); // Force delete (skip trash)
+
+    if (!$deleted) {
+        return new WP_Error('delete_failed', 'Failed to delete message', ['status' => 500]);
+    }
+
+    return rest_ensure_response(['success' => true, 'id' => $id]);
+}
+
+/**
+ * Reply to Message
+ */
+function ag_reply_message($request) {
+    $params = $request->get_json_params();
+    $to = sanitize_email($params['to']);
+    $subject = sanitize_text_field($params['subject']);
+    $body = implode("\n", array_map('sanitize_text_field', explode("\n", $params['body']))); // Basic sanitization preserving newlines
+
+    if (!$to || !$body) return new WP_Error('missing_params', 'Missing parameters', ['status' => 400]);
+
+    $headers = ['Content-Type: text/html; charset=UTF-8'];
+    // Add "From" header if configured, otherwise WP defaults
+    $headers[] = 'From: Dišpet <info@dispet.fun>';
+
+    $sent = wp_mail($to, $subject, nl2br($body), $headers);
+
+    if ($sent) return rest_ensure_response(['success' => true]);
+    return new WP_Error('mail_failed', 'Failed to send email', ['status' => 500]);
+}
+
+/**
+ * Forward Message
+ */
+function ag_forward_message($request) {
+    // Same logic as reply, just different intent
+    return ag_reply_message($request);
 }

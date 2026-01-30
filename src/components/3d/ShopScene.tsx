@@ -1197,14 +1197,18 @@ const ProductModel = ({
 
     // Sync Cycle State with Parent
     // This ensures that when the user starts interacting, the React state matches the last cycled design
+    const lastNotifiedDesigns = useRef({ front: '', back: '' });
+
     useEffect(() => {
         if (isActive && !hasUserInteracted && onDesignsUpdate) {
             const currentFront = (strictColorSyncFront || colorMatchedFrontDesign || frontCycleUrl || designs?.front || '');
             const currentBack = (backCycleUrl || designs?.back || '');
 
-            // Debounce or check for change to avoid infinite loops?
-            // Since this runs on cycle update (frontCycleUrl changes), it's fine.
-            onDesignsUpdate({ front: currentFront, back: currentBack });
+            // PREVENT INFINITE LOOPS: Only notify if actually changed
+            if (lastNotifiedDesigns.current.front !== currentFront || lastNotifiedDesigns.current.back !== currentBack) {
+                lastNotifiedDesigns.current = { front: currentFront, back: currentBack };
+                onDesignsUpdate({ front: currentFront, back: currentBack });
+            }
         }
     }, [isActive, hasUserInteracted, frontCycleUrl, backCycleUrl, strictColorSyncFront, colorMatchedFrontDesign, designs?.front, designs?.back, onDesignsUpdate]);
 

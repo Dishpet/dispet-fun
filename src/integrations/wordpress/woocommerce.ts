@@ -146,13 +146,3 @@ export const syncGoogleUserToWP = async (googleUser: any) => {
 
     return createCustomer(newCustomer);
 };
-
-export const sendOrderNotification = async (notificationData: any) => {
-    // No auth needed as permission_callback is __return_true, but using wpFetch for consistency
-    const headers = getAuthHeaders();
-    return wpFetch('/antigravity/v1/order-notification', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(notificationData)
-    });
-};

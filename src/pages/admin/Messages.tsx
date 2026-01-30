@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { wpFetch, getAuthHeaders } from "@/integrations/wordpress/client";
 import { Card } from "@/components/ui/card";
 import { Mail, Clock, Phone, Reply, Forward, Trash2, Send, Inbox, RefreshCw, ChevronRight, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -24,8 +25,6 @@ interface Message {
     read: boolean;
 }
 
-import { wpFetch, getAuthHeaders } from "@/integrations/wordpress/client";
-
 const Messages = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,8 +33,11 @@ const Messages = () => {
     const fetchMessages = async (showRefresh = false) => {
         if (showRefresh) setIsRefreshing(true);
         try {
-            const headers = getAuthHeaders();
-            const data = await wpFetch('/antigravity/v1/messages', { headers });
+            const endpoint = '/antigravity/v1/messages';
+            const data = await wpFetch(endpoint, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
             setMessages(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
@@ -54,12 +56,14 @@ const Messages = () => {
         if (!confirm("Jeste li sigurni da želite obrisati ovu poruku?")) return;
 
         try {
-            const headers = getAuthHeaders();
-            const response = await wpFetch(`/antigravity/v1/messages/${id}`, { method: 'DELETE', headers });
-            if (response && response.success) {
-                setMessages(messages.filter(m => m.id !== id));
-                toast.success("Poruka obrisana");
-            }
+            const endpoint = `/antigravity/v1/messages/${id}`;
+            await wpFetch(endpoint, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            // wpFetch throws on error, so if we are here, it worked
+            setMessages(messages.filter(m => m.id !== id));
+            toast.success("Poruka obrisana");
         } catch (error) {
             toast.error("Brisanje nije uspjelo");
         }
@@ -75,10 +79,11 @@ const Messages = () => {
         const handleAction = async () => {
             setLocalLoading(true);
             try {
-                const headers = getAuthHeaders();
-                const response = await wpFetch(`/antigravity/v1/messages/${mode}`, {
+                const endpoint = `/antigravity/v1/messages/${mode}`;
+
+                await wpFetch(endpoint, {
                     method: 'POST',
-                    headers,
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(mode === 'reply' ? {
                         to: msg.email,
                         subject: `Re: Vaša poruka za Dišpet`,
@@ -87,16 +92,12 @@ const Messages = () => {
                         to: to,
                         subject: `Fwd: Poruka od ${msg.name}`,
                         body: body,
-                        // Backend only uses to, subject, body. originalMessage is context for Frontend if needed.
+                        originalMessage: msg
                     })
                 });
 
-                if (response && response.success) {
-                    toast.success(mode === 'reply' ? "Odgovor poslan!" : "Poruka proslijeđena!");
-                    setMode('none');
-                } else {
-                    throw new Error("Failed");
-                }
+                toast.success(mode === 'reply' ? "Odgovor poslan!" : "Poruka proslijeđena!");
+                setMode('none');
             } catch (error) {
                 toast.error("Slanje nije uspjelo");
             } finally {
