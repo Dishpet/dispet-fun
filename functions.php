@@ -75,22 +75,63 @@ function ag_headless_checkout_handler($request) {
         if (class_exists('WC_Gateway_Stripe')) {
             $gateway = new WC_Gateway_Stripe();
             
-            // Mock GLOBAL POST for the gateway to see the token
+            // --- FIX START: FORCE ENVIRONMENT FOR HEADLESS STRIPE ---
+
+            // A. Initialize WC Customer Global if missing (Plugin often looks here)
+            if (function_exists('WC')) {
+                 if (empty(WC()->customer)) {
+                     // Create a session-based customer or load existing
+                     WC()->customer = new WC_Customer($order->get_customer_id() > 0 ? $order->get_customer_id() : 0);
+                 }
+                 // Explicitly set the billing address on the global customer to match this order
+                 WC()->customer->set_props([
+                     'billing_first_name' => $order_data['billing']['first_name'],
+                     'billing_last_name'  => $order_data['billing']['last_name'],
+                     'billing_address_1'  => $order_data['billing']['address_1'],
+                     'billing_city'       => $order_data['billing']['city'],
+                     'billing_postcode'   => $order_data['billing']['postcode'],
+                     'billing_country'    => $order_data['billing']['country'],
+                     'billing_email'      => $order_data['billing']['email'],
+                     'billing_phone'      => $order_data['billing']['phone'],
+                 ]);
+                 WC()->customer->save(); // Save to session/DB needed? mostly session.
+            }
+
+            // B. Initialize POST with EVERY possible field Stripe might check
             $_POST['stripe_token'] = $token;
-            $_POST['stripe_source'] = $token;
             $_POST['payment_method'] = 'stripe';
             
-            // Fix: Populate POST with billing data so Stripe Plugin can create Customer object correctly
-            if (isset($order_data['billing'])) {
-                $_POST['billing_first_name'] = $order_data['billing']['first_name'];
-                $_POST['billing_last_name']  = $order_data['billing']['last_name'];
-                $_POST['billing_address_1']  = $order_data['billing']['address_1'];
-                $_POST['billing_city']       = $order_data['billing']['city'];
-                $_POST['billing_postcode']   = $order_data['billing']['postcode'];
-                $_POST['billing_country']    = $order_data['billing']['country'];
-                $_POST['billing_email']      = $order_data['billing']['email'];
-                $_POST['billing_phone']      = $order_data['billing']['phone'];
+            $billing = $order_data['billing'];
+            $map = [
+                'billing_first_name' => $billing['first_name'],
+                'billing_last_name'  => $billing['last_name'],
+                'billing_address_1'  => $billing['address_1'],
+                'billing_city'       => $billing['city'],
+                'billing_postcode'   => $billing['postcode'],
+                'billing_country'    => $billing['country'],
+                'billing_email'      => $billing['email'],
+                'billing_phone'      => $billing['phone'],
+                // Some plugins look for 'stripe_billing_...' or just non-prefixed
+                'stripe_billing_address_1' => $billing['address_1'],
+                'stripe_billing_zip' => $billing['postcode'],
+                'stripe_billing_city' => $billing['city'],
+            ];
+            
+            foreach ($map as $k => $v) {
+                $_POST[$k] = $v;
             }
+
+            // C. Update Real User Meta (Last Resort persistence)
+            if ($order->get_customer_id() > 0) {
+                foreach ($map as $key => $value) {
+                    // Only update standard billing fields
+                    if (strpos($key, 'billing_') === 0) {
+                        update_user_meta($order->get_customer_id(), $key, $value);
+                    }
+                }
+            }
+
+            // --- FIX END ---
             
             $result = $gateway->process_payment($order->get_id());
 
