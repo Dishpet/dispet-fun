@@ -7,6 +7,7 @@ export interface CartItem extends WCProduct {
     selectedDesigns?: { front: string; back: string };
     selectedColor?: string;
     selectedSize?: string;
+    variation_id?: number;
 }
 
 interface CartContextType {

@@ -92,7 +92,7 @@ function ag_get_public_products() {
 
     $result = [];
     foreach ($products as $product) {
-        $result[] = [
+        $product_data = [
             'id' => $product->get_id(),
             'name' => $product->get_name(),
             'slug' => $product->get_slug(),
@@ -105,6 +105,12 @@ function ag_get_public_products() {
             'rating_count' => $product->get_rating_count(),
             'type' => $product->get_type(),
         ];
+
+        if ($product->is_type('variable')) {
+            $product_data['variations'] = $product->get_available_variations();
+        }
+
+        $result[] = $product_data;
     }
 
     return rest_ensure_response($result);

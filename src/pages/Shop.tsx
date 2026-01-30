@@ -353,6 +353,7 @@ const Shop = () => {
                                 stockQuantity: wp.stock_quantity ?? null,
                                 averageRating: parseFloat(wp.average_rating) || 0,
                                 ratingCount: wp.rating_count || 0,
+                                variations: wp.variations || [], // Store variations
                             };
                         }
                     });
@@ -523,19 +524,60 @@ const Shop = () => {
     const handleAddToCart = () => {
         const product = products[selectedProduct];
 
-        // determine main image based on product type
+        // LOGIC TO RESOLVE VARIATION ID
+        let resolvedVariationId: number | undefined;
+        // @ts-ignore
+        if (product.variations && product.variations.length > 0) {
+            // @ts-ignore
+            const vars = product.variations;
+            const sizeVal = selectedSize.toLowerCase();
+            const colorObj = SHARED_COLORS.find(c => c.hex === selectedColor);
+            const colorName = colorObj ? colorObj.name.toLowerCase() : ''; // e.g. 'crna'
+            const colorHex = selectedColor.toLowerCase();
+
+            const match = vars.find((v: any) => {
+                const attrs = v.attributes;
+                let sizeMatch = true;
+                let colorMatch = true;
+
+                // Fuzzy match attributes
+                for (const key in attrs) {
+                    const val = String(attrs[key]).toLowerCase(); // slug from WC
+                    if (!val) continue;
+
+                    if (key.includes('size') || key.includes('velicina')) {
+                        if (val !== sizeVal && val !== selectedSize.toLowerCase()) sizeMatch = false;
+                    }
+                    else if (key.includes('color') || key.includes('boja')) {
+                        // Match against Slug (Name) or Hex
+                        // 'crna' == 'crna'? 'black' == 'crna'?
+                        // If backend is English 'black', frontend 'crna', we fail unless we map.
+                        // But usually slug matches local name if created there.
+                        if (val !== colorName && val !== colorHex) colorMatch = false;
+                    }
+                }
+                return sizeMatch && colorMatch;
+            });
+
+            if (match) {
+                resolvedVariationId = match.id;
+                console.log('Resolved Variation ID:', resolvedVariationId);
+            } else {
+                console.warn('Could not resolve variation for:', selectedSize, colorName);
+            }
+        }
+
         const mainImage = (selectedProduct === 'hoodie' || selectedProduct === 'tshirt')
             ? (designs.back || designs.front)
             : designs.front;
 
         addToCart({
-            // @ts-ignore - Local product data doesn't perfectly match WCProduct
+            // @ts-ignore
             id: product.id,
+            variation_id: resolvedVariationId,
             name: product.name,
-            price: product.price.toString(), // Convert number to string for WCProduct compliance if needed
+            price: product.price.toString(),
             images: [{ id: 0, src: mainImage, alt: product.name }],
-            // color: selectedColor, // Deprecated in favor of options
-            // size: selectedSize,   // Deprecated in favor of options
         } as any, quantity, {
             selectedDesigns: designs,
             selectedColor: selectedColor,

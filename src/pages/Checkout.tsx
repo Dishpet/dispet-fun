@@ -139,6 +139,7 @@ const Checkout = () => {
 
           return {
             product_id: item.id,
+            variation_id: cartItem.variation_id, // Pass solved ID
             quantity: item.quantity,
             meta_data
           };
