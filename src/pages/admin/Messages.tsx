@@ -24,6 +24,8 @@ interface Message {
     read: boolean;
 }
 
+import { wpFetch, getAuthHeaders } from "@/integrations/wordpress/client";
+
 const Messages = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,11 +34,8 @@ const Messages = () => {
     const fetchMessages = async (showRefresh = false) => {
         if (showRefresh) setIsRefreshing(true);
         try {
-            const apiUrl = import.meta.env.DEV
-                ? 'http://localhost:3000/api/messages'
-                : '/api/messages';
-            const response = await fetch(apiUrl);
-            const data = await response.json();
+            const headers = getAuthHeaders();
+            const data = await wpFetch('/antigravity/v1/messages', { headers });
             setMessages(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
@@ -55,11 +54,9 @@ const Messages = () => {
         if (!confirm("Jeste li sigurni da želite obrisati ovu poruku?")) return;
 
         try {
-            const apiUrl = import.meta.env.DEV
-                ? `http://localhost:3000/api/messages/${id}`
-                : `/api/messages/${id}`;
-            const response = await fetch(apiUrl, { method: 'DELETE' });
-            if (response.ok) {
+            const headers = getAuthHeaders();
+            const response = await wpFetch(`/antigravity/v1/messages/${id}`, { method: 'DELETE', headers });
+            if (response && response.success) {
                 setMessages(messages.filter(m => m.id !== id));
                 toast.success("Poruka obrisana");
             }
@@ -78,13 +75,10 @@ const Messages = () => {
         const handleAction = async () => {
             setLocalLoading(true);
             try {
-                const apiUrl = import.meta.env.DEV
-                    ? `http://localhost:3000/api/messages/${mode}`
-                    : `/api/messages/${mode}`;
-
-                const response = await fetch(apiUrl, {
+                const headers = getAuthHeaders();
+                const response = await wpFetch(`/antigravity/v1/messages/${mode}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify(mode === 'reply' ? {
                         to: msg.email,
                         subject: `Re: Vaša poruka za Dišpet`,
@@ -93,11 +87,11 @@ const Messages = () => {
                         to: to,
                         subject: `Fwd: Poruka od ${msg.name}`,
                         body: body,
-                        originalMessage: msg
+                        // Backend only uses to, subject, body. originalMessage is context for Frontend if needed.
                     })
                 });
 
-                if (response.ok) {
+                if (response && response.success) {
                     toast.success(mode === 'reply' ? "Odgovor poslan!" : "Poruka proslijeđena!");
                     setMode('none');
                 } else {

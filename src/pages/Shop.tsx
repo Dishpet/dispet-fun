@@ -732,6 +732,18 @@ const Shop = () => {
                                 return (s3 && s3Alt) ? { [s3]: s3Alt } : {};
                             }, [])}
                             onCycleDesignUpdate={handleCycleDesignUpdate}
+                            productAllowedColors={useMemo(() => ({
+                                tshirt: shopConfig?.tshirt?.allowed_colors,
+                                hoodie: shopConfig?.hoodie?.allowed_colors,
+                                cap: shopConfig?.cap?.allowed_colors,
+                                bottle: shopConfig?.bottle?.allowed_colors
+                            }), [shopConfig])}
+                            productRestrictedDesigns={useMemo(() => ({
+                                tshirt: shopConfig?.tshirt?.restricted_designs,
+                                hoodie: shopConfig?.hoodie?.restricted_designs,
+                                cap: shopConfig?.cap?.restricted_designs,
+                                bottle: shopConfig?.bottle?.restricted_designs
+                            }), [shopConfig])}
                         />
 
                     </div>
@@ -977,7 +989,7 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex justify-center items-center gap-1.5 p-2 bg-white rounded-full border border-gray-100 shadow-sm min-h-[54px]">
+                                        <div className="flex justify-center items-center gap-1.5 p-2 bg-white rounded-full border border-gray-100 shadow-sm h-[62px]">
                                             {SIZES.map((size) => (
                                                 <button
                                                     key={size}

@@ -1628,6 +1628,20 @@ interface ShopSceneProps {
     urlToFilename?: Record<string, string>;
     onCycleDesignUpdate?: (designs: { front: string; back: string }) => void;
     designReplacements?: Record<string, string>;
+    // Product-specific allowed colors from shop config
+    productAllowedColors?: {
+        tshirt?: string[];
+        hoodie?: string[];
+        cap?: string[];
+        bottle?: string[];
+    };
+    // Product-specific restricted designs from shop config
+    productRestrictedDesigns?: {
+        tshirt?: string[];
+        hoodie?: string[];
+        cap?: string[];
+        bottle?: string[];
+    };
 }
 
 export const ShopScene = ({
@@ -1650,17 +1664,32 @@ export const ShopScene = ({
     designColorMap,
     urlToFilename,
     onCycleDesignUpdate,
-    designReplacements
+    designReplacements,
+    productAllowedColors,
+    productRestrictedDesigns
 }: ShopSceneProps) => {
 
 
-    // Memoize the clean list for Cap to prevent rapid re-renders/cycling
+    // Memoize the clean list for Cap - filter out restricted designs from shop config
     const capCleanList = useMemo(() => {
+        const restricted = productRestrictedDesigns?.cap || ['street-5.png'];
         return (allDesignsList || logoList || []).filter(d => {
             const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
-            return fname !== 'street-5.png';
+            return !restricted.includes(fname);
         });
-    }, [allDesignsList, logoList, urlToFilename]);
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
+
+    // Memoize the clean list for Bottle - filter out restricted designs from shop config
+    const bottleCleanList = useMemo(() => {
+        const restricted = productRestrictedDesigns?.bottle || [];
+        if (restricted.length === 0) {
+            return allDesignsList || logoList || [];
+        }
+        return (allDesignsList || logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
+        });
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
 
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
@@ -1893,8 +1922,8 @@ export const ShopScene = ({
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
-                                                // Bottle uses all designs
-                                                cycleDesignsFront={allDesignsList || cycleLogoList}
+                                                // Bottle uses filtered designs (shop config restrictions)
+                                                cycleDesignsFront={bottleCleanList || cycleLogoList}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#ffffff"
@@ -1913,7 +1942,7 @@ export const ShopScene = ({
                                                 cycleOffset={0}
                                                 swipeDirection="down"
                                                 swipeAxis="y" // Reset to Y (Vertical)
-                                                allowedCycleColors={['#231f20', '#ffffff']}
+                                                allowedCycleColors={productAllowedColors?.bottle || ['#231f20', '#ffffff']}
                                                 productId="bottle"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
@@ -1960,6 +1989,7 @@ export const ShopScene = ({
                                                 cycleOffset={0}
                                                 swipeDirection="down"
                                                 swipeAxis="y" // Reset to Y (Vertical)
+                                                allowedCycleColors={productAllowedColors?.tshirt}
                                                 productId="tshirt"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}
@@ -2005,6 +2035,7 @@ export const ShopScene = ({
                                                 cycleOffset={0}
                                                 swipeDirection="down"
                                                 swipeAxis="y" // Retrying Y (Standard) - Suspect "Horizontal" report meant "Horizontal Line" (Correct)
+                                                allowedCycleColors={productAllowedColors?.hoodie}
                                                 productId="hoodie"
                                                 activeColorsRef={activeColorsRef}
                                                 onDesignsUpdate={onCycleDesignUpdate}

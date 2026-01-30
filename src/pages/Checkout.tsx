@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, User, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { createOrder, executeHeadlessPayment } from "@/integrations/wordpress/woocommerce";
+import { createOrder, executeHeadlessPayment, sendOrderNotification } from "@/integrations/wordpress/woocommerce";
 import { PageHero } from "@/components/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadStripe } from "@stripe/stripe-js";
@@ -151,35 +151,29 @@ const Checkout = () => {
 
       const response: any = await executeHeadlessPayment(orderData, token.id);
 
-      if (response.id) {
+      if (response.id || response.order_id) {
+        const orderId = response.id || response.order_id;
+
         // Send order notification with design details for printing team
         try {
-          const notificationApiUrl = import.meta.env.DEV
-            ? 'http://localhost:3000/api/order-notification'
-            : '/api/order-notification';
-
-          await fetch(notificationApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: response.id,
-              customer: {
-                name: `${formData.firstName} ${formData.lastName}`,
-                email: formData.email,
-                phone: formData.phone,
-                address: formData.address,
-                city: formData.city,
-                postalCode: formData.postalCode,
-              },
-              items: cartItems.map(item => ({
-                name: item.name,
-                image: item.images?.[0]?.src || '',
-                color: item.selectedColor || '',
-                size: item.selectedSize || '',
-                quantity: item.quantity,
-              })),
-              total: cartTotal.toFixed(2),
-            }),
+          await sendOrderNotification({
+            orderId: orderId,
+            customer: {
+              name: `${formData.firstName} ${formData.lastName}`,
+              email: formData.email,
+              phone: formData.phone,
+              address: formData.address,
+              city: formData.city,
+              postalCode: formData.postalCode,
+            },
+            items: cartItems.map(item => ({
+              name: item.name,
+              image: item.images?.[0]?.src || '',
+              color: item.selectedColor || '',
+              size: item.selectedSize || '',
+              quantity: item.quantity,
+            })),
+            total: cartTotal.toFixed(2),
           });
         } catch (notifError) {
           console.error('Failed to send order notification:', notifError);

@@ -101,6 +101,8 @@ const ShopRules = () => {
             const res = await fetch(`${WP_API_URL}/antigravity/v1/shop-config`);
             if (!res.ok) throw new Error('Failed to fetch config');
             const data = await res.json();
+            console.log('[ShopRules] Fetched config:', data);
+            console.log('[ShopRules] T-shirt allowed_colors from server:', data.tshirt?.allowed_colors);
             setConfig(data);
         } catch (error) {
             console.error('Failed to fetch shop config:', error);
@@ -114,6 +116,10 @@ const ShopRules = () => {
         if (!config) return;
         setSaving(true);
         try {
+            console.log('[ShopRules] Saving config, token:', token ? `${token.substring(0, 20)}...` : 'NULL');
+            console.log('[ShopRules] Config being sent:', JSON.stringify(config, null, 2));
+            console.log('[ShopRules] T-shirt allowed_colors:', config.tshirt?.allowed_colors);
+            console.log('[ShopRules] T-shirt restricted_designs:', config.tshirt?.restricted_designs);
             if (!token) throw new Error('You must be logged in to save changes.');
 
             const res = await fetch(`${WP_API_URL}/antigravity/v1/shop-config`, {
@@ -124,9 +130,11 @@ const ShopRules = () => {
                 },
                 body: JSON.stringify(config)
             });
+            console.log('[ShopRules] Save response status:', res.status);
+            const responseData = await res.json();
+            console.log('[ShopRules] Server response:', responseData);
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.message || 'Failed to save');
+                throw new Error(responseData.message || 'Failed to save');
             }
             toast({ title: 'Saved!', description: 'Shop configuration updated successfully.' });
         } catch (error: any) {

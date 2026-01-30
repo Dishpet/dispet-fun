@@ -33,30 +33,6 @@ add_action('rest_api_init', function () {
     });
 }, 15);
 
-// Allow Basic Auth for standard REST API endpoints (Custom Implementation)
-add_filter('determine_current_user', function ($user_id) {
-    if (!empty($user_id)) return $user_id;
-
-    $auth_header = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : false;
-    
-    // Apache fix
-    if (!$auth_header && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-        $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-    }
-
-    if ($auth_header && strpos($auth_header, 'Basic ') === 0) {
-        $creds = explode(':', base64_decode(substr($auth_header, 6)));
-        if (count($creds) === 2) {
-            $user = wp_authenticate($creds[0], $creds[1]);
-            if (!is_wp_error($user)) {
-                return $user->ID;
-            }
-        }
-    }
-    
-    return $user_id;
-}, 20);
-
 add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/get-theme-file', array(
         'methods'  => 'GET',
@@ -85,7 +61,7 @@ add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/shop-config', array(
         'methods'  => 'POST',
         'callback' => 'ag_save_shop_config',
-        'permission_callback' => '__return_true' // Security handled manually inside callback
+        'permission_callback' => function () { return current_user_can('manage_options'); } // Admin only write
     ));
 
     // --- Media Library API (Designs) ---
@@ -294,84 +270,23 @@ function ag_get_shop_config() {
     $default_config = ag_get_default_shop_config();
     $saved_config = get_option('ag_shop_config', []);
     
-    // Smart Merge: We want defaults for missing keys, but SAVED lists should overwrite default lists completely (no index merging)
-    $config = $default_config;
-
-    if (!empty($saved_config)) {
-        foreach ($saved_config as $key => $value) {
-            // Top Level: tshirt, hoodie, etc.
-            if (isset($config[$key]) && is_array($config[$key]) && is_array($value)) {
-                if (in_array($key, ['tshirt', 'hoodie', 'cap', 'bottle'])) {
-                    // Product Config: Merge keys, but replace arrays
-                    foreach ($value as $subKey => $subVal) {
-                        $config[$key][$subKey] = $subVal;
-                    }
-                } elseif ($key === 'design_color_map') {
-                    // Design Map: Merge keys (designs), replace color lists
-                    foreach ($value as $dKey => $dVal) {
-                        $config[$key][$dKey] = $dVal;
-                    }
-                } else {
-                    // Others (alternatives): Replace entirely
-                    $config[$key] = $value;
-                }
-            } else {
-                // Scalar or new top-level key: Replace
-                $config[$key] = $value;
-            }
-        }
-    }
+    // Merge saved config with defaults (saved takes precedence)
+    $config = array_replace_recursive($default_config, $saved_config);
     
     return rest_ensure_response($config);
 }
 
 /**
  * Save shop configuration to wp_options
- * With manual Basic Auth verification to bypass plugin requirement
  */
 function ag_save_shop_config($request) {
-    // 1. Manually verify Basic Auth
-    // Use the APPLICATION PASSWORD defined in your .env.server or manually check admin creds
-    // Ideally we check if user is logged in, but if that fails, we check the header ourselves.
-    
-    $is_authorized = false;
-    
-    // Check if standard WP auth worked
-    if (current_user_can('manage_options')) {
-        $is_authorized = true;
-    } 
-    else {
-        // Fallback: Check Basic Auth Header manually
-        $auth_header = $request->get_header('authorization');
-        
-        if ($auth_header && strpos($auth_header, 'Basic ') === 0) {
-            $creds = explode(':', base64_decode(substr($auth_header, 6)));
-            if (count($creds) === 2) {
-                $username = $creds[0];
-                $password = $creds[1];
-                
-                $user = wp_authenticate($username, $password);
-                if (!is_wp_error($user) && user_can($user, 'manage_options')) {
-                    $is_authorized = true;
-                }
-            }
-        }
-    }
-
-    if (!$is_authorized) {
-        return new WP_Error('rest_forbidden', 'You do not have permissions to view this resource.', ['status' => 401]);
-    }
-
     $data = $request->get_json_params();
     
-    // Debug Logging
-    error_log('AG_SAVE_CONFIG: Auth success. Received data keys: ' . implode(', ', array_keys($data)));
-
     if (empty($data)) {
         return new WP_Error('invalid_data', 'No configuration data provided', ['status' => 400]);
     }
     
-    // Sanitize and validate
+    // Sanitize and validate (basic)
     $sanitized = [];
     foreach ($data as $product_key => $product_config) {
         if (!in_array($product_key, ['tshirt', 'hoodie', 'cap', 'bottle', 'alternatives', 'design_color_map'])) {
@@ -380,15 +295,7 @@ function ag_save_shop_config($request) {
         $sanitized[$product_key] = $product_config;
     }
     
-    error_log('AG_SAVE_CONFIG: Saving sanitized keys: ' . implode(', ', array_keys($sanitized)));
-    
-    $updated = update_option('ag_shop_config', $sanitized);
-    
-    if ($updated) {
-        error_log('AG_SAVE_CONFIG: Update option successful.');
-    } else {
-        error_log('AG_SAVE_CONFIG: Update option returned false (no change or failed).');
-    }
+    update_option('ag_shop_config', $sanitized);
     
     return rest_ensure_response(['success' => true, 'message' => 'Configuration saved']);
 }
