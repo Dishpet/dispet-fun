@@ -744,6 +744,8 @@ const Shop = () => {
                                 cap: shopConfig?.cap?.restricted_designs,
                                 bottle: shopConfig?.bottle?.restricted_designs
                             }), [shopConfig])}
+                            designColorMap={shopConfig?.design_color_map}
+                            urlToFilename={URL_TO_FILENAME}
                         />
 
                     </div>
