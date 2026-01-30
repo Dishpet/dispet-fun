@@ -71,111 +71,83 @@ function ag_headless_checkout_handler($request) {
         $order->calculate_totals();
         $order->save();
 
-        // 4. Process Payment via Stripe Plugin
+        // 4. Custom Headless Stripe Processing (Direct SDK)
+        // Bypasses plugin complexity to avoid 'Missing Customer Field' errors
         if (class_exists('WC_Gateway_Stripe')) {
-            $gateway = new WC_Gateway_Stripe();
+            $stripe_settings = get_option('woocommerce_stripe_settings');
             
-            // --- FIX START: FORCE ENVIRONMENT FOR HEADLESS STRIPE ---
-
-            // A. Initialize WC Customer Global if missing (Plugin often looks here)
-            if (function_exists('WC')) {
-                 if (empty(WC()->customer)) {
-                     // Create a session-based customer or load existing
-                     WC()->customer = new WC_Customer($order->get_customer_id() > 0 ? $order->get_customer_id() : 0);
-                 }
-                 // Explicitly set the billing address on the global customer to match this order
-                 WC()->customer->set_props([
-                     'billing_first_name' => $order_data['billing']['first_name'],
-                     'billing_last_name'  => $order_data['billing']['last_name'],
-                     'billing_address_1'  => $order_data['billing']['address_1'],
-                     'billing_city'       => $order_data['billing']['city'],
-                     'billing_postcode'   => $order_data['billing']['postcode'],
-                     'billing_country'    => $order_data['billing']['country'],
-                     'billing_email'      => $order_data['billing']['email'],
-                     'billing_phone'      => $order_data['billing']['phone'],
-                 ]);
-                 WC()->customer->save(); // Save to session/DB needed? mostly session.
+            if (!$stripe_settings) {
+                 return new WP_Error('stripe_error', 'Stripe settings not found.', ['status' => 500]);
+            }
+            
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
+            
+            if (empty($secret_key)) {
+                return new WP_Error('stripe_error', 'Stripe Secret Key is missing in WooCommerce Settings.', ['status' => 500]);
             }
 
-            // B. Initialize POST with EVERY possible field Stripe might check
-            $_POST['stripe_token'] = $token;
-            $_POST['payment_method'] = 'stripe';
-            
-            $billing = $order_data['billing'];
-            $map = [
-                'billing_first_name' => $billing['first_name'],
-                'billing_last_name'  => $billing['last_name'],
-                'billing_address_1'  => $billing['address_1'],
-                'billing_city'       => $billing['city'],
-                'billing_postcode'   => $billing['postcode'],
-                'billing_country'    => $billing['country'],
-                'billing_email'      => $billing['email'],
-                'billing_phone'      => $billing['phone'],
-                // Some plugins look for 'stripe_billing_...' or just non-prefixed
-                'stripe_billing_address_1' => $billing['address_1'],
-                'stripe_billing_zip' => $billing['postcode'],
-                'stripe_billing_city' => $billing['city'],
-            ];
-            
-            foreach ($map as $k => $v) {
-                $_POST[$k] = $v;
+            // Ensure Stripe Library is loaded (Plugin usually loads it)
+            if (class_exists('\Stripe\Stripe')) {
+                \Stripe\Stripe::setApiKey($secret_key);
+            } else {
+                 return new WP_Error('stripe_error', 'Stripe PHP Library not loaded.', ['status' => 500]);
             }
+            
+            try {
+                // Calculate amount in cents
+                $amount = (int)(round((float)$order->get_total(), 2) * 100);
+                $currency = strtolower($order->get_currency());
+                
+                // Description for Stripe Dashboard
+                $description = 'Order #' . $order->get_id() . ' - ' . $order_data['billing']['email'];
 
-            // C. Update Real User Meta (Last Resort persistence)
-            if ($order->get_customer_id() > 0) {
-                foreach ($map as $key => $value) {
-                    // Only update standard billing fields
-                    if (strpos($key, 'billing_') === 0) {
-                        update_user_meta($order->get_customer_id(), $key, $value);
-                    }
+                // Attempt Direct Charge
+                $charge_args = [
+                    'amount'      => $amount,
+                    'currency'    => $currency,
+                    'source'      => $token, // 'tok_...' from frontend
+                    'description' => $description,
+                    'metadata'    => [
+                        'order_id' => $order->get_id(),
+                        'customer_name' => $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name']
+                    ],
+                    'receipt_email' => $order_data['billing']['email'],
+                ];
+                
+                // Add Shipping Info for Fraud Protection logic (AVS)
+                if (!empty($order_data['billing']['address_1'])) {
+                    $charge_args['shipping'] = [
+                        'name' => $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name'],
+                        'address' => [
+                            'line1' => $order_data['billing']['address_1'],
+                            'city' => $order_data['billing']['city'],
+                            'postal_code' => $order_data['billing']['postcode'],
+                            'country' => $order_data['billing']['country'], // Should be ISO 'HR' now
+                        ]
+                    ];
                 }
-            }
 
-            // --- FIX END ---
-            
-            $result = $gateway->process_payment($order->get_id());
-
-            // Return the FULL result (including redirect URL if 3DSecure is needed)
-            if (isset($result['result']) && $result['result'] === 'success') {
+                $charge = \Stripe\Charge::create($charge_args);
+                
+                // If we got here, payment is successful
+                $order->payment_complete($charge->id);
+                $order->add_order_note('Stripe Charge Successful via Headless API. Charge ID: ' . $charge->id);
+                $order->update_meta_data('_stripe_charge_id', $charge->id);
+                $order->save();
+                
                 return [
                     'success' => true,
                     'order_id' => $order->get_id(),
-                    'redirect' => $result['redirect'] ?? null,
-                    'result_payload' => $result
+                    'redirect' => $order->get_checkout_order_received_url(),
+                    'charge_id' => $charge->id
                 ];
-            } else {
-                // Failed payment - Return proper error message from Gateway
-                $order->update_status('failed', 'Headless Payment Failed');
-                
-                // Extract specific error message if available
-                $errorMessage = isset($result['messages']) ? $result['messages'] : 'Payment processing failed. Please try again.';
-                // Sometimes it is in a different format depending on plugin version
-                if (method_exists($gateway, 'get_validation_errors')) {
-                    $validation_errors = $gateway->get_validation_errors();
-                    if (!empty($validation_errors)) {
-                         $errorMessage = is_array($validation_errors) ? implode(' ', $validation_errors) : $validation_errors;
-                    }
-                }
-                
-                // Try to find error in notices if messages is empty
-                if (function_exists('wc_get_notices')) {
-                     $notices = wc_get_notices('error');
-                     if (!empty($notices)) {
-                         $notice_messages = [];
-                         foreach ($notices as $notice) {
-                             if (is_array($notice)) {
-                                 // Sometimes notices are ['notice' => 'Message', 'data' => ...]
-                                 $notice_messages[] = isset($notice['notice']) ? strip_tags($notice['notice']) : '';
-                             } else {
-                                 $notice_messages[] = strip_tags($notice);
-                             }
-                         }
-                         $errorMessage .= " " . implode(" ", array_filter($notice_messages));
-                         wc_clear_notices();
-                     }
-                }
 
-                return new WP_Error('payment_failed', $errorMessage, ['status' => 402, 'gateway_result' => $result]);
+            } catch (\Exception $e) {
+                // Return clear error to frontend
+                $error_msg = $e->getMessage();
+                $order->update_status('failed', 'Stripe Error: ' . $error_msg);
+                return new WP_Error('payment_failed', $error_msg, ['status' => 402]);
             }
         }
         
