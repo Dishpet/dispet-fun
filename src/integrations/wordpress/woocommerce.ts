@@ -111,3 +111,37 @@ export const executeHeadlessPayment = async (orderData: any, stripeToken: string
     });
 };
 
+
+export const syncGoogleUserToWP = async (googleUser: any) => {
+    const headers = getAuthHeaders();
+
+    // 1. Check if user exists by Email
+    const existing = await wpFetch(`/wc/v3/customers?email=${googleUser.email}`, { headers });
+
+    if (existing && existing.length > 0) {
+        return existing[0];
+    }
+
+    // 2. Create new user if not exists
+    // We set a random strong password since they use Google Login
+    const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + "!";
+
+    const newCustomer = {
+        email: googleUser.email,
+        first_name: googleUser.first_name,
+        last_name: googleUser.last_name,
+        username: googleUser.email.split('@')[0], // Generate username from email
+        password: randomPassword,
+        billing: {
+            first_name: googleUser.first_name,
+            last_name: googleUser.last_name,
+            email: googleUser.email
+        },
+        shipping: {
+            first_name: googleUser.first_name,
+            last_name: googleUser.last_name
+        }
+    };
+
+    return createCustomer(newCustomer);
+};

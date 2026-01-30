@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { cartItems, cartSubtotal, shippingCost, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
@@ -36,9 +37,16 @@ const Checkout = () => {
     country: "Hrvatska",
   });
 
-  // Auto-populate user data
+  // Force Login Check
   useEffect(() => {
-    if (user) {
+    if (!user) {
+      toast({
+        title: "Potrebna prijava",
+        description: "Molimo prijavite se ili kreirajte račun za nastavak kupovine.",
+      });
+      navigate("/login?redirect=/checkout");
+    } else {
+      // Auto-populate
       setFormData(prev => ({
         ...prev,
         firstName: user.first_name || user.billing?.first_name || prev.firstName,
@@ -51,7 +59,9 @@ const Checkout = () => {
         country: user.billing?.country || prev.country
       }));
     }
-  }, [user]);
+  }, [user, navigate]);
+
+  if (!user) return null; // Prevent render until redirect
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -88,7 +98,8 @@ const Checkout = () => {
 
     try {
       const orderData = {
-        set_paid: true, // Attempt to set as paid immediately since we have a token
+        set_paid: true,
+        customer_id: user.id > 1000000000000 ? 0 : user.id, // Only use real WP IDs (timestamps are fake)
         payment_method: "stripe",
         payment_method_title: "Credit Card (Stripe)",
         billing: {

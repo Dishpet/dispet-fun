@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
-import { verifyCredentials, getCustomer } from "@/integrations/wordpress/woocommerce";
+import { verifyCredentials, getCustomer, syncGoogleUserToWP } from "@/integrations/wordpress/woocommerce";
 
 const Login = () => {
     const navigate = useNavigate();
@@ -61,6 +61,27 @@ const Login = () => {
                     country: ""
                 }
             };
+
+            // SYNC TO WP
+            try {
+                const wpUser = await syncGoogleUserToWP(googleUser);
+                console.log("Synced WP User:", wpUser);
+
+                // Use the REAL WP ID
+                googleUser.id = wpUser.id;
+                // Merge WP data (billing etc)
+                googleUser.billing = { ...googleUser.billing, ...wpUser.billing };
+                googleUser.shipping = { ...googleUser.shipping, ...wpUser.shipping };
+
+            } catch (syncError) {
+                console.error("Failed to sync Google User to WP:", syncError);
+                toast({
+                    title: "Greška sinkronizacije",
+                    description: "Nismo uspjeli povezati vaš račun sa serverom.",
+                    variant: "destructive"
+                });
+                return; // Stop login if sync fails
+            }
 
             login("google-session-token", googleUser);
 
