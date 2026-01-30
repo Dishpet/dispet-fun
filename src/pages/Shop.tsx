@@ -186,7 +186,7 @@ const getAvailableColorsForDesign = (designUrl: string | null): typeof SHARED_CO
 const INITIAL_PRODUCTS = {
     tshirt: {
         id: 'tshirt-001',
-        name: 'Dišpet T-shirt',
+        name: 'Dišpet majica',
         price: 25.00,
         description: 'Klasična pamučna majica s vašim izborom dizajna.',
         colors: SHARED_COLORS,
@@ -197,7 +197,7 @@ const INITIAL_PRODUCTS = {
     },
     hoodie: {
         id: 'hoodie-001',
-        name: 'Dišpet Duksica', // Updated to match WP
+        name: 'Dišpet duksica', // Updated to match WP
         price: 45.00,
         description: 'Premium teška hoodica, savršena za svaku priliku.',
         colors: SHARED_COLORS,
@@ -208,7 +208,7 @@ const INITIAL_PRODUCTS = {
     },
     cap: {
         id: 'cap-001',
-        name: 'Dišpet Šilterica', // Updated to match WP
+        name: 'Dišpet kapa', // Updated to match WP
         price: 20.00,
         description: 'Klasična šilterica koja upotpunjuje svaki stil.',
         colors: SHARED_COLORS,
@@ -219,7 +219,7 @@ const INITIAL_PRODUCTS = {
     },
     bottle: {
         id: 'bottle-001',
-        name: 'Dišpet Termosica', // Updated to match WP
+        name: 'Dišpet termosica', // Updated to match WP
         price: 20.00,
         description: 'Termo boca od nehrđajućeg čelika.',
         colors: [

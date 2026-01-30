@@ -48,10 +48,10 @@ const ALL_COLORS = [
 ];
 
 const PRODUCT_LABELS: Record<string, string> = {
-    tshirt: 'Dišpet T-shirt',
-    hoodie: 'Dišpet Duksica',
-    cap: 'Dišpet Šilterica',
-    bottle: 'Dišpet Termosica'
+    tshirt: 'Dišpet majica',
+    hoodie: 'Dišpet duksica',
+    cap: 'Dišpet kapa',
+    bottle: 'Dišpet termosica'
 };
 
 interface ProductConfig {

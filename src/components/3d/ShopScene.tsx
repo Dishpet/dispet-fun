@@ -1881,7 +1881,7 @@ export const ShopScene = ({
                                                 position={pos}
                                                 scale={scale}
                                                 label={`Dišpet
-Šilterica`}
+kapa`}
                                                 price={productData.cap?.price || 25}
                                                 onClick={() => onSelectProduct('cap')}
                                                 enableDesignCycle={true}
@@ -1925,7 +1925,7 @@ export const ShopScene = ({
                                                 position={pos}
                                                 scale={scale}
                                                 label={`Dišpet
-Termosica`}
+termosica`}
                                                 price={productData.bottle?.price || 20}
                                                 onClick={() => onSelectProduct('bottle')}
                                                 enableDesignCycle={true}
@@ -1972,7 +1972,7 @@ Termosica`}
                                                 position={pos}
                                                 scale={scale}
                                                 label={`Dišpet
-T-shirt`}
+majica`}
                                                 price={productData.tshirt?.price || 35}
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
@@ -2020,7 +2020,7 @@ T-shirt`}
                                                 position={pos}
                                                 scale={scale}
                                                 label={`Dišpet
-Duksica`}
+duksica`}
                                                 price={productData.hoodie?.price || 50}
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
