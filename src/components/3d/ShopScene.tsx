@@ -1697,6 +1697,42 @@ export const ShopScene = ({
         });
     }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
 
+    // Memoize the clean list for T-Shirt
+    const tshirtCleanFront = useMemo(() => {
+        const restricted = productRestrictedDesigns?.tshirt || [];
+        // T-shirt uses logos for front by default logic
+        return (logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
+        });
+    }, [logoList, urlToFilename, productRestrictedDesigns]);
+
+    const tshirtCleanBack = useMemo(() => {
+        const restricted = productRestrictedDesigns?.tshirt || [];
+        // T-shirt uses vintage or back list for back by default logic
+        return (vintageList || hoodieBackList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
+        });
+    }, [vintageList, hoodieBackList, urlToFilename, productRestrictedDesigns]);
+
+    // Memoize the clean list for Hoodie
+    const hoodieCleanFront = useMemo(() => {
+        const restricted = productRestrictedDesigns?.hoodie || [];
+        return (logoList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
+        });
+    }, [logoList, urlToFilename, productRestrictedDesigns]);
+
+    const hoodieCleanBack = useMemo(() => {
+        const restricted = productRestrictedDesigns?.hoodie || [];
+        return (hoodieBackList || []).filter(d => {
+            const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
+            return !restricted.includes(fname);
+        });
+    }, [hoodieBackList, urlToFilename, productRestrictedDesigns]);
+
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
 
@@ -1977,9 +2013,9 @@ majica`}
                                                 onClick={() => onSelectProduct('tshirt')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
-                                                cycleDesignsFront={cycleLogoList}
+                                                cycleDesignsFront={tshirtCleanFront}
                                                 // T-shirt uses Vintage
-                                                cycleDesignsBack={vintageList || cycleBackList}
+                                                cycleDesignsBack={tshirtCleanBack}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
@@ -2025,8 +2061,8 @@ duksica`}
                                                 onClick={() => onSelectProduct('hoodie')}
                                                 enableDesignCycle={true}
                                                 enableColorCycle={true}
-                                                cycleDesignsFront={cycleLogoList}
-                                                cycleDesignsBack={cycleBackList}
+                                                cycleDesignsFront={hoodieCleanFront}
+                                                cycleDesignsBack={hoodieCleanBack}
                                                 isActive={isActive}
                                                 isCustomizing={isCustomizing}
                                                 initialColor="#231f20"
