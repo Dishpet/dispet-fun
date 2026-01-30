@@ -6,6 +6,7 @@ import { SocialTemplate } from "./SocialTemplateSelector";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
+import { TransformGizmo } from "./TransformGizmo";
 
 // Import Masks
 import mask1 from "@/assets/elements/masks/mask-1.svg";
@@ -107,7 +108,20 @@ export const MaskedPostComposer = ({ template, uploadedImage, onBack }: MaskedPo
 
     // Drag tracking
     const isDragging = useRef(false);
+    const dragMode = useRef<'move' | 'transform'>('move'); // New ref for tracking interaction type
+    const initialDragState = useRef<any>(null); // Store initial values for transform calcs
     const lastMousePos = useRef({ x: 0, y: 0 });
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+    useEffect(() => {
+        if (!canvasRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            setContainerSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+        });
+        observer.observe(canvasRef.current);
+        return () => observer.disconnect();
+    }, []);
 
     const currentMask = maskMap[selectedMaskId];
     const defaultConfig = maskSettings[selectedMaskId];
@@ -117,8 +131,8 @@ export const MaskedPostComposer = ({ template, uploadedImage, onBack }: MaskedPo
         return Array.from({ length: count }).map((_, i) => ({
             id: i,
             src: DECORATION_ELEMENTS[Math.floor(Math.random() * DECORATION_ELEMENTS.length)],
-            top: Math.random() * 90,
-            left: Math.random() * 90,
+            top: Math.random() * 60 + 20, // Keep more centralized
+            left: Math.random() * 60 + 20,
             size: Math.random() * 100 + 50,
             rotation: 0,
             zIndex: 20,
@@ -149,7 +163,51 @@ export const MaskedPostComposer = ({ template, uploadedImage, onBack }: MaskedPo
 
     const handleMouseDown = (e: React.MouseEvent) => {
         isDragging.current = true;
+        dragMode.current = 'move';
         lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleGizmoDragStart = (e: React.PointerEvent, id: string | number, mode: 'move' | 'transform') => {
+        e.stopPropagation();
+        isDragging.current = true;
+        dragMode.current = mode; // 'transform'
+        lastMousePos.current = { x: e.clientX, y: e.clientY };
+
+        // Store initial state for smooth transform
+        // We'll calculate deltas in handleMouseMove based on these
+        initialDragState.current = {
+            // Capture current values based on active mode
+            imageRotation, imageScale,
+            maskRotation, maskScale,
+            textRotation, textSize,
+            decor: selectedDecoration ? { ...selectedDecoration } : null,
+            // Center point of the object for Angle Calculation
+            center: getActiveCenter()
+        };
+    };
+
+    const getActiveCenter = () => {
+        if (!containerSize.width) return { x: 0, y: 0 };
+        const cx = containerSize.width / 2;
+        const cy = containerSize.height / 2;
+
+        if (activeMode === 'image') {
+            return { x: cx + imagePos.x, y: cy + imagePos.y };
+        }
+        // Mask center is complex due to offsets ?? Mask moves opposite?
+        // Mask Position: defaultPos + maskOffset.
+        // Let's approximate for now or calculate properly.
+        if (activeMode === 'mask') return { x: cx + maskOffset.x, y: cy + maskOffset.y }; // Simplified
+
+        if (activeMode === 'decoration' && selectedDecoration) {
+            const x = (selectedDecoration.left / 100 * containerSize.width) + selectedDecoration.x;
+            const y = (selectedDecoration.top / 100 * containerSize.height) + selectedDecoration.y;
+            return { x, y };
+        }
+        if (activeMode === 'text') {
+            return { x: cx + textPos.x, y: cy + textPos.y };
+        }
+        return { x: cx, y: cy };
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
@@ -157,6 +215,47 @@ export const MaskedPostComposer = ({ template, uploadedImage, onBack }: MaskedPo
 
         const deltaX = e.clientX - lastMousePos.current.x;
         const deltaY = e.clientY - lastMousePos.current.y;
+
+        // --- TRANSFORM LOGIC (Rotation / Scale) ---
+        if (dragMode.current === 'transform') {
+            // Calculate Angle Delta (Rotation)
+            const center = initialDragState.current.center;
+            // Vector from center to START mouse pos -> This requires startMousePos storing?
+            // Actually we can just do diff from previous frame for simple rotation, or absolute if we stored start.
+            // Let's use simple incremental rotation based on pointer movement tangentially?
+            // Or better: Current Angle relative to Center vs Previous Angle.
+
+            const prevAngle = Math.atan2(lastMousePos.current.y - center.y, lastMousePos.current.x - center.x);
+            const curAngle = Math.atan2(e.clientY - center.y, e.clientX - center.x);
+            const angleDiff = (curAngle - prevAngle) * (180 / Math.PI);
+
+            // Calculate Scale Delta (Distance from center)
+            const prevDist = Math.hypot(lastMousePos.current.x - center.x, lastMousePos.current.y - center.y);
+            const curDist = Math.hypot(e.clientX - center.x, e.clientY - center.y);
+            const scaleFactor = curDist / (prevDist || 1); // Avoid div by zero
+
+            // Apply updates
+            if (activeMode === 'image') {
+                setImageRotation(prev => prev + angleDiff);
+                setImageScale(prev => Math.max(0.1, prev * scaleFactor));
+            } else if (activeMode === 'mask') {
+                setMaskRotation(prev => prev + angleDiff);
+                setMaskScale(prev => Math.max(0.1, prev * scaleFactor));
+            } else if (activeMode === 'decoration' && selectedDecorationId !== null) {
+                updateDecoration(selectedDecorationId, {
+                    angle: (selectedDecoration?.angle || 0) + angleDiff,
+                    scale: Math.max(0.1, (selectedDecoration?.scale || 1) * scaleFactor)
+                });
+            } else if (activeMode === 'text') {
+                setTextRotation(prev => prev + angleDiff);
+                setTextSize(prev => Math.max(10, prev * scaleFactor));
+            }
+
+            lastMousePos.current = { x: e.clientX, y: e.clientY };
+            return;
+        }
+
+        // --- MOVE LOGIC ---
         lastMousePos.current = { x: e.clientX, y: e.clientY };
 
         const rotateVector = (dx: number, dy: number, angleDeg: number) => {
@@ -439,6 +538,53 @@ export const MaskedPostComposer = ({ template, uploadedImage, onBack }: MaskedPo
                                 {textContent}
                             </div>
                         )}
+
+                        {/* SVG Overlay for Gizmos */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-50 overflow-visible">
+                            {/* Calculate Gizmo Props on the fly */}
+                            {(() => {
+                                if (!containerSize.width) return null;
+                                const cx = containerSize.width / 2;
+                                const cy = containerSize.height / 2;
+                                let t = { x: 0, y: 0, scale: 1, rotate: 0 };
+                                let radius = 100;
+                                let id: string | number = '';
+
+                                if (activeMode === 'image') {
+                                    t = { x: cx + imagePos.x, y: cy + imagePos.y, scale: imageScale * 0.5, rotate: imageRotation }; // Scale factor for visual sizing
+                                    radius = 200;
+                                    id = 'image';
+                                } else if (activeMode === 'mask') {
+                                    // Mask visuals are tricky, just put gizmo at center offset
+                                    t = { x: cx + maskOffset.x, y: cy + maskOffset.y, scale: maskScale, rotate: maskRotation };
+                                    radius = 150;
+                                    id = 'mask';
+                                } else if (activeMode === 'text') {
+                                    t = { x: cx + textPos.x, y: cy + textPos.y, scale: textSize / 50, rotate: textRotation };
+                                    radius = 80;
+                                    id = 'text';
+                                } else if (activeMode === 'decoration' && selectedDecoration) {
+                                    t = {
+                                        x: (selectedDecoration.left / 100 * containerSize.width) + selectedDecoration.x,
+                                        y: (selectedDecoration.top / 100 * containerSize.height) + selectedDecoration.y,
+                                        scale: selectedDecoration.scale,
+                                        rotate: selectedDecoration.angle
+                                    };
+                                    radius = selectedDecoration.size / 2;
+                                    id = selectedDecoration.id;
+                                }
+
+                                return (
+                                    <TransformGizmo
+                                        id={id}
+                                        selectedId={id}
+                                        transform={t}
+                                        radius={radius}
+                                        onDragStart={handleGizmoDragStart}
+                                    />
+                                );
+                            })()}
+                        </svg>
                     </div>
                 </div>
 

@@ -10,6 +10,29 @@ function blocksy_child_enqueue_styles() {
 
 // --- Antigravity Agent Connector Extensions ---
 
+// Add CORS headers for REST API
+add_action('rest_api_init', function () {
+    remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+    add_filter('rest_pre_serve_request', function ($value) {
+        $origin = get_http_origin();
+        $allowed_origins = [
+            'http://localhost:8080',
+            'http://localhost:3000',
+            'https://dispet.fun',
+            'https://www.dispet.fun'
+        ];
+        
+        if (in_array($origin, $allowed_origins) || !$origin) {
+            header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With');
+        }
+        
+        return $value;
+    });
+}, 15);
+
 add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/get-theme-file', array(
         'methods'  => 'GET',
@@ -27,7 +50,65 @@ add_action('rest_api_init', function () {
         'callback' => 'ag_headless_checkout_handler',
         'permission_callback' => '__return_true'
     ));
+
+    // --- Shop Config API ---
+    register_rest_route('antigravity/v1', '/shop-config', array(
+        'methods'  => 'GET',
+        'callback' => 'ag_get_shop_config',
+        'permission_callback' => '__return_true' // Public read
+    ));
+
+    register_rest_route('antigravity/v1', '/shop-config', array(
+        'methods'  => 'POST',
+        'callback' => 'ag_save_shop_config',
+        'permission_callback' => function () { return current_user_can('manage_options'); } // Admin only write
+    ));
+
+    // --- Media Library API (Designs) ---
+    register_rest_route('antigravity/v1', '/designs', array(
+        'methods'  => 'GET',
+        'callback' => 'ag_get_design_images',
+        'permission_callback' => '__return_true' // Public read
+    ));
+
+    // --- Public Products API (No Auth Required) ---
+    register_rest_route('antigravity/v1', '/products', array(
+        'methods'  => 'GET',
+        'callback' => 'ag_get_public_products',
+        'permission_callback' => '__return_true' // Public read
+    ));
 });
+
+// Public products endpoint - returns basic product info without auth
+function ag_get_public_products() {
+    if (!function_exists('wc_get_products')) {
+        return new WP_Error('no_wc', 'WooCommerce not active', ['status' => 500]);
+    }
+
+    $products = wc_get_products([
+        'status' => 'publish',
+        'limit' => 100,
+    ]);
+
+    $result = [];
+    foreach ($products as $product) {
+        $result[] = [
+            'id' => $product->get_id(),
+            'name' => $product->get_name(),
+            'slug' => $product->get_slug(),
+            'price' => $product->get_price(),
+            'regular_price' => $product->get_regular_price(),
+            'sale_price' => $product->get_sale_price(),
+            'stock_status' => $product->get_stock_status(),
+            'stock_quantity' => $product->get_stock_quantity(),
+            'average_rating' => $product->get_average_rating(),
+            'rating_count' => $product->get_rating_count(),
+            'type' => $product->get_type(),
+        ];
+    }
+
+    return rest_ensure_response($result);
+}
 
 function ag_headless_checkout_handler($request) {
     if (function_exists('WC') && empty(WC()->session)) {
@@ -51,15 +132,69 @@ function ag_headless_checkout_handler($request) {
             $product_id = $item['product_id'];
             $qty = $item['quantity'];
             $product = wc_get_product($product_id);
+
             if ($product) {
-                $order->add_product($product, $qty, [
-                    'variation' => isset($item['variation_id']) ? $item['variation_id'] : []
-                ]);
+                // Try to resolve exact variation if it's a variable product but we only have parent ID
+                if ($product->is_type('variable') && empty($item['variation_id'])) {
+                    $variations = $product->get_available_variations();
+                    foreach ($variations as $variation) {
+                        $match_found = false;
+                        foreach ($variation['attributes'] as $attr_slug => $attr_val) {
+                            if (empty($attr_val)) continue; // Wildcard matches anything
+                            
+                            $value_matched = false;
+                            foreach ($item['meta_data'] as $meta) {
+                                // Strict value checking (e.g. matching Hex or Size string)
+                                if (strcasecmp($meta['value'], $attr_val) === 0) {
+                                    $value_matched = true;
+                                    break;
+                                }
+                            }
+                            if (!$value_matched) {
+                                // Attribute mismatch
+                                continue 2; // Continue to next variation
+                            }
+                            // If we matched this attribute, set flag (but keep checking others)
+                            $match_found = true;
+                        }
+                        
+                        // If we completed the attribute loop without continuing, it's a match
+                        if ($match_found || empty($variation['attributes'])) {
+                            $product = wc_get_product($variation['variation_id']);
+                            break;
+                        }
+                    }
+
+                }
+
+                $item_id = $order->add_product($product, $qty); // Add content
+                
+                // Add Meta Data (Color, Size, Design) directly to the item
+                if ($item_id && !empty($item['meta_data'])) {
+                    $order_item = $order->get_item($item_id);
+                    if ($order_item) {
+                        foreach ($item['meta_data'] as $meta) {
+                             $order_item->add_meta_data($meta['key'], $meta['value']);
+                        }
+                        $order_item->save();
+                    }
+                }
             }
         }
 
         $order->set_address($order_data['billing'], 'billing');
         $order->set_address($order_data['shipping'], 'shipping');
+
+        // Add Shipping Lines
+        if (!empty($order_data['shipping_lines'])) {
+            foreach ($order_data['shipping_lines'] as $shipping_line) {
+                $shipping = new WC_Order_Item_Shipping();
+                $shipping->set_method_title($shipping_line['method_title']);
+                $shipping->set_method_id($shipping_line['method_id']);
+                $shipping->set_total($shipping_line['total']);
+                $order->add_item($shipping);
+            }
+        }
         if (!empty($order_data['customer_id'])) {
             $order->set_customer_id($order_data['customer_id']);
         }
@@ -148,4 +283,158 @@ function ag_headless_checkout_handler($request) {
     } catch (Exception $e) {
         return new WP_Error('error', $e->getMessage(), ['status' => 500]);
     }
+}
+
+// --- Shop Config Callbacks ---
+
+/**
+ * Get shop configuration from wp_options
+ */
+function ag_get_shop_config() {
+    $default_config = ag_get_default_shop_config();
+    $saved_config = get_option('ag_shop_config', []);
+    
+    // Merge saved config with defaults (saved takes precedence)
+    $config = array_replace_recursive($default_config, $saved_config);
+    
+    return rest_ensure_response($config);
+}
+
+/**
+ * Save shop configuration to wp_options
+ */
+function ag_save_shop_config($request) {
+    $data = $request->get_json_params();
+    
+    if (empty($data)) {
+        return new WP_Error('invalid_data', 'No configuration data provided', ['status' => 400]);
+    }
+    
+    // Sanitize and validate (basic)
+    $sanitized = [];
+    foreach ($data as $product_key => $product_config) {
+        if (!in_array($product_key, ['tshirt', 'hoodie', 'cap', 'bottle', 'alternatives', 'design_color_map'])) {
+            continue;
+        }
+        $sanitized[$product_key] = $product_config;
+    }
+    
+    update_option('ag_shop_config', $sanitized);
+    
+    return rest_ensure_response(['success' => true, 'message' => 'Configuration saved']);
+}
+
+/**
+ * Get default shop configuration (fallback)
+ */
+function ag_get_default_shop_config() {
+    $all_colors = ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'];
+    
+    return [
+        'tshirt' => [
+            'allowed_colors' => $all_colors,
+            'default_zone' => 'back',
+            'locked_zone' => 'front', // Front is locked to color-coded logo
+            'restricted_designs' => [],
+            'has_front_back' => true,
+            'cycle_enabled' => true,
+            'cycle_duration' => 6000
+        ],
+        'hoodie' => [
+            'allowed_colors' => $all_colors,
+            'default_zone' => 'back',
+            'locked_zone' => 'front',
+            'restricted_designs' => [],
+            'has_front_back' => true,
+            'cycle_enabled' => true,
+            'cycle_duration' => 6000
+        ],
+        'cap' => [
+            'allowed_colors' => ['#231f20'], // Black only
+            'default_zone' => 'front',
+            'locked_zone' => null,
+            'restricted_designs' => ['street-5.png'],
+            'has_front_back' => false,
+            'cycle_enabled' => true,
+            'cycle_duration' => 6000
+        ],
+        'bottle' => [
+            'allowed_colors' => ['#231f20', '#ffffff'], // Black & White
+            'default_zone' => 'front',
+            'locked_zone' => null,
+            'restricted_designs' => [],
+            'has_front_back' => false,
+            'cycle_enabled' => true,
+            'cycle_duration' => 6000
+        ],
+        'alternatives' => [
+            [
+                'design_id' => 'street-3.png',
+                'trigger_colors' => ['#e78fab', '#a1d7c0', '#00aeef'],
+                'replace_with' => 'street-3-alt.png'
+            ]
+        ],
+        'design_color_map' => [
+            'street-1.png' => $all_colors,
+            'street-3.png' => ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'],
+            'street-5.png' => ['#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+            'street-6.png' => $all_colors,
+            'street-7.png' => ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#a1d7c0'],
+            'street-10.png' => ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'],
+            'vintage-1.png' => ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+            'vintage-2.png' => ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+            'vintage-3.png' => ['#231f20'],
+            'vintage-4.png' => $all_colors,
+            'vintage-5.png' => ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
+            'logo-1.png' => $all_colors,
+            'logo-3.png' => ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'],
+            'logo-5.png' => $all_colors,
+            'logo-7.png' => $all_colors,
+            'logo-9.png' => $all_colors,
+            'logo-12.png' => ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0']
+        ]
+    ];
+}
+
+/**
+ * Get design images from WordPress Media Library
+ * Looks for images with 'design' in the title or a specific category/tag
+ */
+function ag_get_design_images($request) {
+    $category = $request->get_param('category'); // Optional filter
+    
+    $args = [
+        'post_type' => 'attachment',
+        'post_mime_type' => 'image',
+        'posts_per_page' => 100,
+        'post_status' => 'inherit',
+        's' => 'design' // Search for 'design' in title
+    ];
+    
+    $query = new WP_Query($args);
+    $designs = [];
+    
+    foreach ($query->posts as $attachment) {
+        $url = wp_get_attachment_url($attachment->ID);
+        $filename = basename($url);
+        
+        // Try to determine category from filename (street-, vintage-, logo-)
+        $cat = 'other';
+        if (strpos($filename, 'street') !== false) $cat = 'street';
+        elseif (strpos($filename, 'vintage') !== false) $cat = 'vintage';
+        elseif (strpos($filename, 'logo') !== false) $cat = 'logo';
+        
+        // Filter by category if requested
+        if ($category && $cat !== $category) continue;
+        
+        $designs[] = [
+            'id' => $attachment->ID,
+            'url' => $url,
+            'filename' => $filename,
+            'title' => $attachment->post_title,
+            'category' => $cat
+        ];
+    }
+    
+    return rest_ensure_response($designs);
 }
