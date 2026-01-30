@@ -1093,8 +1093,9 @@ const ProductModel = ({
 
                 let allowedColors = Array.from(validColorsSet);
                 // Fallback to avoid crash if intersection is empty
+                // Fallback to avoid crash if intersection is empty
                 if (allowedColors.length === 0) {
-                    allowedColors = AUTO_CYCLE_COLORS;
+                    allowedColors = allowedCycleColors && allowedCycleColors.length > 0 ? allowedCycleColors : AUTO_CYCLE_COLORS;
                 }
 
                 // Filtering based on GLOBAL Active Colors (prevent collisions)
@@ -1675,26 +1676,53 @@ export const ShopScene = ({
 }: ShopSceneProps) => {
 
 
-    // Memoize the clean list for Cap - filter out restricted designs from shop config
+    // Memoize the clean list for Cap - filter out restricted designs AND incompatible colors
     const capCleanList = useMemo(() => {
         const restricted = productRestrictedDesigns?.cap || ['street-5.png'];
+        const allowedColors = productAllowedColors?.cap || [];
+
         return (allDesignsList || logoList || []).filter(d => {
             const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
-            return !restricted.includes(fname);
-        });
-    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
 
-    // Memoize the clean list for Bottle - filter out restricted designs from shop config
+            // 1. Explicit Restriction
+            if (restricted.includes(fname)) return false;
+
+            // 2. Color Compatibility Restriction
+            // If product has specific allowed colors, design MUST be compatible with at least one
+            if (allowedColors.length > 0) {
+                const designColors = designColorMap?.[fname];
+                // If design has specific color rules (and isn't empty), check intersection
+                if (designColors && designColors.length > 0) {
+                    const hasOverlap = designColors.some(c => allowedColors.includes(c));
+                    if (!hasOverlap) return false;
+                }
+            }
+            return true;
+        });
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns, productAllowedColors, designColorMap]);
+
+    // Memoize the clean list for Bottle - filter out restricted designs AND incompatible colors
     const bottleCleanList = useMemo(() => {
         const restricted = productRestrictedDesigns?.bottle || [];
-        if (restricted.length === 0) {
-            return allDesignsList || logoList || [];
-        }
+        const allowedColors = productAllowedColors?.bottle || ['#231f20', '#ffffff']; // Default to Black/White if undefined
+
         return (allDesignsList || logoList || []).filter(d => {
             const fname = urlToFilename?.[d] || d.split('/').pop()?.split('?')[0] || '';
-            return !restricted.includes(fname);
+
+            // 1. Explicit Restriction
+            if (restricted.includes(fname)) return false;
+
+            // 2. Color Compatibility Restriction
+            if (allowedColors.length > 0) {
+                const designColors = designColorMap?.[fname];
+                if (designColors && designColors.length > 0) {
+                    const hasOverlap = designColors.some(c => allowedColors.includes(c));
+                    if (!hasOverlap) return false;
+                }
+            }
+            return true;
         });
-    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns]);
+    }, [allDesignsList, logoList, urlToFilename, productRestrictedDesigns, productAllowedColors, designColorMap]);
 
     // Compatibility shim
     const effectiveDesigns = designs || { front: selectedDesign || "", back: "" };
