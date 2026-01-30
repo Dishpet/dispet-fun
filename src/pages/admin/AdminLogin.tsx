@@ -4,37 +4,58 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { verifyCredentials } from "@/integrations/wordpress/woocommerce";
+import { Loader2 } from "lucide-react";
 
 export const AdminLogin = () => {
     const { login } = useAuth();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
 
-        // Hardcoded credentials
-        const validUsers = [
-            { user: "Martin", pass: "Dishpet987@$!" },
-            { user: "Bananko", pass: "Dishpet987@$!" }
-        ];
+        try {
+            // Verify credentials against WordPress
+            const wpUser = await verifyCredentials(username, password);
 
-        const isValid = validUsers.some(u => u.user === username && u.pass === password);
+            if (wpUser && wpUser.id) {
+                // Check if user has admin capabilities
+                // wpUser from /wp/v2/users/me includes capabilities
+                const isAdmin = wpUser.capabilities?.administrator ||
+                    wpUser.roles?.includes('administrator') ||
+                    wpUser.roles?.includes('shop_manager');
 
-        if (isValid) {
-            // Valid login!
-            toast.success(`Welcome back, ${username}!`);
+                if (!isAdmin) {
+                    toast.error("Access denied. Admin privileges required.");
+                    setLoading(false);
+                    return;
+                }
 
-            // Create a fake admin user object
-            // Use type assertion if necessary, but we modified the interface so it should be fine
-            login("fake-admin-token-" + Date.now(), {
-                id: 999,
-                username: username,
-                email: `${username.toLowerCase()}@dispet.fun`,
-                role: 'admin'
-            });
-        } else {
+                // Create proper Basic Auth hash for API calls
+                const authHash = btoa(unescape(encodeURIComponent(`${username}:${password}`)));
+
+                // Use real user data from WordPress
+                login(authHash, {
+                    id: wpUser.id,
+                    username: wpUser.slug || wpUser.username || username,
+                    email: wpUser.email || `${username.toLowerCase()}@dispet.fun`,
+                    first_name: wpUser.first_name || wpUser.name,
+                    last_name: wpUser.last_name || '',
+                    role: 'admin'
+                });
+
+                toast.success(`Welcome back, ${wpUser.name || username}!`);
+            } else {
+                throw new Error("Invalid response");
+            }
+        } catch (error: any) {
+            console.error("Admin login failed:", error);
             toast.error("Invalid credentials");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -54,6 +75,7 @@ export const AdminLogin = () => {
                                 onChange={(e) => setUsername(e.target.value)}
                                 placeholder="Enter username"
                                 className="w-full rounded-full px-6"
+                                disabled={loading}
                             />
                         </div>
                         <div className="space-y-2">
@@ -64,9 +86,11 @@ export const AdminLogin = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Enter password"
                                 className="w-full rounded-full px-6"
+                                disabled={loading}
                             />
                         </div>
-                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-full h-11">
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-full h-11" disabled={loading}>
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                             Access Dashboard
                         </Button>
                     </form>

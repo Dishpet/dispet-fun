@@ -12,12 +12,18 @@ export const wpFetch = async (endpoint: string, options: RequestInit = {}) => {
         ? url
         : `${url}${url.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
 
+    const finalHeaders = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    // DEBUG: Log what headers are being sent
+    console.log('[wpFetch] URL:', finalUrl);
+    console.log('[wpFetch] Headers:', finalHeaders);
+
     const response = await fetch(finalUrl, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
+        headers: finalHeaders,
     });
 
     if (!response.ok) {
@@ -34,6 +40,10 @@ export const getAuthHeaders = () => {
     // We only need to pass headers if we are acting as a specific logged-in USER (Customer).
 
     const token = localStorage.getItem('token');
+
+    // DEBUG: Log what token we found
+    console.log('[getAuthHeaders] Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NULL');
+
     if (token) {
         return {
             Authorization: `Basic ${token}`
