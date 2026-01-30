@@ -35,7 +35,9 @@ export const getAuthHeaders = () => {
 
     const token = localStorage.getItem('token');
     if (token) {
-        Authorization: `Basic ${token}`
+        return {
+            Authorization: `Basic ${token}`
+        };
     }
 
     return {};
