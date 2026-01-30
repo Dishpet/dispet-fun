@@ -80,6 +80,18 @@ function ag_headless_checkout_handler($request) {
             $_POST['stripe_source'] = $token;
             $_POST['payment_method'] = 'stripe';
             
+            // Fix: Populate POST with billing data so Stripe Plugin can create Customer object correctly
+            if (isset($order_data['billing'])) {
+                $_POST['billing_first_name'] = $order_data['billing']['first_name'];
+                $_POST['billing_last_name']  = $order_data['billing']['last_name'];
+                $_POST['billing_address_1']  = $order_data['billing']['address_1'];
+                $_POST['billing_city']       = $order_data['billing']['city'];
+                $_POST['billing_postcode']   = $order_data['billing']['postcode'];
+                $_POST['billing_country']    = $order_data['billing']['country'];
+                $_POST['billing_email']      = $order_data['billing']['email'];
+                $_POST['billing_phone']      = $order_data['billing']['phone'];
+            }
+            
             $result = $gateway->process_payment($order->get_id());
 
             // Return the FULL result (including redirect URL if 3DSecure is needed)
