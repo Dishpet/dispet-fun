@@ -438,6 +438,12 @@ function ag_save_shop_config($request) {
     
     $updated = update_option('ag_shop_config', $sanitized);
     
+    // Antigravity: Purge LiteSpeed Cache
+    if (defined('LSCWP_V')) {
+        do_action('litespeed_purge_all');
+        error_log('AG_SAVE_CONFIG: Litespeed cache purge triggered.');
+    }
+    
     // Force get the option to verify what was saved
     $verify = get_option('ag_shop_config', []);
     $verify_keys = is_array($verify) ? array_keys($verify) : [];
