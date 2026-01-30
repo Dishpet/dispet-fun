@@ -1112,19 +1112,18 @@ const ProductModel = ({
                 }
 
                 // Pick a new random color from Allowed List
-                const currentColorHex = targetColorRef.current.getHexString();
-                let newColor = allowedColors[Math.floor(Math.random() * allowedColors.length)];
+                const currentColorHex = '#' + targetColorRef.current.getHexString();
+
+                // Filter out current color to GUARANTEE different color
+                const differentColors = allowedColors.filter(c => c.toLowerCase() !== currentColorHex.toLowerCase());
+
+                // Use filtered list if we have options, otherwise allow same color (only 1 color available)
+                const colorPool = differentColors.length > 0 ? differentColors : allowedColors;
+                let newColor = colorPool[Math.floor(Math.random() * colorPool.length)];
 
                 // Update the global ref with my new color
                 if (activeColorsRef && productId) {
                     activeColorsRef.current[productId] = newColor;
-                }
-
-                // Ensure different color (retry logic)
-                let attempts = 0;
-                while (newColor.replace('#', '') === currentColorHex && allowedColors.length > 1 && attempts < 5) {
-                    newColor = allowedColors[Math.floor(Math.random() * allowedColors.length)];
-                    attempts++;
                 }
 
                 // Trigger COLOR swipe transition
@@ -1176,20 +1175,25 @@ const ProductModel = ({
             setFadeState('fade-out');
         };
 
-        // Staggered Start Logic
-        let intervalId: NodeJS.Timeout;
-        const initialDelay = cycleOffset || 0;
+        // GLOBAL SYNC: All products sync to the same clock based on Date.now()
+        // This ensures all products transition together regardless of mount order
+        const now = Date.now();
+        const elapsed = now % cycleDuration;
+        const timeUntilNextCycle = cycleDuration - elapsed;
 
+        let intervalId: NodeJS.Timeout;
+
+        // Wait until the next global cycle point, then run every cycleDuration
         const timeoutId = setTimeout(() => {
-            runCycle(); // Run immediate first cycle after offset
+            runCycle(); // Run at the next global sync point
             intervalId = setInterval(runCycle, cycleDuration);
-        }, initialDelay);
+        }, timeUntilNextCycle);
 
         return () => {
             clearTimeout(timeoutId);
             if (intervalId) clearInterval(intervalId);
         };
-    }, [isCycling, cycleDuration, cycleOffset, enableColorCycle, cycleDesignsFront, cycleDesignsBack, colorToLogoMap, designColorMap, urlToFilename]);
+    }, [isCycling, cycleDuration, enableColorCycle, cycleDesignsFront, cycleDesignsBack, colorToLogoMap, designColorMap, urlToFilename]);
 
     // Sync Cycle State with Parent
     // This ensures that when the user starts interacting, the React state matches the last cycled design
@@ -1906,7 +1910,7 @@ export const ShopScene = ({
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
                                                 cycleDuration={6000}
-                                                cycleOffset={4000}
+                                                cycleOffset={0}
                                                 swipeDirection="down"
                                                 swipeAxis="y" // Reset to Y (Vertical)
                                                 allowedCycleColors={['#231f20', '#ffffff']}
@@ -1953,7 +1957,7 @@ export const ShopScene = ({
                                                 designColorMap={designColorMap}
                                                 urlToFilename={urlToFilename}
                                                 cycleDuration={6000}
-                                                cycleOffset={2000}
+                                                cycleOffset={0}
                                                 swipeDirection="down"
                                                 swipeAxis="y" // Reset to Y (Vertical)
                                                 productId="tshirt"

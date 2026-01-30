@@ -1,9 +1,8 @@
-// In development, we talk to the local proxy. In production, relative path /api handled by Nginx/Node.
-export const WP_API_URL = import.meta.env.DEV ? 'http://localhost:3000/api' : '/api';
+// In development, use Vite proxy at /wp-json. In production, /wp-json is handled by server config.
+export const WP_API_URL = '/wp-json';
 
 export const wpFetch = async (endpoint: string, options: RequestInit = {}) => {
-    // Endpoints in the secure proxy mirror the WP structure but under /api/wc/...
-    // The previous code mapped /wc/v3/products -> http://localhost:3000/api/wc/products
+    // Endpoints use WP REST API structure: /wp-json/wc/v3/products, /wp-json/wp/v2/users, etc.
     const url = `${WP_API_URL}${endpoint}`;
 
     // Add timestamp to query params to bust cache for GET requests

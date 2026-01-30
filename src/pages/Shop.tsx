@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ShoppingBag, Palette, Ruler, ChevronLeft, ChevronRight, Box, X, Star, Check, Plus, Minus, RefreshCcw } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
+import { useShopConfig } from '@/hooks/useShopConfig';
 import cloudsTopSvg from '@/assets/clouds-top.svg';
 import bannerImage from '@/assets/banner-image.webp';
 import mobileBannerImage from '@/assets/boce-kape.webp';
@@ -190,6 +191,7 @@ const INITIAL_PRODUCTS = {
         description: 'Klasična pamučna majica s vašim izborom dizajna.',
         colors: SHARED_COLORS,
         stockStatus: 'instock',
+        stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
     },
@@ -200,6 +202,7 @@ const INITIAL_PRODUCTS = {
         description: 'Premium teška hoodica, savršena za svaku priliku.',
         colors: SHARED_COLORS,
         stockStatus: 'instock',
+        stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
     },
@@ -210,6 +213,7 @@ const INITIAL_PRODUCTS = {
         description: 'Klasična šilterica koja upotpunjuje svaki stil.',
         colors: SHARED_COLORS,
         stockStatus: 'instock',
+        stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
     },
@@ -223,6 +227,7 @@ const INITIAL_PRODUCTS = {
             { name: 'Bijela', hex: '#ffffff' }
         ],
         stockStatus: 'instock',
+        stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
     }
@@ -262,6 +267,29 @@ const Shop = () => {
 
     const { addToCart } = useCart();
     const { toast } = useToast();
+    const { getAllowedColors, isDesignRestricted, getAlternativeDesign, config: shopConfig } = useShopConfig();
+
+    // Dynamic helper that uses API config for design-to-color mapping
+    const getDesignColorsFromConfig = (designUrl: string | null): typeof SHARED_COLORS => {
+        if (!designUrl) return SHARED_COLORS;
+
+        // Get filename from URL
+        const filename = URL_TO_FILENAME[designUrl] || designUrl.split('/').pop()?.split('?')[0] || '';
+
+        // Check API config first (priority)
+        if (shopConfig?.design_color_map && shopConfig.design_color_map[filename]) {
+            const allowedHexCodes = shopConfig.design_color_map[filename];
+            return SHARED_COLORS.filter(c => allowedHexCodes.includes(c.hex));
+        }
+
+        // Fallback to hardcoded DESIGN_COLOR_MAP
+        const allowedHexCodes = DESIGN_COLOR_MAP[filename];
+        if (!allowedHexCodes || allowedHexCodes.length === 0) {
+            if (allowedHexCodes && allowedHexCodes.length === 0) return [];
+            return SHARED_COLORS;
+        }
+        return SHARED_COLORS.filter(c => allowedHexCodes.includes(c.hex));
+    };
 
     // Sync ViewMode and Product from URL
     useEffect(() => {
@@ -284,26 +312,29 @@ const Shop = () => {
         const currentDesignUrl = designs[activeZone];
         if (!currentDesignUrl) return;
 
-        const availableColors = getAvailableColorsForDesign(currentDesignUrl);
+        const availableColors = getDesignColorsFromConfig(currentDesignUrl);
 
         // If current color is not in available colors, switch to first available
         if (availableColors.length > 0 && !availableColors.some(c => c.hex === selectedColor)) {
             setSelectedColor(availableColors[0].hex);
         }
-    }, [designs, activeZone]);
+    }, [designs, activeZone, shopConfig]);
 
 
-    // Fetch WP products
+    // Fetch WP products from public endpoint (no auth required)
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const wpProducts = await getProducts(1, 100);
+                // Use the public antigravity endpoint instead of WooCommerce API
+                const res = await fetch('/wp-json/antigravity/v1/products');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const wpProducts = await res.json();
                 console.log('Fetched products:', wpProducts);
 
                 setProducts(current => {
                     const newProducts = { ...current };
 
-                    wpProducts.forEach(wp => {
+                    wpProducts.forEach((wp: any) => {
                         const lowerName = wp.name.toLowerCase();
                         let key: keyof typeof INITIAL_PRODUCTS | null = null;
 
@@ -319,6 +350,7 @@ const Shop = () => {
                                 name: wp.name,
                                 price: parseFloat(wp.price) || parseFloat(wp.regular_price) || 0,
                                 stockStatus: wp.stock_status,
+                                stockQuantity: wp.stock_quantity ?? null,
                                 averageRating: parseFloat(wp.average_rating) || 0,
                                 ratingCount: wp.rating_count || 0,
                             };
@@ -396,15 +428,19 @@ const Shop = () => {
         setIsFullScreen(searchParams.get('fullscreen') === 'true');
     }, [searchParams]);
 
-    // Logic to swap street-3 for street-3-alt on specific colors
+    // Logic to swap street-3 for street-3-alt on specific colors (and back)
+    // Track if we're currently showing the alt version
+    const [isShowingAltDesign, setIsShowingAltDesign] = useState(false);
+
     useEffect(() => {
         const street3Path = '/src/assets/design-collections/street/street-3.png';
         const street3AltPath = '/src/assets/design-collections/street/street-3-alt.png';
         const street3Url = streetDesigns[street3Path] as string;
         const street3AltUrl = streetDesigns[street3AltPath] as string;
 
-        // Pink, Mint, Cyan (Light Blue)
+        // Pink, Mint, Cyan (Light Blue) - trigger colors for alt design
         const altColors = ['#e78fab', '#a1d7c0', '#00aeef'];
+        const shouldUseAlt = altColors.includes(selectedColor);
 
         if (!street3Url || !street3AltUrl) return;
 
@@ -414,18 +450,24 @@ const Shop = () => {
 
             (['front', 'back'] as const).forEach(zone => {
                 const current = prev[zone];
-                if (current === street3Url && altColors.includes(selectedColor)) {
+
+                // If current is street-3 original AND we need alt
+                if (current === street3Url && shouldUseAlt) {
                     next[zone] = street3AltUrl;
                     hasChanged = true;
-                } else if (current === street3AltUrl && !altColors.includes(selectedColor)) {
+                    setIsShowingAltDesign(true);
+                }
+                // If current is street-3-alt AND we DON'T need alt anymore
+                else if (current === street3AltUrl && !shouldUseAlt) {
                     next[zone] = street3Url;
                     hasChanged = true;
+                    setIsShowingAltDesign(false);
                 }
             });
 
             return hasChanged ? next : prev;
         });
-    }, [selectedColor, designs]);
+    }, [selectedColor]);
 
     const handleProductSelect = (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
         const isSameProduct = selectedProduct === product && viewMode === 'customizing';
@@ -695,8 +737,12 @@ const Shop = () => {
 
                             {/* 1. Color Picker (Top) - Style matched to Design Bar */}
                             {selectedProduct !== 'cap' && (() => {
-                                const designColors = getAvailableColorsForDesign(currentDesign);
-                                const productColors = activeProductData.colors || SHARED_COLORS;
+                                // Get colors allowed by DESIGN rules (from API config)
+                                const designColors = getDesignColorsFromConfig(currentDesign);
+
+                                // Get colors allowed by PRODUCT rules (from API config)
+                                const allowedProductColorHexes = getAllowedColors(selectedProduct);
+                                const productColors = SHARED_COLORS.filter(c => allowedProductColorHexes.includes(c.hex));
 
                                 // Intersect: Only show colors that are BOTH in design rules AND product rules
                                 const availableColors = designColors.filter(dc =>
@@ -785,8 +831,8 @@ const Shop = () => {
                                     {DESIGN_COLLECTIONS[expandedCollection]
                                         .filter(design => {
                                             const filename = URL_TO_FILENAME[design] || design.split('/').pop()?.split('?')[0] || '';
-                                            const restricted = PRODUCT_RESTRICTED_DESIGNS[selectedProduct];
-                                            if (restricted && restricted.includes(filename)) return false;
+                                            // Use dynamic config for restrictions
+                                            if (isDesignRestricted(selectedProduct, filename)) return false;
                                             return true;
                                         })
                                         .map((design, idx) => (

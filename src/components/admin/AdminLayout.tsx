@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, ShoppingBag, Users, Settings, LogOut, MessageSquare, Handshake, Image, ExternalLink, Phone, Menu, Share2 } from "lucide-react";
+import { LayoutDashboard, FileText, ShoppingBag, Users, Settings, LogOut, MessageSquare, Handshake, Image, ExternalLink, Phone, Menu, Share2, Sliders } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,6 +26,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         { icon: Handshake, label: "Partners", path: "/admin/partners" },
         { icon: Phone, label: "Contact Info", path: "/admin/contact" },
         { icon: Share2, label: "Social Media", path: "/admin/social" },
+        { icon: Sliders, label: "Shop Rules", path: "/admin/shop-rules" },
         { icon: Settings, label: "Settings", path: "/admin/settings" },
     ];
 
