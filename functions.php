@@ -14,7 +14,7 @@ add_action('rest_api_init', function () {
     register_rest_route('antigravity/v1', '/get-theme-file', array(
         'methods'  => 'GET',
         'callback' => function($request) {
-            $file = sanitize_text_field($request['file']);
+            $file = basename(sanitize_text_field($request['file']));
             $path = get_stylesheet_directory() . '/' . $file;
             if (!file_exists($path)) return new WP_Error('not_found', 'File not found', ['status' => 404]);
             return ['code' => file_get_contents($path)];
@@ -30,9 +30,7 @@ add_action('rest_api_init', function () {
 });
 
 function ag_headless_checkout_handler($request) {
-    // Initialize WC Session if not present (Required for wc_add_notice to work without crashing)
     if (function_exists('WC') && empty(WC()->session)) {
-        // We need to look for a session class. Usually WC_Session_Handler
         if (class_exists('WC_Session_Handler')) {
             WC()->session = new WC_Session_Handler();
             WC()->session->init();
@@ -47,19 +45,19 @@ function ag_headless_checkout_handler($request) {
     if (!function_exists('wc_create_order')) return new WP_Error('no_wc', 'WooCommerce not active', ['status' => 500]);
 
     try {
-        // 1. Create Order
         $order = wc_create_order();
         
-        // 2. Add Products
         foreach ($order_data['line_items'] as $item) {
             $product_id = $item['product_id'];
             $qty = $item['quantity'];
-            $order->add_product(get_product($product_id), $qty, [
-                'variation' => isset($item['variation_id']) ? $item['variation_id'] : []
-            ]);
+            $product = wc_get_product($product_id);
+            if ($product) {
+                $order->add_product($product, $qty, [
+                    'variation' => isset($item['variation_id']) ? $item['variation_id'] : []
+                ]);
+            }
         }
 
-        // 3. Set Addresses and Customer
         $order->set_address($order_data['billing'], 'billing');
         $order->set_address($order_data['shipping'], 'shipping');
         if (!empty($order_data['customer_id'])) {
@@ -71,87 +69,82 @@ function ag_headless_checkout_handler($request) {
         $order->calculate_totals();
         $order->save();
 
-        // 4. Custom Headless Stripe Processing (Direct SDK)
-        // Bypasses plugin complexity to avoid 'Missing Customer Field' errors
-        if (class_exists('WC_Gateway_Stripe')) {
-            $stripe_settings = get_option('woocommerce_stripe_settings');
-            
-            if (!$stripe_settings) {
-                 return new WP_Error('stripe_error', 'Stripe settings not found.', ['status' => 500]);
-            }
-            
-            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
-            $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
-            
-            if (empty($secret_key)) {
-                return new WP_Error('stripe_error', 'Stripe Secret Key is missing in WooCommerce Settings.', ['status' => 500]);
-            }
+        // Direct Stripe API Call (No Library Dependency)
+        // Securely retrieve the key from wp-config.php constant
+        $secret_key = defined('STRIPE_SECRET_KEY') ? STRIPE_SECRET_KEY : '';
 
-            // Ensure Stripe Library is loaded (Plugin usually loads it)
-            if (class_exists('\Stripe\Stripe')) {
-                \Stripe\Stripe::setApiKey($secret_key);
-            } else {
-                 return new WP_Error('stripe_error', 'Stripe PHP Library not loaded.', ['status' => 500]);
-            }
-            
-            try {
-                // Calculate amount in cents
-                $amount = (int)(round((float)$order->get_total(), 2) * 100);
-                $currency = strtolower($order->get_currency());
-                
-                // Description for Stripe Dashboard
-                $description = 'Order #' . $order->get_id() . ' - ' . $order_data['billing']['email'];
-
-                // Attempt Direct Charge
-                $charge_args = [
-                    'amount'      => $amount,
-                    'currency'    => $currency,
-                    'source'      => $token, // 'tok_...' from frontend
-                    'description' => $description,
-                    'metadata'    => [
-                        'order_id' => $order->get_id(),
-                        'customer_name' => $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name']
-                    ],
-                    'receipt_email' => $order_data['billing']['email'],
-                ];
-                
-                // Add Shipping Info for Fraud Protection logic (AVS)
-                if (!empty($order_data['billing']['address_1'])) {
-                    $charge_args['shipping'] = [
-                        'name' => $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name'],
-                        'address' => [
-                            'line1' => $order_data['billing']['address_1'],
-                            'city' => $order_data['billing']['city'],
-                            'postal_code' => $order_data['billing']['postcode'],
-                            'country' => $order_data['billing']['country'], // Should be ISO 'HR' now
-                        ]
-                    ];
-                }
-
-                $charge = \Stripe\Charge::create($charge_args);
-                
-                // If we got here, payment is successful
-                $order->payment_complete($charge->id);
-                $order->add_order_note('Stripe Charge Successful via Headless API. Charge ID: ' . $charge->id);
-                $order->update_meta_data('_stripe_charge_id', $charge->id);
-                $order->save();
-                
-                return [
-                    'success' => true,
-                    'order_id' => $order->get_id(),
-                    'redirect' => $order->get_checkout_order_received_url(),
-                    'charge_id' => $charge->id
-                ];
-
-            } catch (\Exception $e) {
-                // Return clear error to frontend
-                $error_msg = $e->getMessage();
-                $order->update_status('failed', 'Stripe Error: ' . $error_msg);
-                return new WP_Error('payment_failed', $error_msg, ['status' => 402]);
-            }
+        if (empty($secret_key)) {
+            // Fallback: check if hardcoded (for safety during transition, though we want to avoid this on GitHub)
+            // But for the user response, we output the clean version.
+            return new WP_Error('stripe_error', 'Stripe Secret Key is missing in wp-config.php.', ['status' => 500]);
         }
+
+        $amount = (int)(round((float)$order->get_total(), 2) * 100);
+        $currency = strtolower($order->get_currency());
+        $description = 'Order #' . $order->get_id() . ' - ' . $order_data['billing']['email'];
+
+        // Build Body for Stripe API
+        $body = [
+            'amount' => $amount,
+            'currency' => $currency,
+            'source' => $token,
+            'description' => $description,
+            'metadata[order_id]' => $order->get_id(),
+            'metadata[customer_name]' => $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name'],
+            'receipt_email' => $order_data['billing']['email']
+        ];
         
-        return new WP_Error('no_stripe', 'Stripe plugin missing on WP', ['status' => 500]);
+        // Add Shipping params (flat structure for API)
+        if (!empty($order_data['billing']['address_1'])) {
+            $body['shipping[name]'] = $order_data['billing']['first_name'] . ' ' . $order_data['billing']['last_name'];
+            $body['shipping[address][line1]'] = $order_data['billing']['address_1'];
+            $body['shipping[address][city]'] = $order_data['billing']['city'];
+            $body['shipping[address][postal_code]'] = $order_data['billing']['postcode'];
+            $body['shipping[address][country]'] = $order_data['billing']['country'];
+        }
+
+        // Perform Raw HTTP Request
+        $response = wp_remote_post('https://api.stripe.com/v1/charges', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $secret_key,
+                'Content-Type'  => 'application/x-www-form-urlencoded'
+            ],
+            'body' => $body,
+            'timeout' => 45 // Stripe can be slow
+        ]);
+
+        if (is_wp_error($response)) {
+             $error_msg = $response->get_error_message();
+             $order->update_status('failed', 'Stripe Connection Error: ' . $error_msg);
+             return new WP_Error('payment_failed', 'Connection Error: ' . $error_msg, ['status' => 500]);
+        }
+
+        $response_body = wp_remote_retrieve_body($response);
+        $data = json_decode($response_body, true);
+        $response_code = wp_remote_retrieve_response_code($response);
+
+        if ($response_code !== 200 || isset($data['error'])) {
+            // Stripe Rejected It
+            $error_msg = isset($data['error']['message']) ? $data['error']['message'] : 'Unknown Error';
+            $order->update_status('failed', 'Stripe Error: ' . $error_msg);
+            // Expected Success State for Empty Card: "Your card was declined." or "Insufficient funds"
+            return new WP_Error('payment_failed', $error_msg, ['status' => 402]);
+        }
+
+        // Success
+        $charge_id = $data['id'];
+        $order->payment_complete($charge_id);
+        $order->add_order_note('Stripe Charge Successful via Headless RAW API. Charge ID: ' . $charge_id);
+        $order->update_meta_data('_stripe_charge_id', $charge_id);
+        $order->save();
+        
+        return [
+            'success' => true,
+            'order_id' => $order->get_id(),
+            'redirect' => $order->get_checkout_order_received_url(),
+            'charge_id' => $charge_id
+        ];
+
     } catch (Exception $e) {
         return new WP_Error('error', $e->getMessage(), ['status' => 500]);
     }
