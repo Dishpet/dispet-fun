@@ -127,9 +127,10 @@ const Login = () => {
                 }
 
                 // 3. Login
-                // Storing a simple session marker. 
-                // Security Note: In a production app, use JWT tokens.
-                login("basic-auth-session", customerData);
+                // Store Basic Auth Credential so we can make API calls as this user
+                // Security Note: In a production app, use JWT tokens via a plugin for better security.
+                const authHash = btoa(unescape(encodeURIComponent(`${formData.username}:${formData.password}`)));
+                login(authHash, customerData);
 
                 toast({
                     title: "Uspješna prijava",

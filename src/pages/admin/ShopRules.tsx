@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Save, RefreshCcw, Palette, Layers, Ban, Wand2, Clock, X, Plus, Image as ImageIcon, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const WP_API_URL = '/api'; // Uses proxy in dev and prod
 
@@ -88,6 +89,7 @@ const ShopRules = () => {
     const [selectedDesign, setSelectedDesign] = useState<string | null>(null);
     const [previewColor, setPreviewColor] = useState<string>('#231f20');
     const { toast } = useToast();
+    const { token } = useAuth();
 
     useEffect(() => {
         fetchConfig();
@@ -112,12 +114,13 @@ const ShopRules = () => {
         if (!config) return;
         setSaving(true);
         try {
-            const token = localStorage.getItem('wp_token');
+            if (!token) throw new Error('You must be logged in to save changes.');
+
             const res = await fetch(`${WP_API_URL}/antigravity/v1/shop-config`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Basic ${token}`
                 },
                 body: JSON.stringify(config)
             });
