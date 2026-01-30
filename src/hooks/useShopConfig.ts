@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const WP_API_URL = '/wp-json'; // Uses Vite proxy in development
+const WP_API_URL = '/api'; // Uses proxy in dev and prod
 
 // Default fallback configuration (matches PHP defaults)
 const DEFAULT_CONFIG: ShopConfig = {
