@@ -562,7 +562,7 @@ const ProductModel = ({
                             // Standard material for non-hoodie products + Bottle Body logic
                             // Fix: Ensure solid materials (BodyColor) are NOT set to transparent
                             // Exception: For Bottle, BlackRing material should be transparent
-                            const isBottlePart = label === 'BOCA';
+                            const isBottlePart = productId === 'bottle';
                             const isBlackRing = mat.name === 'BlackRing';
 
                             if (isBottlePart && isBlackRing) {
@@ -740,7 +740,7 @@ const ProductModel = ({
         });
 
         // Store model bounds for hoodie and bottle (for swipe effect)
-        if ((label === 'HOODICA' || label === 'BOCA' || label === 'MAJICA') && stableMinY !== Infinity) {
+        if ((productId === 'hoodie' || productId === 'bottle' || productId === 'tshirt') && stableMinY !== Infinity) {
             modelBoundsRef.current = {
                 minY: stableMinY,
                 maxY: stableMaxY,
@@ -932,19 +932,19 @@ const ProductModel = ({
         frontTexture.center.set(0.5, 0.5);
 
         // Product Specific Tuning for Front
-        if (label === 'HOODICA') {
+        if (productId === 'hoodie') {
             frontTexture.flipY = false; // Flip Vertically (relative to valid UVs)
             frontTexture.wrapS = THREE.RepeatWrapping;
             frontTexture.wrapT = THREE.RepeatWrapping;
             frontTexture.repeat.set(24.4, 24.4); // Scale UP 5% (25.6 -> 24.4)
             frontTexture.offset.set(0.21, -0.37); // Left (0.23->0.21)
-        } else if (label === 'KAPA') {
+        } else if (productId === 'cap') {
             frontTexture.flipY = false; // Fix upside down
             frontTexture.wrapS = THREE.ClampToEdgeWrapping; // Big spacing (no repeat)
             frontTexture.wrapT = THREE.ClampToEdgeWrapping;
             frontTexture.repeat.set(7.28, 7.28); // Scale down 5% more (6.93 -> 7.28)
             frontTexture.offset.set(0, 0.78); // Move Up (0.75 -> 0.78)
-        } else if (label === 'MAJICA') {
+        } else if (productId === 'tshirt') {
             // T-shirt Front: Flip horizontally and vertically
             frontTexture.flipY = true;
             frontTexture.wrapS = THREE.RepeatWrapping;
@@ -952,6 +952,14 @@ const ProductModel = ({
             frontTexture.repeat.set(3.4, -3.4); // Scale UP (decrease repeat)
             // Nudge Down (+y)
             frontTexture.offset.set(-1.05, 3.00);
+        } else if (productId === 'bottle') {
+            // Bottle Specific Tuning
+            frontTexture.flipY = false; // Blender cylinder project usually correct orientation
+            frontTexture.wrapS = THREE.ClampToEdgeWrapping;
+            frontTexture.wrapT = THREE.ClampToEdgeWrapping;
+            frontTexture.center.set(0.5, 0.5);
+            frontTexture.repeat.set(6.25, 6.25); // Scaled down 20% (5.0 -> 6.25)
+            frontTexture.offset.set(-0.3, 0.18); // Moved to -0.3, Moved Up (0.1 -> 0.18)
         } else {
             // Default
             frontTexture.flipY = true;
@@ -959,16 +967,6 @@ const ProductModel = ({
             frontTexture.wrapT = THREE.RepeatWrapping;
             frontTexture.repeat.set(-1, 1);
             frontTexture.offset.set(0, 0);
-        }
-
-        // Bottle Specific Tuning
-        if (isBottle(label)) {
-            frontTexture.flipY = false; // Blender cylinder project usually correct orientation
-            frontTexture.wrapS = THREE.ClampToEdgeWrapping;
-            frontTexture.wrapT = THREE.ClampToEdgeWrapping;
-            frontTexture.center.set(0.5, 0.5);
-            frontTexture.repeat.set(6.25, 6.25); // Scaled down 20% (5.0 -> 6.25)
-            frontTexture.offset.set(-0.3, 0.18); // Moved to -0.3, Moved Up (0.1 -> 0.18)
         }
 
         frontTexture.needsUpdate = true;
@@ -981,10 +979,10 @@ const ProductModel = ({
         backTexture.center.set(0.5, 0.5);
 
         // Product Specific Tuning for Back
-        if (label === 'HOODICA') {
+        if (productId === 'hoodie') {
             backTexture.repeat.set(-7.26, 7.26); // Scale DOWN 10% (6.6 -> 7.26)
             backTexture.offset.set(-0.28, 1.90); // Move Right (-0.28), Move Down correction (1.90)
-        } else if (label === 'MAJICA') {
+        } else if (productId === 'tshirt') {
             // T-shirt Back: Scaled down 5% more (5.06 -> 5.31)
             backTexture.repeat.set(5.31, 5.31);
             backTexture.offset.set(-0.25, 0.15); // Move Right (-0.25), Move Up correction (0.15)
@@ -1025,7 +1023,7 @@ const ProductModel = ({
                 mat.visible = !hideDesigns && !!backUrl;
             });
         }
-    }, [frontTexture, backTexture, enableDesignCycle, isCustomizing, isActive, frontUrl, backUrl, label]);
+    }, [frontTexture, backTexture, enableDesignCycle, isCustomizing, isActive, frontUrl, backUrl, label, productId]);
 
     // Combined Cycle Trigger Logic: Changes BOTH color AND design together
     useEffect(() => {
