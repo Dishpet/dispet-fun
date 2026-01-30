@@ -11,10 +11,9 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       '/api': {
-        target: 'https://wp.dispet.fun/wp-json',
+        target: 'https://dispet.fun',
         changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
       }
     }
   },

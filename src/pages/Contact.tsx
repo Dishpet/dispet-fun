@@ -82,7 +82,7 @@ const Contact = () => {
         };
 
         try {
-            const apiUrl = '/api/antigravity/v1/contact';
+            const apiUrl = '/api/contact';
 
             const response = await fetch(apiUrl, {
                 method: 'POST',

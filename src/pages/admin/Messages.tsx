@@ -33,11 +33,10 @@ const Messages = () => {
     const fetchMessages = async (showRefresh = false) => {
         if (showRefresh) setIsRefreshing(true);
         try {
-            const endpoint = '/antigravity/v1/messages';
-            const data = await wpFetch(endpoint, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
+            const endpoint = '/api/messages';
+            const response = await fetch(endpoint);
+            if (!response.ok) throw new Error("Failed to fetch");
+            const data = await response.json();
             setMessages(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch messages:', error);
@@ -56,11 +55,11 @@ const Messages = () => {
         if (!confirm("Jeste li sigurni da želite obrisati ovu poruku?")) return;
 
         try {
-            const endpoint = `/antigravity/v1/messages/${id}`;
-            await wpFetch(endpoint, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
+            const endpoint = `/api/messages/${id}`;
+            const response = await fetch(endpoint, {
+                method: 'DELETE'
             });
+            if (!response.ok) throw new Error("Failed to delete");
             // wpFetch throws on error, so if we are here, it worked
             setMessages(messages.filter(m => m.id !== id));
             toast.success("Poruka obrisana");
@@ -79,11 +78,10 @@ const Messages = () => {
         const handleAction = async () => {
             setLocalLoading(true);
             try {
-                const endpoint = `/antigravity/v1/messages/${mode}`;
-
-                await wpFetch(endpoint, {
+                const endpoint = `/api/messages/${mode}`;
+                const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: getAuthHeaders(),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(mode === 'reply' ? {
                         to: msg.email,
                         subject: `Re: Vaša poruka za Dišpet`,
@@ -95,6 +93,8 @@ const Messages = () => {
                         originalMessage: msg
                     })
                 });
+
+                if (!response.ok) throw new Error("Failed to send");
 
                 toast.success(mode === 'reply' ? "Odgovor poslan!" : "Poruka proslijeđena!");
                 setMode('none');
