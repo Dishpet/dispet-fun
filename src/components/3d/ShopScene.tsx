@@ -41,44 +41,7 @@ const AUTO_CYCLE_COLORS = [
     '#a1d7c0'  // Mint
 ];
 
-// Design to Color Availability Map
-// Maps design filename to array of allowed color hex codes
-const DESIGN_COLOR_MAP: Record<string, string[]> = {
-    // Street Collection
-    'street-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-2.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-3.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
-    'street-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
-    'street-5.png': ['#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Black
-    'street-6.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-7.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#a1d7c0'], // No Grey, Pink
-    'street-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-9.png': [], // No colors available
-    'street-10.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
-
-    // Vintage Collection
-    'vintage-1.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-    'vintage-2.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-    'vintage-3.png': ['#231f20'], // Only Black
-    'vintage-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'vintage-5.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-
-    // Logo Collection
-    'logo-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-3.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
-    'logo-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
-    'logo-5.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-6.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
-    'logo-7.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-9.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-10.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-11.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-12.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
-    'KIDS-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'STREET-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'VINTAGE-BADGE.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
-};
+// Design to Color Availability Map now comes from Shop.tsx via designColorMap prop\n// See: shopConfig?.design_color_map in Shop.tsx
 
 
 
@@ -1059,7 +1022,7 @@ const ProductModel = ({
                     const url = cycleDesignsFront[nextIndex % cycleDesignsFront.length];
                     if (url) {
                         const filename = urlToFilename?.[url] || url.split('/').pop()?.split('?')[0] || '';
-                        const mapped = designColorMap?.[filename] || DESIGN_COLOR_MAP?.[filename];
+                        const mapped = designColorMap?.[filename];
                         if (mapped && mapped.length > 0) {
                             // Intersect
                             const currentList = Array.from(validColorsSet);
@@ -1073,7 +1036,7 @@ const ProductModel = ({
                     const url = cycleDesignsBack[nextIndex % cycleDesignsBack.length];
                     if (url) {
                         const filename = urlToFilename?.[url] || url.split('/').pop()?.split('?')[0] || '';
-                        const mapped = designColorMap?.[filename] || DESIGN_COLOR_MAP?.[filename];
+                        const mapped = designColorMap?.[filename];
                         if (mapped && mapped.length > 0) {
                             // Intersect
                             const currentList = Array.from(validColorsSet);

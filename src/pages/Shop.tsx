@@ -61,10 +61,8 @@ const HIDDEN_DESIGNS = [
     'street-3-alt.png'
 ];
 
-// Designs to hide for specific products
-const PRODUCT_RESTRICTED_DESIGNS: Record<string, string[]> = {
-    cap: ['street-5.png']
-};
+// Product-specific design restrictions now come from shop config API
+// See: useShopConfig().config?.{product}.restricted_designs
 
 // Helper to populate the map and filter/sort
 const processDesigns = (globResult: Record<string, unknown>) => {
@@ -121,67 +119,11 @@ const SHARED_COLORS = [
     { name: 'Mint', hex: '#a1d7c0' }      // Light Green
 ];
 
-// Design to Color Availability Map
-// Maps design filename to array of allowed color hex codes
-const DESIGN_COLOR_MAP: Record<string, string[]> = {
-    // Street Collection
-    'street-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-2.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-3.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
-    'street-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
-    'street-5.png': ['#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Black
-    'street-6.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-7.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#a1d7c0'], // No Grey, Pink
-    'street-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'street-9.png': [], // No colors available
-    'street-10.png': ['#231f20', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#e78fab', '#a1d7c0'], // No Grey, White
+// Design to Color Availability Map now comes from shop config API
+// See: useShopConfig().config?.design_color_map
 
-    // Vintage Collection
-    'vintage-1.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-    'vintage-2.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-    'vintage-3.png': ['#231f20'], // Only Black
-    'vintage-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'vintage-5.png': ['#231f20', '#d1d5db', '#00ab98', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'], // No Cyan, Royal Blue
-
-    // Logo Collection
-    'logo-1.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-3.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#ffffff', '#e78fab', '#a1d7c0'], // No Royal Blue, Purple
-    'logo-4.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
-    'logo-5.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-6.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
-    'logo-7.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-8.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-9.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-10.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-11.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'logo-12.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#ffffff', '#e78fab', '#a1d7c0'], // No Purple
-    'KIDS-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'STREET-BADGE.png': ['#231f20', '#d1d5db', '#00ab98', '#00aeef', '#387bbf', '#8358a4', '#ffffff', '#e78fab', '#a1d7c0'],
-    'VINTAGE-BADGE.png': ['#d1d5db', '#ffffff', '#e78fab', '#a1d7c0'], // Only Grey, White, Pink, Mint
-};
-
-// Helper to extract filename from design URL and get available colors
-const getAvailableColorsForDesign = (designUrl: string | null): typeof SHARED_COLORS => {
-    if (!designUrl) return SHARED_COLORS;
-
-    // Use our map to get the original filename from the hashed URL
-    const filename = URL_TO_FILENAME[designUrl] || designUrl.split('/').pop()?.split('?')[0] || '';
-
-    // Check if we have a mapping for this design
-    const allowedHexCodes = DESIGN_COLOR_MAP[filename];
-
-    // If no mapping found or design has all colors, return all
-    if (!allowedHexCodes || allowedHexCodes.length === 0) {
-        // If explicitly empty (like street-9), return empty
-        if (allowedHexCodes && allowedHexCodes.length === 0) {
-            return [];
-        }
-        return SHARED_COLORS;
-    }
-
-    // Filter SHARED_COLORS to only include allowed ones
-    return SHARED_COLORS.filter(c => allowedHexCodes.includes(c.hex));
-};
+// Helper function moved inside component to access shopConfig
+// See getDesignColorsFromConfig inside the Shop component
 
 const INITIAL_PRODUCTS = {
     tshirt: {
@@ -279,16 +221,13 @@ const Shop = () => {
         // Check API config first (priority)
         if (shopConfig?.design_color_map && shopConfig.design_color_map[filename]) {
             const allowedHexCodes = shopConfig.design_color_map[filename];
+            // If explicitly empty array in config, return empty (design not available in any color)
+            if (allowedHexCodes.length === 0) return [];
             return SHARED_COLORS.filter(c => allowedHexCodes.includes(c.hex));
         }
 
-        // Fallback to hardcoded DESIGN_COLOR_MAP
-        const allowedHexCodes = DESIGN_COLOR_MAP[filename];
-        if (!allowedHexCodes || allowedHexCodes.length === 0) {
-            if (allowedHexCodes && allowedHexCodes.length === 0) return [];
-            return SHARED_COLORS;
-        }
-        return SHARED_COLORS.filter(c => allowedHexCodes.includes(c.hex));
+        // No restriction in config = all colors allowed
+        return SHARED_COLORS;
     };
 
     // Sync ViewMode and Product from URL
@@ -617,7 +556,7 @@ const Shop = () => {
         handleInteraction();
 
         // Check if current design works with new color
-        const availableForCurrent = getAvailableColorsForDesign(currentDesign);
+        const availableForCurrent = getDesignColorsFromConfig(currentDesign);
         const isCompatible = availableForCurrent.some(c => c.hex === newHex);
 
         if (!isCompatible) {
@@ -637,12 +576,12 @@ const Shop = () => {
 
             // 2. Find first design in this collection that SUPPORTS the new color
             const compatibleDesign = collectionDesigns.find(d => {
-                // Check restrictions first
+                // Check restrictions from shop config
                 const filename = URL_TO_FILENAME[d] || d.split('/').pop()?.split('?')[0] || '';
-                const restricted = PRODUCT_RESTRICTED_DESIGNS[selectedProduct];
-                if (restricted && restricted.includes(filename)) return false;
+                const restrictedDesigns = shopConfig?.[selectedProduct]?.restricted_designs || [];
+                if (restrictedDesigns.includes(filename)) return false;
 
-                const allowed = getAvailableColorsForDesign(d);
+                const allowed = getDesignColorsFromConfig(d);
                 return allowed.some(c => c.hex === newHex);
             });
 
