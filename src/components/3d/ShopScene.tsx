@@ -872,10 +872,35 @@ const ProductModel = ({
     const safeFrontUrl = frontUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
     const safeBackUrl = backUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
-    const frontTextureBase = useTexture(safeFrontUrl) as THREE.Texture;
-    const backTextureBase = useTexture(safeBackUrl) as THREE.Texture;
+    // --- FLICKER FIX: Manual Texture Loading to avoid Suspense on updates ---
+    // 1. Initial Load (Suspense enabled for first render) - freeze initial URL
+    const [initialSafeFront] = useState(safeFrontUrl);
+    const [initialSafeBack] = useState(safeBackUrl);
+    const initialFrontTex = useTexture(initialSafeFront) as THREE.Texture;
+    const initialBackTex = useTexture(initialSafeBack) as THREE.Texture;
 
-    // Clone textures so each ProductModel can have unique repeat/offset/flipY settings
+    // 2. State for active textures (Dynamic updates)
+    const [frontTextureBase, setFrontTextureBase] = useState<THREE.Texture>(initialFrontTex);
+    const [backTextureBase, setBackTextureBase] = useState<THREE.Texture>(initialBackTex);
+
+    // 3. Effect to load new textures in background without suspending
+    useEffect(() => {
+        if (safeFrontUrl === initialSafeFront) return;
+        new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            setFrontTextureBase(tex);
+        });
+    }, [safeFrontUrl, initialSafeFront]);
+
+    useEffect(() => {
+        if (safeBackUrl === initialSafeBack) return;
+        new THREE.TextureLoader().load(safeBackUrl, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            setBackTextureBase(tex);
+        });
+    }, [safeBackUrl, initialSafeBack]);
+
+    // 4. Clone textures for unique mapping properties
     const frontTexture = useMemo(() => {
         const t = frontTextureBase.clone();
         t.needsUpdate = true;
@@ -1704,8 +1729,21 @@ export const ShopScene = ({
 
     // Sequential Loading State: Track which models are ready to render
     // Order: cap (smallest) -> bottle -> tshirt -> hoodie (largest)
+    // Sequential Loading State: Track which models are ready to render
+    // Order: cap (smallest) -> bottle -> tshirt -> hoodie (largest)
     const [loadedModels, setLoadedModels] = useState<Set<string>>(new Set());
     const [currentLoadIndex, setCurrentLoadIndex] = useState(0);
+
+    // Initial loading overlay - show for minimum 2 seconds
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    useEffect(() => {
+        const minLoadingTimer = setTimeout(() => {
+            setIsInitialLoading(false);
+        }, 2000);
+        return () => clearTimeout(minLoadingTimer);
+    }, []);
+
+    const isFullyLoaded = loadedModels.size >= MODEL_LOAD_ORDER.length && !isInitialLoading;
 
     // Callback when a model finishes loading - trigger next model load
     const handleModelLoaded = useCallback((modelId: string) => {
@@ -1842,6 +1880,18 @@ export const ShopScene = ({
 
     return (
         <div className="w-full h-full absolute inset-0">
+            {/* Loading Skeleton Overlay - 4 placeholders, transparent bg */}
+            {!isFullyLoaded && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl px-8">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="aspect-[3/4] bg-white/5 animate-pulse rounded-3xl border border-white/10 shadow-lg relative overflow-hidden backdrop-blur-[2px]">
+                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
             <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
                 <CameraHandler isFullscreen={isFullscreen} />
                 <Suspense fallback={null}>
