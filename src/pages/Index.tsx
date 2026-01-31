@@ -73,10 +73,11 @@ const Index = () => {
         />
 
         <iframe
-          src="https://www.youtube.com/embed/RIT8afIKeMw?autoplay=1&mute=1&controls=0&loop=1&playlist=RIT8afIKeMw&playsinline=1&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1"
+          src="https://www.youtube.com/embed/RIT8afIKeMw?autoplay=1&mute=1&controls=0&loop=1&playlist=RIT8afIKeMw&playsinline=1&rel=0&modestbranding=1"
           className="w-full aspect-video object-cover pointer-events-none scale-[1.3]"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           title="Dišpet Loop"
+          referrerPolicy="strict-origin-when-cross-origin"
         />
 
         {/* Text Overlay Slider */}
