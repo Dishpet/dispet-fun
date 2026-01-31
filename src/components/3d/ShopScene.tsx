@@ -1881,32 +1881,42 @@ export const ShopScene = ({
 
     return (
         <div className="w-full h-full absolute inset-0">
-            {/* Loading Skeleton Overlay - 4 placeholders, transparent bg */}
-            {!isFullyLoaded && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">
-                    {/* Bounding Box Grid - Wider to match scene */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 w-full max-w-7xl px-4 md:px-12 mb-8">
-                        {[...Array(4)].map((_, i) => (
-                            <div key={i} className="aspect-[3/5] bg-white/5 animate-pulse rounded-3xl border border-white/10 shadow-lg relative overflow-hidden backdrop-blur-[2px]">
-                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                            </div>
-                        ))}
-                    </div>
+            {/* Loading Skeleton Overlay - Individual cards fade out as models load */}
+            <div className={`absolute inset-0 z-50 flex items-center justify-center pointer-events-none transition-opacity duration-500 ${isFullyLoaded ? 'opacity-0' : 'opacity-100'}`}>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 w-full max-w-7xl px-4 md:px-12 mb-8">
+                    {MODEL_LOAD_ORDER.map((item, i) => {
+                        const isLoaded = loadedModels.has(item.id);
+                        // Show if global warmup active OR item not loaded yet
+                        const isVisible = isInitialLoading || !isLoaded;
+                        // Active = currently loading this specific item
+                        const isActive = currentLoadIndex === i;
 
-                    {/* Loading Bar */}
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="text-white/80 font-bold tracking-widest text-sm uppercase drop-shadow-md">
-                            Loading Studio
-                        </div>
-                        <div className="w-64 h-1.5 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
+                        return (
                             <div
-                                className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-300 ease-out"
-                                style={{ width: `${Math.max(10, loadingProgress)}%` }}
-                            />
-                        </div>
-                    </div>
+                                key={item.id}
+                                className={`aspect-[3/5] rounded-3xl border border-white/10 shadow-lg relative overflow-hidden backdrop-blur-[2px] transition-all duration-700 ease-out transform
+                                    ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
+                                    ${isActive ? 'bg-white/10 border-white/20' : 'bg-white/5'}
+                                `}
+                            >
+                                {/* Shimmer Effect (only when active/waiting) */}
+                                {isVisible && (
+                                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                                )}
+
+                                {/* Per-Product Loading Bar (Bottom) */}
+                                <div className="absolute bottom-4 left-4 right-4">
+                                    <div className="h-1 bg-black/20 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ease-out ${isLoaded ? 'bg-green-400 w-full' : (isActive ? 'bg-white animate-pulse w-1/2' : 'bg-white/20 w-0')}`}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            )}
+            </div>
             <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
                 <CameraHandler isFullscreen={isFullscreen} />
                 <Suspense fallback={null}>
