@@ -861,8 +861,11 @@ const ProductModel = ({
     const strictColorSyncFront = !shouldHideDesigns && ((label === 'HOODICA' || label === 'MAJICA') && colorToLogoMap) ?
         colorToLogoMap[isCustomizing && hasUserInteracted && color ? color : ('#' + targetColorRef.current.getHexString())] : null;
 
+    const manualFront = (isCustomizing && hasUserInteracted && designs?.front) ? designs.front : null;
+    const isManualDesignALogo = manualFront && colorToLogoMap && Object.values(colorToLogoMap).includes(manualFront);
+
     const frontUrl = shouldHideDesigns ? null :
-        (strictColorSyncFront || ((isCustomizing && hasUserInteracted && designs?.front) ? designs.front : (colorMatchedFrontDesign || frontCycleUrl)));
+        ((manualFront && !isManualDesignALogo) ? manualFront : (strictColorSyncFront || manualFront || colorMatchedFrontDesign || frontCycleUrl));
 
     // Resolve Back URL: Custom Back OR Cycle
     // Update: If customizing but NOT active (background), show NO design.
