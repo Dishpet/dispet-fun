@@ -885,20 +885,26 @@ const ProductModel = ({
 
     // 3. Effect to load new textures in background without suspending
     useEffect(() => {
-        if (safeFrontUrl === initialSafeFront) return;
+        if (safeFrontUrl === initialSafeFront) {
+            setFrontTextureBase(initialFrontTex);
+            return;
+        }
         new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             setFrontTextureBase(tex);
         });
-    }, [safeFrontUrl, initialSafeFront]);
+    }, [safeFrontUrl, initialSafeFront, initialFrontTex]);
 
     useEffect(() => {
-        if (safeBackUrl === initialSafeBack) return;
+        if (safeBackUrl === initialSafeBack) {
+            setBackTextureBase(initialBackTex);
+            return;
+        }
         new THREE.TextureLoader().load(safeBackUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             setBackTextureBase(tex);
         });
-    }, [safeBackUrl, initialSafeBack]);
+    }, [safeBackUrl, initialSafeBack, initialBackTex]);
 
     // 4. Clone textures for unique mapping properties
     const frontTexture = useMemo(() => {
@@ -1432,7 +1438,7 @@ const ProductModel = ({
                     frontMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
-                            mat.userData.uniforms.uRevealProgress.value = progress;
+                            // Removed uRevealProgress to prevent fade-out effect during design switch
                         }
                     });
                 }
@@ -1441,7 +1447,7 @@ const ProductModel = ({
                     backMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
-                            mat.userData.uniforms.uRevealProgress.value = progress;
+                            // Removed uRevealProgress to prevent fade-out effect during design switch
                         }
                     });
                 }
@@ -1452,16 +1458,15 @@ const ProductModel = ({
                     isDesignTransitioning.current = false;
 
                     // Reset glitch intensity and set reveal to complete
+                    // Reset glitch intensity
                     frontMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = 0;
-                            mat.userData.uniforms.uRevealProgress.value = 1;
                         }
                     });
                     backMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = 0;
-                            mat.userData.uniforms.uRevealProgress.value = 1;
                         }
                     });
                 }
