@@ -249,7 +249,7 @@ const ProductModel = ({
     );
     const designIndexRef = useRef(currentDesignIndex);
     useEffect(() => { designIndexRef.current = currentDesignIndex; }, [currentDesignIndex]);
-    const [fadeState, setFadeState] = useState<'display' | 'fade-out' | 'fade-in'>('display');
+
 
     // Single source of truth for cycling state
     const isCycling = useMemo(() => {
@@ -1168,7 +1168,7 @@ const ProductModel = ({
                 }
             });
 
-            setFadeState('fade-out');
+
         };
 
         // GLOBAL SYNC: All products sync to the same clock based on Date.now()
@@ -1512,36 +1512,20 @@ const ProductModel = ({
             }
         });
 
-        // 4. Fade Logic (Only applies to FRONT materials for now if cycling)
+        // 4. Fade Logic REMOVED (Conflicted with Glitch)
+        // We now rely purely on the Glitch Transition (triggered by URL change or runCycle)
+        // to mask the design swap. Opacity stays at 1 (unless hidden by customizing logic).
         if (frontMaterialsRef.current.length > 0) {
-            let fadeFactor = 1;
-            // Use stateRef.isCycling as single source of truth
             const shouldCycle = stateRef.current.isCycling;
-
             if (shouldCycle) {
-                if (fadeState === 'fade-out') {
-                    fadeFactor = Math.max(0, frontMaterialsRef.current[0].opacity - clampedDelta * 2);
-                    if (fadeFactor === 0) {
-                        const cycleLen = (cycleDesignsFront || []).length;
-                        const nextIndex = (currentDesignIndex + 1) % cycleLen;
-                        setCurrentDesignIndex(nextIndex);
-                        setFadeState('fade-in');
-                    }
-                } else if (fadeState === 'fade-in') {
-                    fadeFactor = Math.min(1, frontMaterialsRef.current[0].opacity + clampedDelta * 2);
-                    if (fadeFactor === 1) setFadeState('display');
-                }
-
-                // Apply factor to both front and back
+                // Ensure opacity is 1 so glitch is visible
                 frontMaterialsRef.current.forEach(mat => {
-                    // For ALL models, keep opacity at 1 so glitch shader is visible
-                    // We now use glitch shader for everyone
                     mat.opacity = 1;
-                    mat.visible = !shouldHide; // Fix: Hide if in customization mode and not active
+                    mat.visible = !shouldHide;
                 });
                 backMaterialsRef.current.forEach(mat => {
                     mat.opacity = 1;
-                    mat.visible = !shouldHide; // Fix: Hide if in customization mode and not active
+                    mat.visible = !shouldHide;
                 });
             } else {
                 // Ensure opacity is 1 when not cycling
