@@ -252,12 +252,16 @@ const ProductModel = ({
 
 
     // Single source of truth for cycling state
+    // Single source of truth for cycling state
     const isCycling = useMemo(() => {
-        if (!enableDesignCycle && !enableColorCycle) return false; // Check both
-        if (mode === 'showcase') return true;
-        // if (isActive) return false; // Implicit
-        return false;
-    }, [enableDesignCycle, enableColorCycle, mode]);
+        if (!enableDesignCycle && !enableColorCycle) return false;
+
+        // If user has interacted (picked color/design), STOP cycling.
+        // Otherwise, even if in customization mode, keep cycling until they interact.
+        if (hasUserInteracted) return false;
+
+        return true;
+    }, [enableDesignCycle, enableColorCycle, hasUserInteracted]);
 
     // Lerp Refs
     const currentPosition = useRef(new THREE.Vector3(...position));
@@ -768,8 +772,10 @@ const ProductModel = ({
     // isCycling is defined via useMemo above
 
     // Front Cycle
+    // FIX: Always return the design at current index, even if cycle is stopped.
+    // This ensures "Freezing" on the last design instead of vanishing.
     const frontCycleList = cycleDesignsFront || [];
-    const baseFrontCycleUrl = isCycling ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
+    const baseFrontCycleUrl = frontCycleList.length > 0 ? frontCycleList[currentDesignIndex % frontCycleList.length] : null;
 
     // Alt Swap Logic for Cycle
     const getEffectiveUrl = (url: string | null) => {
@@ -788,7 +794,7 @@ const ProductModel = ({
 
     // Back Cycle
     const backCycleList = cycleDesignsBack || null;
-    const baseBackCycleUrl = isCycling && backCycleList ? backCycleList[currentDesignIndex % backCycleList.length] : null;
+    const baseBackCycleUrl = backCycleList && backCycleList.length > 0 ? backCycleList[currentDesignIndex % backCycleList.length] : null;
     const backCycleUrl = getEffectiveUrl(baseBackCycleUrl);
 
     // Resolve Front URL: Custom Front OR Cycle
