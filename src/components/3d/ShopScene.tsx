@@ -760,55 +760,7 @@ const ProductModel = ({
         }
     }, [color, isCustomizing, label, hasUserInteracted, enableColorCycle]);
 
-    // Track previous designs to detect changes
-    const previousDesignsRef = useRef<{ front?: string; back?: string }>({});
-    const hasInitializedDesigns = useRef(false);
 
-    // Trigger digital glitch transition when BACK design changes (user selection)
-    // Front design changes automatically with color sync - that shouldn't trigger glitch
-    useEffect(() => {
-        if (designs) {
-            const prevBack = previousDesignsRef.current.back;
-            const prevFront = previousDesignsRef.current.front;
-
-            let designChanged = false;
-
-            // Split design change detection
-            const frontChanged = designs.front && prevFront && designs.front !== prevFront;
-            const backChanged = designs.back && prevBack && designs.back !== prevBack;
-
-            if (hasInitializedDesigns.current && (frontChanged || backChanged) &&
-                (frontMaterialsRef.current.length > 0 || backMaterialsRef.current.length > 0)) {
-
-                // Start digital glitch transition
-                designTransitionProgress.current = 0;
-                isDesignTransitioning.current = true;
-                designTransitionTimeRef.current = 0;
-
-                // Activate flags for relevant zones
-                isGlitchingFront.current = !!frontChanged;
-                isGlitchingBack.current = !!backChanged;
-
-                // Reset intensity conditionally
-                if (frontChanged) {
-                    frontMaterialsRef.current.forEach(mat => {
-                        if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
-                    });
-                }
-                if (backChanged) {
-                    backMaterialsRef.current.forEach(mat => {
-                        if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
-                    });
-                }
-            }
-
-
-
-            // Update previous designs ref and mark as initialized
-            previousDesignsRef.current = { front: designs.front, back: designs.back };
-            hasInitializedDesigns.current = true;
-        }
-    }, [designs, label]); // Watch all design changes
 
     // Load textures for Front and Back
     // Logic update: Only show cycle design if in showcase mode OR if this product is active.
@@ -874,6 +826,55 @@ const ProductModel = ({
 
     const safeFrontUrl = frontUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
     const safeBackUrl = backUrl || "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
+    // Track previous resolved designs to detect changes (FrontUrl/BackUrl)
+    // This covers BOTH manual selection AND auto-sync changes (e.g. Logo color swap)
+    const prevFrontUrlRef = useRef<string | null>(null);
+    const prevBackUrlRef = useRef<string | null>(null);
+    const hasInitializedUrls = useRef(false);
+
+    // Trigger digital glitch transition when Resolved Design changes
+    useEffect(() => {
+        // Skip glitch on initial load/mount
+        if (!hasInitializedUrls.current) {
+            hasInitializedUrls.current = true;
+            prevFrontUrlRef.current = frontUrl;
+            prevBackUrlRef.current = backUrl;
+            return;
+        }
+
+        const frontChanged = frontUrl !== prevFrontUrlRef.current;
+        const backChanged = backUrl !== prevBackUrlRef.current;
+
+        if ((frontChanged || backChanged) &&
+            (frontMaterialsRef.current.length > 0 || backMaterialsRef.current.length > 0)) {
+
+            // Start digital glitch transition
+            designTransitionProgress.current = 0;
+            isDesignTransitioning.current = true;
+            designTransitionTimeRef.current = 0;
+
+            // Activate flags for relevant zones
+            isGlitchingFront.current = !!frontChanged;
+            isGlitchingBack.current = !!backChanged;
+
+            // Reset intensity
+            if (frontChanged) {
+                frontMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                });
+            }
+            if (backChanged) {
+                backMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                });
+            }
+        }
+
+        prevFrontUrlRef.current = frontUrl;
+        prevBackUrlRef.current = backUrl;
+
+    }, [frontUrl, backUrl]);
 
     // --- FLICKER FIX: Manual Texture Loading to avoid Suspense on updates ---
     // 1. Initial Load (Suspense enabled for first render) - freeze initial URL
