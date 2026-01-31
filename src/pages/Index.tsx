@@ -7,7 +7,7 @@ import { CTABanner } from "@/components/CTABanner";
 import bannerImage from "@/assets/banner-image.webp";
 import mobileBannerImage from "@/assets/boce-kape.webp";
 import bannerVideo from "@/assets/banner-video.webm";
-import dispetLoop from "@/assets/dispet-loop.mp4";
+
 import cloudsTopSvg from "@/assets/clouds-top.svg";
 import cloudsBottomSvg from "@/assets/clouds-bottom.svg";
 import cloudsTopVideo from "@/assets/clouds-top-video.svg";
@@ -72,16 +72,12 @@ const Index = () => {
           className="absolute top-0 left-0 min-w-[101%] w-[101%] -ml-[1px] z-30 -mt-1"
         />
 
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="w-full h-full object-cover block"
-        >
-          <source src={dispetLoop} type="video/mp4" />
-        </video>
+        <iframe
+          src="https://www.youtube.com/embed/RIT8afIKeMw?autoplay=1&mute=1&controls=0&loop=1&playlist=RIT8afIKeMw&playsinline=1&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1"
+          className="w-full aspect-video object-cover pointer-events-none scale-[1.3]"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          title="Dišpet Loop"
+        />
 
         {/* Text Overlay Slider */}
         <AboutVideoSlider
