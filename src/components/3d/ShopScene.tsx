@@ -887,15 +887,21 @@ const ProductModel = ({
     const [frontTextureBase, setFrontTextureBase] = useState<THREE.Texture>(initialFrontTex);
     const [backTextureBase, setBackTextureBase] = useState<THREE.Texture>(initialBackTex);
 
+    // Loading Refs for Glitch Synchronization
+    const isLoadingFrontRef = useRef(false);
+    const isLoadingBackRef = useRef(false);
+
     // 3. Effect to load new textures in background without suspending
     useEffect(() => {
         if (safeFrontUrl === initialSafeFront) {
             setFrontTextureBase(initialFrontTex);
             return;
         }
+        isLoadingFrontRef.current = true;
         new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             setFrontTextureBase(tex);
+            isLoadingFrontRef.current = false;
         });
     }, [safeFrontUrl, initialSafeFront, initialFrontTex]);
 
@@ -904,9 +910,11 @@ const ProductModel = ({
             setBackTextureBase(initialBackTex);
             return;
         }
+        isLoadingBackRef.current = true;
         new THREE.TextureLoader().load(safeBackUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             setBackTextureBase(tex);
+            isLoadingBackRef.current = false;
         });
     }, [safeBackUrl, initialSafeBack, initialBackTex]);
 
@@ -1429,7 +1437,24 @@ const ProductModel = ({
             if (isDesignTransitioning.current && designTransitionProgress.current < 1) {
                 // Slower transition for more visible glitch effect
                 const transitionSpeed = 1.5;
-                designTransitionProgress.current += clampedDelta * transitionSpeed;
+
+                // --- LOAD SYNCHRONIZATION ---
+                // Check if we need to wait for a texture to load
+                const waitingForFront = isGlitchingFront.current && isLoadingFrontRef.current;
+                const waitingForBack = isGlitchingBack.current && isLoadingBackRef.current;
+                const isWaiting = waitingForFront || waitingForBack;
+
+                // If waiting, clamp progress to 0.5 (Peak Glitch / Hidden)
+                if (isWaiting) {
+                    if (designTransitionProgress.current < 0.5) {
+                        designTransitionProgress.current += clampedDelta * transitionSpeed;
+                        if (designTransitionProgress.current > 0.5) designTransitionProgress.current = 0.5;
+                    }
+                    // Else hold at 0.5
+                } else {
+                    // Not waiting, proceed normally
+                    designTransitionProgress.current += clampedDelta * transitionSpeed;
+                }
 
                 // Bell curve for glitch intensity: peaks at 0.5, zero at 0 and 1
                 const progress = Math.min(designTransitionProgress.current, 1);
@@ -1442,7 +1467,7 @@ const ProductModel = ({
                     frontMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
-                            // Removed uRevealProgress to prevent fade-out effect during design switch
+                            mat.userData.uniforms.uRevealProgress.value = progress; // Restored fade
                         }
                     });
                 }
@@ -1451,7 +1476,7 @@ const ProductModel = ({
                     backMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = glitchIntensity;
-                            // Removed uRevealProgress to prevent fade-out effect during design switch
+                            mat.userData.uniforms.uRevealProgress.value = progress; // Restored fade
                         }
                     });
                 }
@@ -1462,15 +1487,16 @@ const ProductModel = ({
                     isDesignTransitioning.current = false;
 
                     // Reset glitch intensity and set reveal to complete
-                    // Reset glitch intensity
                     frontMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = 0;
+                            mat.userData.uniforms.uRevealProgress.value = 1;
                         }
                     });
                     backMaterialsRef.current.forEach(mat => {
                         if (mat.userData?.uniforms) {
                             mat.userData.uniforms.uGlitchIntensity.value = 0;
+                            mat.userData.uniforms.uRevealProgress.value = 1;
                         }
                     });
                 }
