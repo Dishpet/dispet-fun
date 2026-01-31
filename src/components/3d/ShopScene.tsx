@@ -883,9 +883,46 @@ const ProductModel = ({
     }, [frontUrl, backUrl]);
 
     // --- FLICKER FIX: Manual Texture Loading to avoid Suspense on updates ---
-    // 2. Load textures (Suspense enabled) - per NOVA ALT logic
-    const frontTextureBase = useTexture(safeFrontUrl) as THREE.Texture;
-    const backTextureBase = useTexture(safeBackUrl) as THREE.Texture;
+    // 1. Initial Load (Suspense enabled for first render) - freeze initial URL
+    const [initialSafeFront] = useState(safeFrontUrl);
+    const [initialSafeBack] = useState(safeBackUrl);
+    const initialFrontTex = useTexture(initialSafeFront) as THREE.Texture;
+    const initialBackTex = useTexture(initialSafeBack) as THREE.Texture;
+
+    // 2. State for active textures (Dynamic updates)
+    const [frontTextureBase, setFrontTextureBase] = useState<THREE.Texture>(initialFrontTex);
+    const [backTextureBase, setBackTextureBase] = useState<THREE.Texture>(initialBackTex);
+
+    // Loading Refs for Glitch Synchronization
+    const isLoadingFrontRef = useRef(false);
+    const isLoadingBackRef = useRef(false);
+
+    // 3. Effect to load new textures in background without suspending
+    useEffect(() => {
+        if (safeFrontUrl === initialSafeFront) {
+            setFrontTextureBase(initialFrontTex);
+            return;
+        }
+        isLoadingFrontRef.current = true;
+        new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            setFrontTextureBase(tex);
+            isLoadingFrontRef.current = false;
+        });
+    }, [safeFrontUrl, initialSafeFront, initialFrontTex]);
+
+    useEffect(() => {
+        if (safeBackUrl === initialSafeBack) {
+            setBackTextureBase(initialBackTex);
+            return;
+        }
+        isLoadingBackRef.current = true;
+        new THREE.TextureLoader().load(safeBackUrl, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            setBackTextureBase(tex);
+            isLoadingBackRef.current = false;
+        });
+    }, [safeBackUrl, initialSafeBack, initialBackTex]);
 
     // 4. Clone textures for unique mapping properties
     const frontTexture = useMemo(() => {
@@ -1403,11 +1440,32 @@ const ProductModel = ({
             });
 
             // Animate DESIGN transition with glitch effect (print materials only)
+            // Animate DESIGN transition with glitch effect (print materials only)
             if (isDesignTransitioning.current && designTransitionProgress.current < 1) {
                 // Slower transition for more visible glitch effect
                 const transitionSpeed = 1.5;
 
-                designTransitionProgress.current += clampedDelta * transitionSpeed;
+                // --- LOAD SYNCHRONIZATION ---
+                // Check if we need to wait for a texture to load
+                // (Only wait if the glitch was triggered by a change in that zone)
+                const waitingForFront = isGlitchingFront.current && isLoadingFrontRef.current;
+                const waitingForBack = isGlitchingBack.current && isLoadingBackRef.current;
+                const isWaiting = waitingForFront || waitingForBack;
+
+                // If waiting, clamp progress to 0.5 (Peak Glitch / Hidden)
+                if (isWaiting) {
+                    if (designTransitionProgress.current < 0.5) {
+                        designTransitionProgress.current += clampedDelta * transitionSpeed;
+                        if (designTransitionProgress.current > 0.5) designTransitionProgress.current = 0.5;
+                    }
+                    // Else hold at 0.5
+                } else {
+                    // Not waiting, proceed normally
+                    designTransitionProgress.current += clampedDelta * transitionSpeed;
+                }
+
+                designTransitionProgress.current += 0; // No-op, just fallback to ensure logic flow
+
 
                 // Bell curve for glitch intensity: peaks at 0.5, zero at 0 and 1
                 const progress = Math.min(designTransitionProgress.current, 1);
