@@ -253,11 +253,11 @@ const ProductModel = ({
 
     // Single source of truth for cycling state
     const isCycling = useMemo(() => {
-        if (!enableDesignCycle) return false;
+        if (!enableDesignCycle && !enableColorCycle) return false; // Check both
         if (mode === 'showcase') return true;
-        if (isActive && !hasUserInteracted) return true;
+        // if (isActive) return false; // Implicit
         return false;
-    }, [enableDesignCycle, mode, isActive, hasUserInteracted]);
+    }, [enableDesignCycle, enableColorCycle, mode]);
 
     // Lerp Refs
     const currentPosition = useRef(new THREE.Vector3(...position));
