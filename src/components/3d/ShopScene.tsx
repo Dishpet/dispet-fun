@@ -834,41 +834,13 @@ const ProductModel = ({
     const hasInitializedUrls = useRef(false);
 
     // Trigger digital glitch transition when Resolved Design changes
+    // NOTE: Old immediate trigger removed. Now handled by TextureLoader callback.
     useEffect(() => {
-        // Skip glitch on initial load/mount
         if (!hasInitializedUrls.current) {
             hasInitializedUrls.current = true;
             prevFrontUrlRef.current = frontUrl;
             prevBackUrlRef.current = backUrl;
             return;
-        }
-
-        const frontChanged = frontUrl !== prevFrontUrlRef.current;
-        const backChanged = backUrl !== prevBackUrlRef.current;
-
-        if ((frontChanged || backChanged) &&
-            (frontMaterialsRef.current.length > 0 || backMaterialsRef.current.length > 0)) {
-
-            // Start digital glitch transition
-            designTransitionProgress.current = 0;
-            isDesignTransitioning.current = true;
-            designTransitionTimeRef.current = 0;
-
-            // Activate flags for relevant zones
-            isGlitchingFront.current = !!frontChanged;
-            isGlitchingBack.current = !!backChanged;
-
-            // Reset intensity
-            if (frontChanged) {
-                frontMaterialsRef.current.forEach(mat => {
-                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
-                });
-            }
-            if (backChanged) {
-                backMaterialsRef.current.forEach(mat => {
-                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
-                });
-            }
         }
 
         prevFrontUrlRef.current = frontUrl;
@@ -887,9 +859,11 @@ const ProductModel = ({
     const [frontTextureBase, setFrontTextureBase] = useState<THREE.Texture>(initialFrontTex);
     const [backTextureBase, setBackTextureBase] = useState<THREE.Texture>(initialBackTex);
 
-    // Loading Refs for Glitch Synchronization
-    const isLoadingFrontRef = useRef(false);
-    const isLoadingBackRef = useRef(false);
+    // Loading Refs for Glitch Synchronization (Pending Updates)
+    const pendingFrontTexRef = useRef<THREE.Texture | null>(null);
+    const pendingBackTexRef = useRef<THREE.Texture | null>(null);
+    const hasPendingFrontUpdate = useRef(false);
+    const hasPendingBackUpdate = useRef(false);
 
     // 3. Effect to load new textures in background without suspending
     useEffect(() => {
@@ -897,11 +871,24 @@ const ProductModel = ({
             setFrontTextureBase(initialFrontTex);
             return;
         }
-        isLoadingFrontRef.current = true;
+
+        // Load in background, DO NOT set state yet
         new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
-            setFrontTextureBase(tex);
-            isLoadingFrontRef.current = false;
+            pendingFrontTexRef.current = tex;
+            hasPendingFrontUpdate.current = true;
+
+            // Trigger Glitch NOW (after load is done)
+            if (frontMaterialsRef.current.length > 0) {
+                designTransitionProgress.current = 0;
+                isDesignTransitioning.current = true;
+                isGlitchingFront.current = true;
+
+                // Reset uniforms
+                frontMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                });
+            }
         });
     }, [safeFrontUrl, initialSafeFront, initialFrontTex]);
 
@@ -910,11 +897,22 @@ const ProductModel = ({
             setBackTextureBase(initialBackTex);
             return;
         }
-        isLoadingBackRef.current = true;
+
         new THREE.TextureLoader().load(safeBackUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
-            setBackTextureBase(tex);
-            isLoadingBackRef.current = false;
+            pendingBackTexRef.current = tex;
+            hasPendingBackUpdate.current = true;
+
+            // Trigger Glitch NOW
+            if (backMaterialsRef.current.length > 0) {
+                designTransitionProgress.current = 0;
+                isDesignTransitioning.current = true;
+                isGlitchingBack.current = true;
+
+                backMaterialsRef.current.forEach(mat => {
+                    if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
+                });
+            }
         });
     }, [safeBackUrl, initialSafeBack, initialBackTex]);
 
@@ -1438,22 +1436,24 @@ const ProductModel = ({
                 // Slower transition for more visible glitch effect
                 const transitionSpeed = 1.5;
 
-                // --- LOAD SYNCHRONIZATION ---
-                // Check if we need to wait for a texture to load
-                const waitingForFront = isGlitchingFront.current && isLoadingFrontRef.current;
-                const waitingForBack = isGlitchingBack.current && isLoadingBackRef.current;
-                const isWaiting = waitingForFront || waitingForBack;
+                // --- DEFERRED SWAP LOGIC ---
+                // We advance the glitch. When we cross 0.5 (Peak), we swap the texture.
 
-                // If waiting, clamp progress to 0.5 (Peak Glitch / Hidden)
-                if (isWaiting) {
-                    if (designTransitionProgress.current < 0.5) {
-                        designTransitionProgress.current += clampedDelta * transitionSpeed;
-                        if (designTransitionProgress.current > 0.5) designTransitionProgress.current = 0.5;
+                const prevProgress = designTransitionProgress.current;
+                designTransitionProgress.current += clampedDelta * transitionSpeed;
+                const currentProgress = designTransitionProgress.current;
+
+                // Detect crossing 0.5 threshold
+                if (prevProgress < 0.5 && currentProgress >= 0.5) {
+                    // SWAP TEXTURES NOW (At peak blockage)
+                    if (isGlitchingFront.current && hasPendingFrontUpdate.current && pendingFrontTexRef.current) {
+                        setFrontTextureBase(pendingFrontTexRef.current);
+                        hasPendingFrontUpdate.current = false;
                     }
-                    // Else hold at 0.5
-                } else {
-                    // Not waiting, proceed normally
-                    designTransitionProgress.current += clampedDelta * transitionSpeed;
+                    if (isGlitchingBack.current && hasPendingBackUpdate.current && pendingBackTexRef.current) {
+                        setBackTextureBase(pendingBackTexRef.current);
+                        hasPendingBackUpdate.current = false;
+                    }
                 }
 
                 // Bell curve for glitch intensity: peaks at 0.5, zero at 0 and 1
