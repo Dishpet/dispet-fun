@@ -1922,48 +1922,98 @@ export const ShopScene = ({
             <div className={`absolute inset-0 z-50 pointer-events-none transition-opacity duration-500 ${isFullyLoaded ? 'opacity-0' : 'opacity-100'}`}>
                 {/* Product-specific skeleton placeholders */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-full max-w-6xl h-[60vh]">
+                    {/* Desktop: Horizontal layout */}
+                    <div className="hidden md:flex relative w-full max-w-6xl h-[60vh] items-center justify-center">
                         {/* Bottle - Left */}
-                        <div className={`absolute left-[10%] md:left-[15%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
-                            <div className="w-24 h-56 md:w-32 md:h-72 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>termosica</p>
-                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className={`absolute left-[12%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-40 h-96 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>termosica</p>
+                                <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('bottle') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
-                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
+                                <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
                             </div>
                         </div>
                         
                         {/* T-Shirt - Left Center */}
-                        <div className={`absolute left-[28%] md:left-[30%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
-                            <div className="w-28 h-40 md:w-40 md:h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>majica</p>
-                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className={`absolute left-[28%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-52 h-72 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>majica</p>
+                                <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('tshirt') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
-                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
+                                <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
                             </div>
                         </div>
                         
                         {/* Hoodie - Right Center */}
-                        <div className={`absolute right-[28%] md:right-[30%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
-                            <div className="w-28 h-44 md:w-40 md:h-56 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>duksica</p>
-                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className={`absolute right-[28%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-52 h-80 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>duksica</p>
+                                <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('hoodie') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
-                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('hoodie') ? '100%' : '...'}</p>
+                                <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('hoodie') ? '100%' : '...'}</p>
                             </div>
                         </div>
                         
                         {/* Cap - Right */}
-                        <div className={`absolute right-[10%] md:right-[15%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
-                            <div className="w-24 h-28 md:w-32 md:h-36 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>kapa</p>
-                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className={`absolute right-[12%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-44 h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>kapa</p>
+                                <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('cap') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
-                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('cap') ? '100%' : '...'}</p>
+                                <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('cap') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Mobile: 2x2 Grid layout matching actual product positions */}
+                    <div className="flex md:hidden relative w-full h-[70vh] items-center justify-center">
+                        {/* Top Row */}
+                        {/* T-Shirt - Top Left */}
+                        <div className={`absolute left-[5%] top-[5%] transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-36 h-48 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>majica</p>
+                                <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('tshirt') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Cap - Top Right */}
+                        <div className={`absolute right-[3%] top-[3%] transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-32 h-40 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>kapa</p>
+                                <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('cap') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('cap') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Bottom Row */}
+                        {/* Bottle - Bottom Left */}
+                        <div className={`absolute left-[5%] bottom-[15%] transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-32 h-56 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>termosica</p>
+                                <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('bottle') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Hoodie - Bottom Right */}
+                        <div className={`absolute right-[5%] bottom-[12%] transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-36 h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>duksica</p>
+                                <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('hoodie') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('hoodie') ? '100%' : '...'}</p>
                             </div>
                         </div>
                     </div>
