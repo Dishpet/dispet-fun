@@ -1644,7 +1644,7 @@ const ProductModel = ({
                 <group position={[0, textYOffset / (scale || 1) + 0.2, 2.0 / (scale || 1)]}>
                     {/* Product Name */}
                     <Text
-                        font="/fonts/DynaPuff_Condensed-Bold.ttf"
+                        font="/fonts/DynaPuff-Bold.ttf"
                         fontSize={0.25 / (scale || 1)}
                         color="#ffffff"
                         anchorX="center"
@@ -1658,7 +1658,7 @@ const ProductModel = ({
                     {/* Product Price */}
                     {price && (
                         <Text
-                            font="/fonts/DynaPuff_Condensed-Bold.ttf"
+                            font="/fonts/DynaPuff-Bold.ttf"
                             fontSize={0.2 / (scale || 1)}
                             color="#ffffff"
                             anchorX="center"
