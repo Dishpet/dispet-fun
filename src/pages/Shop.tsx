@@ -1073,38 +1073,28 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        {/* Size picker with children's sizes in 2 rows */}
-                                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
-                                            {/* Children's sizes - first row */}
-                                            <div className="flex justify-between items-center gap-1 mb-1">
-                                                {['6-8 g.', '8-10 g.', '10-12 g.'].map((size) => (
-                                                    <button
-                                                        key={size}
-                                                        onClick={() => setSelectedSize(size)}
-                                                        className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
-                                                            ? 'bg-black text-white shadow-md'
-                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
-                                                            }`}
-                                                    >
-                                                        {size}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            {/* Adult sizes - second row */}
-                                            <div className="flex justify-between items-center gap-1">
-                                                {['S', 'M', 'L', 'XL'].map((size) => (
-                                                    <button
-                                                        key={size}
-                                                        onClick={() => setSelectedSize(size)}
-                                                        className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
-                                                            ? 'bg-black text-white shadow-md'
-                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
-                                                            }`}
-                                                    >
-                                                        {size}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                        {/* Size picker - all sizes in one row */}
+                                        <div className="flex justify-between items-center gap-1 bg-white rounded-full border border-gray-100 shadow-sm p-1.5">
+                                            {[
+                                                { label: <>6-8<br />g.</>, value: '6-8 g.' },
+                                                { label: <>8-10<br />g.</>, value: '8-10 g.' },
+                                                { label: <>10-12<br />g.</>, value: '10-12 g.' },
+                                                { label: 'S', value: 'S' },
+                                                { label: 'M', value: 'M' },
+                                                { label: 'L', value: 'L' },
+                                                { label: 'XL', value: 'XL' },
+                                            ].map(({ label, value }) => (
+                                                <button
+                                                    key={value}
+                                                    onClick={() => setSelectedSize(value)}
+                                                    className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] leading-tight ${selectedSize === value
+                                                        ? 'bg-black text-white shadow-md'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-black'
+                                                        }`}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
