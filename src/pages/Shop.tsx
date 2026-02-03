@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ShopScene } from '../components/3d/ShopScene';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, Palette, Ruler, ChevronLeft, ChevronRight, Box, X, Star, Check, Plus, Minus, RefreshCcw } from 'lucide-react';
+import { ShoppingBag, Palette, Ruler, ChevronLeft, ChevronRight, Box, X, Star, Check, Plus, Minus, RefreshCcw, ChevronDown } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useShopConfig } from '@/hooks/useShopConfig';
@@ -1073,8 +1073,31 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        {/* Size picker - all sizes in one row */}
-                                        <div className="flex justify-between items-center gap-1 sm:gap-3 bg-white rounded-full border border-gray-100 shadow-sm px-2 sm:px-3 py-2 overflow-x-auto scrollbar-hide">
+                                        
+                                        {/* Mobile: Native Select Dropdown */}
+                                        <div className="sm:hidden">
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedSize}
+                                                    onChange={(e) => setSelectedSize(e.target.value)}
+                                                    className="w-full h-11 pl-4 pr-10 bg-white rounded-full border border-gray-100 shadow-sm font-['DynaPuff'] font-bold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                >
+                                                    <option value="6-8 g.">6-8 g.</option>
+                                                    <option value="8-10 g.">8-10 g.</option>
+                                                    <option value="10-12 g.">10-12 g.</option>
+                                                    <option value="S">S</option>
+                                                    <option value="M">M</option>
+                                                    <option value="L">L</option>
+                                                    <option value="XL">XL</option>
+                                                </select>
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Desktop: Circular Buttons */}
+                                        <div className="hidden sm:flex justify-between items-center gap-3 bg-white rounded-full border border-gray-100 shadow-sm px-3 py-2">
                                             {[
                                                 { label: <>6-8<br />g.</>, value: '6-8 g.' },
                                                 { label: <>8-10<br />g.</>, value: '8-10 g.' },
@@ -1087,7 +1110,7 @@ const Shop = () => {
                                                 <button
                                                     key={value}
                                                     onClick={() => setSelectedSize(value)}
-                                                    className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full font-bold text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center font-['DynaPuff'] leading-tight shrink-0 ${selectedSize === value
+                                                    className={`w-11 h-11 rounded-full font-bold text-xs transition-all duration-300 flex items-center justify-center font-['DynaPuff'] leading-tight shrink-0 ${selectedSize === value
                                                         ? 'bg-black text-white shadow-md scale-110'
                                                         : 'text-gray-500 hover:bg-gray-50 hover:text-black'
                                                         }`}
