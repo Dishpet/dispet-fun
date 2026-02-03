@@ -121,7 +121,15 @@ const ModelWithPortal = ({
                         // Body or other parts - Apply Tint
                         if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
                             m.material = mat.clone();
-                            (m.material as THREE.MeshStandardMaterial).color.set(color);
+                            const fabricMat = m.material as THREE.MeshStandardMaterial;
+                            fabricMat.color.set(color);
+                            
+                            // FABRIC MATERIAL SETTINGS
+                            fabricMat.roughness = 0.85;      // High roughness for matte fabric
+                            fabricMat.metalness = 0.05;      // Low metalness
+                            fabricMat.sheen = 0.3;           // Soft fabric sheen
+                            fabricMat.sheenRoughness = 0.5;
+                            fabricMat.sheenColor = new THREE.Color(0xffffff);
                         }
                     }
                 }

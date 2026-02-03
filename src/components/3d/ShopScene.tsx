@@ -414,6 +414,16 @@ const ProductModel = ({
                             // Remove fabric texture to allow clean color if desired
                             newMat.map = null;
 
+                            // FABRIC MATERIAL SETTINGS
+                            // Make it look like real fabric
+                            newMat.roughness = 0.85;      // High roughness for matte fabric look
+                            newMat.metalness = 0.05;      // Very low metalness (fabric isn't metallic)
+                            newMat.sheen = 0.3;           // Slight sheen for soft fabric feel
+                            newMat.sheenRoughness = 0.5;  // Sheen roughness
+                            newMat.sheenColor = new THREE.Color(0xffffff); // White sheen
+                            newMat.clearcoat = 0.0;       // No clearcoat
+                            newMat.clearcoatRoughness = 0.0;
+
                             // Add custom uniforms for the transition
                             newMat.userData.uniforms = {
                                 uRevealProgress: { value: 1.0 },
@@ -856,14 +866,17 @@ const ProductModel = ({
     const isColorOnlyChange = (prevUrl: string | null, newUrl: string): boolean => {
         if (!prevUrl || prevUrl === newUrl) return false;
         
-        // Extract base design name (e.g., "logo" from "logo-231f20.png")
+        // Extract base design name (e.g., "logo" from "logo-231f20.png" or "logo-231f20-XXXXXX.png" with vite hash)
         const getBaseDesign = (url: string): string | null => {
-            const match = url.match(/\/([^/]+)-[0-9a-fA-F]{6}\.png$/);
-            if (match) return match[1]; // e.g., "logo"
+            // Match patterns like:
+            // - /path/logo-231f20.png (dev)
+            // - /assets/logo-231f20-DtpIa2tO.png (production with vite content hash)
+            // - /assets/logo-1-DPzWvlUW.png (numbered logos in production)
+            // - /path/logo-grey-white.png (special case)
             
-            // Also check for special cases like grey-white
-            const match2 = url.match(/\/([^/]+)-(grey-white)\.png$/);
-            if (match2) return match2[1];
+            // First try: logo-HEXCODE-VITEHASH.png or logo-NUMBER-VITEHASH.png
+            const match = url.match(/\/([^/]+)-(?:[0-9a-fA-F]{6}|\d+|grey-white)(?:-[a-zA-Z0-9]+)?\.png$/);
+            if (match) return match[1]; // e.g., "logo"
             
             return null;
         };
