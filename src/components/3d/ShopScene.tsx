@@ -884,15 +884,13 @@ const ProductModel = ({
     useEffect(() => {
         if (!hasInitializedUrls.current) {
             hasInitializedUrls.current = true;
-            prevFrontUrlRef.current = frontUrl;
-            prevBackUrlRef.current = backUrl;
+            prevFrontUrlRef.current = safeFrontUrl;
+            prevBackUrlRef.current = safeBackUrl;
             return;
         }
-
-        prevFrontUrlRef.current = frontUrl;
-        prevBackUrlRef.current = backUrl;
-
-    }, [frontUrl, backUrl]);
+        // Note: We update the refs in the texture loading effects AFTER checking isColorOnlyChange
+        // to ensure we have the correct previous value for comparison
+    }, [safeFrontUrl, safeBackUrl]);
 
     // --- FLICKER FIX: Manual Texture Loading to avoid Suspense on updates ---
     // 1. Initial Load (Suspense enabled for first render) - freeze initial URL
@@ -938,6 +936,9 @@ const ProductModel = ({
                     if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
                 });
             }
+            
+            // Update prev URL ref AFTER processing (for next comparison)
+            prevFrontUrlRef.current = safeFrontUrl;
         });
     }, [safeFrontUrl, initialSafeFront, initialFrontTex]);
 
@@ -965,6 +966,9 @@ const ProductModel = ({
                     if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
                 });
             }
+            
+            // Update prev URL ref AFTER processing (for next comparison)
+            prevBackUrlRef.current = safeBackUrl;
         });
     }, [safeBackUrl, initialSafeBack, initialBackTex]);
 
