@@ -1149,11 +1149,11 @@ const Shop = () => {
                                         }}
                                     >
                                         {/* Inner button */}
-                                        <div className="w-full h-full rounded-full bg-gradient-to-r from-[#00d9a3] to-[#0077b3] flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6">
+                                        <div className="w-full h-full rounded-full bg-gradient-to-r from-[#00d9a3] to-[#0077b3] flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3">
                                             <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform group-hover/active:rotate-12 shrink-0" />
-                                            <span className="text-white text-base sm:text-xl font-bold whitespace-nowrap font-['DynaPuff']">Dodaj u košaricu</span>
-                                            <div className="w-px h-5 sm:h-6 bg-white/30 mx-1 sm:mx-2 shrink-0" />
-                                            <span className="text-white text-base sm:text-xl font-bold tabular-nums whitespace-nowrap font-['DynaPuff']">{(activeProductData.price * quantity).toFixed(2)}€</span>
+                                            <span className="text-white text-sm sm:text-lg font-bold whitespace-nowrap font-['DynaPuff']">Dodaj u košaricu</span>
+                                            <div className="w-px h-5 sm:h-6 bg-white/30 mx-1 shrink-0" />
+                                            <span className="text-white text-sm sm:text-lg font-bold tabular-nums whitespace-nowrap font-['DynaPuff']">{(activeProductData.price * quantity).toFixed(2)}€</span>
                                         </div>
                                     </button>
                                 )}
