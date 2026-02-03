@@ -11,7 +11,7 @@ import cloudsTopSvg from '@/assets/clouds-top.svg';
 import bannerImage from '@/assets/banner-image.webp';
 import mobileBannerImage from '@/assets/boce-kape.webp';
 import bannerVideo from '@/assets/banner-video.webm';
-import logoVariationsGif from '@/assets/logo-variations.gif';
+import logoLoopWebm from '@/assets/logo-loop.webm';
 import { getProducts } from '@/integrations/wordpress/woocommerce';
 
 // Import all designs
@@ -1031,11 +1031,14 @@ const Shop = () => {
                             Sav prihod od prodaje ide organizaciji Dišpeta.
                         </p>
 
-                        {/* Logo Variations GIF */}
+                        {/* Logo Loop Video */}
                         <div className="w-full max-w-2xl mx-auto mt-8">
-                            <img
-                                src={logoVariationsGif}
-                                alt="Logo Variations"
+                            <video
+                                src={logoLoopWebm}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
                                 className="w-full h-auto block"
                             />
                         </div>
@@ -1070,19 +1073,38 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        <div className="flex justify-between items-center bg-white rounded-full border border-gray-100 shadow-sm p-1.5 h-[62px]">
-                                            {SIZES.map((size) => (
-                                                <button
-                                                    key={size}
-                                                    onClick={() => setSelectedSize(size)}
-                                                    className={`h-full aspect-square rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
-                                                        ? 'bg-black text-white shadow-md'
-                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-black'
-                                                        }`}
-                                                >
-                                                    {size}
-                                                </button>
-                                            ))}
+                                        {/* Size picker with children's sizes in 2 rows */}
+                                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
+                                            {/* Children's sizes - first row */}
+                                            <div className="flex justify-between items-center gap-1 mb-1">
+                                                {['6-8 g.', '8-10 g.', '10-12 g.'].map((size) => (
+                                                    <button
+                                                        key={size}
+                                                        onClick={() => setSelectedSize(size)}
+                                                        className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                            ? 'bg-black text-white shadow-md'
+                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
+                                                            }`}
+                                                    >
+                                                        {size}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {/* Adult sizes - second row */}
+                                            <div className="flex justify-between items-center gap-1">
+                                                {['S', 'M', 'L', 'XL'].map((size) => (
+                                                    <button
+                                                        key={size}
+                                                        onClick={() => setSelectedSize(size)}
+                                                        className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] ${selectedSize === size
+                                                            ? 'bg-black text-white shadow-md'
+                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-black'
+                                                            }`}
+                                                    >
+                                                        {size}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
