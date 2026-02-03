@@ -1121,29 +1121,37 @@ const Shop = () => {
                             </div>
 
                             {/* Add to Cart Button */}
-                            <div className="flex-1 w-full sm:min-w-[280px] group/btn">
-                                <Button
-                                    size="lg"
-                                    disabled={activeProductData.stockStatus === 'outofstock'}
-                                    className={`w-full h-[56px] sm:h-[62px] text-lg sm:text-xl font-bold rounded-full transition-all flex items-center justify-center gap-2 sm:gap-3 relative overflow-hidden font-['DynaPuff'] shadow-none ${activeProductData.stockStatus === 'outofstock'
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200'
-                                        : 'text-white border-2 border-white/30'}`}
-                                    style={activeProductData.stockStatus !== 'outofstock' ? {
-                                        background: 'linear-gradient(135deg, #00ffbf, #0089cd)'
-                                    } : undefined}
-                                    onClick={handleAddToCart}
-                                >
-                                    {activeProductData.stockStatus === 'outofstock' ? (
-                                        <span>Nema na zalihi</span>
-                                    ) : (
-                                        <>
-                                            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover/btn:rotate-12 shrink-0" />
-                                            <span className="whitespace-nowrap">Dodaj u košaricu</span>
+                            <div className="flex-1 w-full sm:min-w-[300px] group/btn">
+                                {activeProductData.stockStatus === 'outofstock' ? (
+                                    <Button
+                                        size="lg"
+                                        disabled
+                                        className="w-full h-[58px] sm:h-[64px] text-lg sm:text-xl font-bold rounded-full bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200 font-['DynaPuff']"
+                                    >
+                                        Nema na zalihi
+                                    </Button>
+                                ) : (
+                                    <button
+                                        onClick={handleAddToCart}
+                                        className="w-full h-[58px] sm:h-[64px] rounded-full relative p-[3px] overflow-hidden group/active"
+                                    >
+                                        {/* Animated gradient border background */}
+                                        <div 
+                                            className="absolute inset-0 rounded-full"
+                                            style={{
+                                                background: 'conic-gradient(from 0deg, #00ffbf, #0089cd, #ad00e9, #00ffbf)',
+                                                animation: 'spin 3s linear infinite',
+                                            }}
+                                        />
+                                        {/* Inner button content */}
+                                        <div className="absolute inset-[3px] rounded-full bg-gradient-to-r from-[#00d9a3] to-[#0077b3] flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6">
+                                            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform group-hover/active:rotate-12 shrink-0" />
+                                            <span className="text-white text-base sm:text-xl font-bold whitespace-nowrap font-['DynaPuff']">Dodaj u košaricu</span>
                                             <div className="w-px h-5 sm:h-6 bg-white/30 mx-1 sm:mx-2 shrink-0" />
-                                            <span className="tabular-nums shrink-0">{(activeProductData.price * quantity).toFixed(2)}€</span>
-                                        </>
-                                    )}
-                                </Button>
+                                            <span className="text-white text-base sm:text-xl font-bold tabular-nums whitespace-nowrap font-['DynaPuff']">{(activeProductData.price * quantity).toFixed(2)}€</span>
+                                        </div>
+                                    </button>
+                                )}
                             </div>
                         </div>
 

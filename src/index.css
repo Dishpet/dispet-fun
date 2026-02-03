@@ -223,3 +223,12 @@
     -webkit-mask-image: radial-gradient(ellipse at center, transparent 30%, black 31%);
   }
 }
+/* Animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
