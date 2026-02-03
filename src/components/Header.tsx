@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, ShoppingCart, User, ChevronLeft } from "lucide-react";
+import { Menu, ShoppingBag, User, ChevronLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import logo from "@/assets/dispet-logo-symbol-bg.png";
 import { useCart } from "@/contexts/CartContext";
@@ -131,7 +131,7 @@ export const Header = () => {
                             {/* Desktop Actions */}
                             <div className="hidden md:flex items-center gap-4 lg:gap-6">
                                 <Link to="/cart" className={cn("relative transition-colors", iconClass)}>
-                                    <ShoppingCart className="w-6 h-6" fill="currentColor" />
+                                    <ShoppingBag className="w-6 h-6" strokeWidth={2} />
                                     {cartItems.length > 0 && (
                                         <span className="absolute -top-2 -right-2 bg-[#e83e70] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
                                             {cartItems.length}
@@ -139,7 +139,7 @@ export const Header = () => {
                                     )}
                                 </Link>
                                 <Link to="/account" className={cn("transition-colors", iconClass)}>
-                                    <User className="w-6 h-6" fill="currentColor" />
+                                    <User className="w-6 h-6" strokeWidth={2} />
                                 </Link>
                                 <Button
                                     ref={btnRef}
@@ -172,7 +172,7 @@ export const Header = () => {
                             {/* Mobile Actions (Cart + Menu) */}
                             <div className="flex md:hidden items-center gap-4">
                                 <Link to="/cart" className={cn("relative transition-colors", iconClass)}>
-                                    <ShoppingCart className="w-6 h-6" fill="currentColor" />
+                                    <ShoppingBag className="w-6 h-6" strokeWidth={2} />
                                     {cartItems.length > 0 && (
                                         <span className="absolute -top-2 -right-2 bg-[#e83e70] text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">
                                             {cartItems.length}
@@ -241,7 +241,7 @@ export const Header = () => {
 
                                 <div className="flex justify-center gap-8 py-4">
                                     <Link to="/cart" className="relative text-gray-700 hover:text-[#e83e70] transition-colors">
-                                        <ShoppingCart className="w-8 h-8" fill="currentColor" />
+                                        <ShoppingBag className="w-8 h-8" strokeWidth={2} />
                                         {cartItems.length > 0 && (
                                             <span className="absolute -top-2 -right-2 bg-[#e83e70] text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white">
                                                 {cartItems.length}
@@ -249,7 +249,7 @@ export const Header = () => {
                                         )}
                                     </Link>
                                     <Link to="/account" className="text-gray-700 hover:text-[#e83e70] transition-colors">
-                                        <User className="w-8 h-8" fill="currentColor" />
+                                        <User className="w-8 h-8" strokeWidth={2} />
                                     </Link>
                                 </div>
 
