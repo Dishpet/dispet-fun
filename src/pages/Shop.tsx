@@ -1121,7 +1121,7 @@ const Shop = () => {
                             </div>
 
                             {/* Add to Cart Button */}
-                            <div className="flex-1 w-full sm:min-w-[300px] group/btn">
+                            <div className="flex-1 w-full sm:min-w-[320px] group/btn">
                                 {activeProductData.stockStatus === 'outofstock' ? (
                                     <Button
                                         size="lg"
@@ -1133,18 +1133,23 @@ const Shop = () => {
                                 ) : (
                                     <button
                                         onClick={handleAddToCart}
-                                        className="w-full h-[58px] sm:h-[64px] rounded-full relative p-[3px] overflow-hidden group/active"
+                                        className="w-full h-[58px] sm:h-[64px] rounded-full relative group/active"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #00ffbf, #0089cd)',
+                                            padding: '2px'
+                                        }}
+                                        onMouseMove={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const x = e.clientX - rect.left;
+                                            const y = e.clientY - rect.top;
+                                            e.currentTarget.style.background = `radial-gradient(circle at ${x}px ${y}px, #ad00e9 0%, #00ffbf 50%, #0089cd 100%)`;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'linear-gradient(135deg, #00ffbf, #0089cd)';
+                                        }}
                                     >
-                                        {/* Animated gradient border background */}
-                                        <div 
-                                            className="absolute inset-0 rounded-full"
-                                            style={{
-                                                background: 'conic-gradient(from 0deg, #00ffbf, #0089cd, #ad00e9, #00ffbf)',
-                                                animation: 'spin 3s linear infinite',
-                                            }}
-                                        />
-                                        {/* Inner button content */}
-                                        <div className="absolute inset-[3px] rounded-full bg-gradient-to-r from-[#00d9a3] to-[#0077b3] flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6">
+                                        {/* Inner button */}
+                                        <div className="w-full h-full rounded-full bg-gradient-to-r from-[#00d9a3] to-[#0077b3] flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6">
                                             <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform group-hover/active:rotate-12 shrink-0" />
                                             <span className="text-white text-base sm:text-xl font-bold whitespace-nowrap font-['DynaPuff']">Dodaj u košaricu</span>
                                             <div className="w-px h-5 sm:h-6 bg-white/30 mx-1 sm:mx-2 shrink-0" />
