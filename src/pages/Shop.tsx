@@ -1121,37 +1121,26 @@ const Shop = () => {
                             </div>
 
                             {/* Add to Cart Button */}
-                            <div className="flex-1 w-full min-w-[280px] group/btn">
+                            <div className="flex-1 w-full sm:min-w-[280px] group/btn">
                                 <Button
                                     size="lg"
                                     disabled={activeProductData.stockStatus === 'outofstock'}
-                                    className={`w-full h-[62px] text-xl font-bold rounded-full transition-all flex items-center justify-center gap-3 relative overflow-hidden font-['DynaPuff'] border-2 border-transparent shadow-none ${activeProductData.stockStatus === 'outofstock'
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
-                                        : 'text-white'}`}
+                                    className={`w-full h-[56px] sm:h-[62px] text-lg sm:text-xl font-bold rounded-full transition-all flex items-center justify-center gap-2 sm:gap-3 relative overflow-hidden font-['DynaPuff'] shadow-none ${activeProductData.stockStatus === 'outofstock'
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-200'
+                                        : 'text-white border-2 border-white/30'}`}
                                     style={activeProductData.stockStatus !== 'outofstock' ? {
-                                        background: `
-                                            linear-gradient(135deg, #00ffbf, #0089cd) padding-box,
-                                            conic-gradient(from var(--border-angle, 0deg), #ad00e9 0%, transparent 10%, transparent 90%, #ad00e9 100%) border-box
-                                        `,
-                                        transition: '--border-angle 0.15s ease'
+                                        background: 'linear-gradient(135deg, #00ffbf, #0089cd)'
                                     } : undefined}
-                                    onMouseMove={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = e.clientX - rect.left - rect.width / 2;
-                                        const y = e.clientY - rect.top - rect.height / 2;
-                                        const angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
-                                        e.currentTarget.style.setProperty('--border-angle', `${angle}deg`);
-                                    }}
                                     onClick={handleAddToCart}
                                 >
                                     {activeProductData.stockStatus === 'outofstock' ? (
                                         <span>Nema na zalihi</span>
                                     ) : (
                                         <>
-                                            <ShoppingBag className="w-6 h-6 transition-transform group-hover/btn:rotate-12" />
-                                            <span>Dodaj u košaricu</span>
-                                            <div className="w-px h-6 bg-white/20 mx-2" />
-                                            <span className="tabular-nums">{(activeProductData.price * quantity).toFixed(2)}€</span>
+                                            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover/btn:rotate-12 shrink-0" />
+                                            <span className="whitespace-nowrap">Dodaj u košaricu</span>
+                                            <div className="w-px h-5 sm:h-6 bg-white/30 mx-1 sm:mx-2 shrink-0" />
+                                            <span className="tabular-nums shrink-0">{(activeProductData.price * quantity).toFixed(2)}€</span>
                                         </>
                                     )}
                                 </Button>
