@@ -851,6 +851,34 @@ const ProductModel = ({
     const prevBackUrlRef = useRef<string | null>(null);
     const hasInitializedUrls = useRef(false);
 
+    // Helper to check if URL change is just a color-matched logo swap (not a design change)
+    // Returns true if both URLs are color variants of the same base design
+    const isColorOnlyChange = (prevUrl: string | null, newUrl: string): boolean => {
+        if (!prevUrl || prevUrl === newUrl) return false;
+        
+        // Extract base design name (e.g., "logo" from "logo-231f20.png")
+        const getBaseDesign = (url: string): string | null => {
+            const match = url.match(/\/([^/]+)-[0-9a-fA-F]{6}\.png$/);
+            if (match) return match[1]; // e.g., "logo"
+            
+            // Also check for special cases like grey-white
+            const match2 = url.match(/\/([^/]+)-(grey-white)\.png$/);
+            if (match2) return match2[1];
+            
+            return null;
+        };
+        
+        const prevBase = getBaseDesign(prevUrl);
+        const newBase = getBaseDesign(newUrl);
+        
+        // If both have color-matched patterns and same base, it's a color-only change
+        if (prevBase && newBase && prevBase === newBase) {
+            return true;
+        }
+        
+        return false;
+    };
+
     // Trigger digital glitch transition when Resolved Design changes
     // NOTE: Old immediate trigger removed. Now handled by TextureLoader callback.
     useEffect(() => {
@@ -890,14 +918,17 @@ const ProductModel = ({
             return;
         }
 
+        // Check if this is just a color-matched logo swap (skip glitch)
+        const skipGlitch = isColorOnlyChange(prevFrontUrlRef.current, safeFrontUrl);
+
         // Load in background, DO NOT set state yet
         new THREE.TextureLoader().load(safeFrontUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             pendingFrontTexRef.current = tex;
             hasPendingFrontUpdate.current = true;
 
-            // Trigger Glitch NOW (after load is done)
-            if (frontMaterialsRef.current.length > 0) {
+            // Trigger Glitch NOW (after load is done) - SKIP for color-only changes
+            if (frontMaterialsRef.current.length > 0 && !skipGlitch) {
                 designTransitionProgress.current = 0;
                 isDesignTransitioning.current = true;
                 isGlitchingFront.current = true;
@@ -916,13 +947,16 @@ const ProductModel = ({
             return;
         }
 
+        // Check if this is just a color-matched logo swap (skip glitch)
+        const skipGlitch = isColorOnlyChange(prevBackUrlRef.current, safeBackUrl);
+
         new THREE.TextureLoader().load(safeBackUrl, (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
             pendingBackTexRef.current = tex;
             hasPendingBackUpdate.current = true;
 
-            // Trigger Glitch NOW
-            if (backMaterialsRef.current.length > 0) {
+            // Trigger Glitch NOW - SKIP for color-only changes
+            if (backMaterialsRef.current.length > 0 && !skipGlitch) {
                 designTransitionProgress.current = 0;
                 isDesignTransitioning.current = true;
                 isGlitchingBack.current = true;
