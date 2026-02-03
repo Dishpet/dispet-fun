@@ -1074,7 +1074,7 @@ const Shop = () => {
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
                                         {/* Size picker - all sizes in one row */}
-                                        <div className="flex justify-between items-center gap-1 bg-white rounded-full border border-gray-100 shadow-sm p-1.5">
+                                        <div className="flex justify-between items-center gap-3 bg-white rounded-full border border-gray-100 shadow-sm px-3 py-2">
                                             {[
                                                 { label: <>6-8<br />g.</>, value: '6-8 g.' },
                                                 { label: <>8-10<br />g.</>, value: '8-10 g.' },
@@ -1087,8 +1087,8 @@ const Shop = () => {
                                                 <button
                                                     key={value}
                                                     onClick={() => setSelectedSize(value)}
-                                                    className={`h-[46px] flex-1 rounded-full font-bold text-sm transition-all duration-300 flex items-center justify-center font-['DynaPuff'] leading-tight ${selectedSize === value
-                                                        ? 'bg-black text-white shadow-md'
+                                                    className={`w-11 h-11 rounded-full font-bold text-xs transition-all duration-300 flex items-center justify-center font-['DynaPuff'] leading-tight shrink-0 ${selectedSize === value
+                                                        ? 'bg-black text-white shadow-md scale-110'
                                                         : 'text-gray-500 hover:bg-gray-50 hover:text-black'
                                                         }`}
                                                 >
