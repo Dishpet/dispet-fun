@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ShopScene } from '../components/3d/ShopScene';
@@ -43,6 +43,27 @@ Object.keys(colorCodedLogos).forEach(path => {
 });
 
 const URL_TO_FILENAME: Record<string, string> = {};
+const FILENAME_TO_URL: Record<string, string> = {};
+
+// Helper to find design URL by filename (for URL deep-linking)
+const findDesignUrlByFilename = (filename: string): string | null => {
+    // Direct lookup
+    if (FILENAME_TO_URL[filename]) return FILENAME_TO_URL[filename];
+    
+    // Try case-insensitive lookup
+    const lowerFilename = filename.toLowerCase();
+    for (const [fn, url] of Object.entries(FILENAME_TO_URL)) {
+        if (fn.toLowerCase() === lowerFilename) return url;
+    }
+    
+    // Try finding in ALL_DESIGNS by partial match
+    const match = ALL_DESIGNS.find(url => {
+        const fn = URL_TO_FILENAME[url] || url.split('/').pop()?.split('?')[0] || '';
+        return fn.toLowerCase() === lowerFilename;
+    });
+    
+    return match || null;
+};
 
 // Designs to hide from the shop
 const HIDDEN_DESIGNS = [
@@ -70,7 +91,10 @@ const processDesigns = (globResult: Record<string, unknown>) => {
     Object.keys(globResult).forEach(path => {
         const url = globResult[path] as string;
         const filename = path.split('/').pop() || '';
-        if (filename) URL_TO_FILENAME[url] = filename;
+        if (filename) {
+            URL_TO_FILENAME[url] = filename;
+            FILENAME_TO_URL[filename] = url;
+        }
     });
 
     return Object.keys(globResult)
@@ -230,7 +254,7 @@ const Shop = () => {
         return SHARED_COLORS;
     };
 
-    // Sync ViewMode and Product from URL
+    // Sync ViewMode, Product, Design, Color, and Zone from URL
     useEffect(() => {
         const mode = searchParams.get('mode');
         console.log('URL mode param:', mode, '-> setting viewMode to:', mode === 'customizing' ? 'customizing' : 'showcase');
@@ -243,6 +267,45 @@ const Shop = () => {
         const productParam = searchParams.get('product');
         if (productParam && Object.keys(INITIAL_PRODUCTS).includes(productParam as string)) {
             setSelectedProduct(productParam as any);
+            
+            // Parse additional parameters when product is specified
+            const designParam = searchParams.get('design');
+            const colorParam = searchParams.get('color');
+            const zoneParam = searchParams.get('zone');
+            
+            // Apply design if specified
+            if (designParam) {
+                const designUrl = findDesignUrlByFilename(designParam);
+                if (designUrl) {
+                    // Determine which zone to apply design to
+                    const targetZone = zoneParam === 'front' || zoneParam === 'back' 
+                        ? zoneParam 
+                        : (productParam === 'hoodie' || productParam === 'tshirt' ? 'back' : 'front');
+                    
+                    setDesigns(prev => ({
+                        ...prev,
+                        [targetZone]: designUrl
+                    }));
+                    setHasUserInteracted(true); // Mark as interacted since URL specified a design
+                }
+            }
+            
+            // Apply color if specified (hex format, URL-encoded # as %23)
+            if (colorParam) {
+                const decodedColor = decodeURIComponent(colorParam);
+                // Validate color format (# followed by 3 or 6 hex digits)
+                if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(decodedColor)) {
+                    setSelectedColor(decodedColor.toLowerCase());
+                }
+            }
+            
+            // Apply zone if specified
+            if (zoneParam === 'front' || zoneParam === 'back') {
+                setActiveZone(zoneParam);
+            } else if (productParam) {
+                // Default zone based on product
+                setActiveZone(productParam === 'hoodie' || productParam === 'tshirt' ? 'back' : 'front');
+            }
         }
     }, [searchParams]);
 
@@ -338,6 +401,15 @@ const Shop = () => {
         return () => window.removeEventListener('reset-shop-view', handleReset);
     }, [setSearchParams]);
 
+    // Cleanup debounce timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (designClickTimeoutRef.current) {
+                clearTimeout(designClickTimeoutRef.current);
+            }
+        };
+    }, []);
+
     // Sync Hoodie/T-shirt Front Logo with Color
     useEffect(() => {
         if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
@@ -411,18 +483,26 @@ const Shop = () => {
 
     const handleProductSelect = (product: 'hoodie' | 'tshirt' | 'cap' | 'bottle') => {
         const isSameProduct = selectedProduct === product && viewMode === 'customizing';
+        const isComingFromShowcase = viewMode === 'showcase';
 
         setSelectedProduct(product);
-        // Only reset isCustomizing if we're coming FROM showcase mode
-        // If already customizing, keep it true to prevent background products from briefly showing designs
-        if (viewMode !== 'customizing') {
+        
+        // When coming from showcase, DON'T reset interaction - let the cycle continue
+        // The cycle will provide the initial design/color
+        if (isComingFromShowcase) {
+            // Keep hasUserInteracted as false so cycle continues
+            // The cycle's current state will be synced via handleCycleDesignUpdate
+            setIsCustomizing(false); // Will be set to true by mode change
+        } else if (viewMode !== 'customizing') {
             setIsCustomizing(false);
         }
 
-        // Only reset interaction if we are switching products or modes
-        // Clicking the SAME product in customization mode should NOT reset interaction (prevents cycle restart)
-        if (!isSameProduct) {
+        // Only reset interaction if switching to a DIFFERENT product in customize mode
+        // or if already in customizing mode (not from showcase)
+        if (!isSameProduct && !isComingFromShowcase) {
             setHasUserInteracted(false);
+            // Clear designs to let cycle populate them
+            setDesigns({ front: '', back: '' });
         }
 
         // Set activeZone synchronously to avoid first-render issue
@@ -435,6 +515,11 @@ const Shop = () => {
         setSearchParams(prev => {
             const newParams = new URLSearchParams(prev);
             newParams.set('mode', 'customizing');
+            newParams.set('product', product);
+            // Clear design/color/zone when switching products to avoid conflicts
+            newParams.delete('design');
+            newParams.delete('color');
+            newParams.delete('zone');
             return newParams;
         }, { replace: viewMode === 'customizing' });
 
@@ -450,8 +535,9 @@ const Shop = () => {
     // This keeps the "designs" state warm with whatever is currently visible in the cycle
     // so when the user DOES interact, there's no visual jump.
     const handleCycleDesignUpdate = (newDesigns: { front: string; back: string }) => {
-        // Only update if we haven't interacted yet (otherwise user changes would be overwritten)
-        if (!hasUserInteracted && viewMode === 'customizing') {
+        // Update designs from cycle if user hasn't interacted yet
+        // This works both in showcase (to keep state warm) and in customizing mode
+        if (!hasUserInteracted) {
             setDesigns(prev => {
                 // Prevent unnecessary rerenders if identical
                 if (prev.front === newDesigns.front && prev.back === newDesigns.back) return prev;
@@ -531,7 +617,22 @@ const Shop = () => {
 
 
 
+    // Debounce ref to prevent rapid clicking
+    const designClickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isDesignClickPendingRef = useRef(false);
+
     const handleDesignSelect = (designUrl: string) => {
+        // Prevent rapid clicking - 150ms debounce
+        if (isDesignClickPendingRef.current) return;
+        
+        isDesignClickPendingRef.current = true;
+        if (designClickTimeoutRef.current) {
+            clearTimeout(designClickTimeoutRef.current);
+        }
+        designClickTimeoutRef.current = setTimeout(() => {
+            isDesignClickPendingRef.current = false;
+        }, 150);
+        
         if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
             // Hoodie/T-shirt Logic: Selection applies to Back. Front is managed by color sync.
             setDesigns(prev => ({
@@ -546,6 +647,19 @@ const Shop = () => {
             }));
         }
         handleInteraction();
+        
+        // Update URL with selected design
+        const filename = URL_TO_FILENAME[designUrl] || designUrl.split('/').pop()?.split('?')[0] || '';
+        if (filename) {
+            setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                newParams.set('design', filename);
+                // Also update zone parameter to match where design was applied
+                const targetZone = (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') ? 'back' : activeZone;
+                newParams.set('zone', targetZone);
+                return newParams;
+            }, { replace: true });
+        }
     };
 
     const currentDesign = designs[activeZone];
@@ -554,6 +668,13 @@ const Shop = () => {
     const handleColorSelect = (newHex: string) => {
         setSelectedColor(newHex);
         handleInteraction();
+        
+        // Update URL with selected color (URL-encode the #)
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set('color', encodeURIComponent(newHex));
+            return newParams;
+        }, { replace: true });
 
         // Check if current design works with new color
         const availableForCurrent = getDesignColorsFromConfig(currentDesign);
@@ -591,6 +712,16 @@ const Shop = () => {
                     setDesigns(prev => ({ ...prev, back: compatibleDesign }));
                 } else {
                     setDesigns(prev => ({ ...prev, [activeZone]: compatibleDesign }));
+                }
+                
+                // Update URL with the new compatible design
+                const filename = URL_TO_FILENAME[compatibleDesign] || compatibleDesign.split('/').pop()?.split('?')[0] || '';
+                if (filename) {
+                    setSearchParams(prev => {
+                        const newParams = new URLSearchParams(prev);
+                        newParams.set('design', filename);
+                        return newParams;
+                    }, { replace: true });
                 }
             }
         }
@@ -767,7 +898,16 @@ const Shop = () => {
                                 {/* Zone Toggle - Left side, icon only, visible on all screens */}
                                 {(selectedProduct === 'hoodie' || selectedProduct === 'tshirt') && (
                                     <button
-                                        onClick={() => setActiveZone(activeZone === 'front' ? 'back' : 'front')}
+                                        onClick={() => {
+                                            const newZone = activeZone === 'front' ? 'back' : 'front';
+                                            setActiveZone(newZone);
+                                            // Update URL with new zone
+                                            setSearchParams(prev => {
+                                                const newParams = new URLSearchParams(prev);
+                                                newParams.set('zone', newZone);
+                                                return newParams;
+                                            }, { replace: true });
+                                        }}
                                         className="bg-black/80 hover:bg-black backdrop-blur-md p-2.5 rounded-full text-white transition-all shadow-lg border border-white/10 group pointer-events-auto"
                                         title={activeZone === 'front' ? 'Switch to Back' : 'Switch to Front'}
                                     >

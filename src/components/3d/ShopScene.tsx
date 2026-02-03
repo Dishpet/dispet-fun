@@ -186,10 +186,10 @@ interface ProductModelProps {
     designReplacements?: Record<string, string>;
 }
 
-// Helper for bottle specific logic
-const isBottle = (label: string) => label === 'BOCA';
-const isCap = (label: string) => label === 'KAPA';
-const isHoodie = (label: string) => label === 'HOODICA';
+// Helper for product type detection (using includes for multi-line labels)
+const isBottle = (label: string) => label.includes('termosica');
+const isCap = (label: string) => label.includes('kapa');
+const isHoodie = (label: string) => label.includes('duksica');
 
 const ProductModel = ({
     modelUrl,
@@ -252,12 +252,14 @@ const ProductModel = ({
 
 
     // Single source of truth for cycling state
+    // Cycle continues in customizing mode until user interacts
     const isCycling = useMemo(() => {
-        if (!enableDesignCycle && !enableColorCycle) return false; // Check both
+        if (!enableDesignCycle && !enableColorCycle) return false;
         if (mode === 'showcase') return true;
-        // if (isActive) return false; // Implicit
+        // In customizing mode: continue cycling until user interacts
+        if (mode === 'customizing' && !hasUserInteracted) return true;
         return false;
-    }, [enableDesignCycle, enableColorCycle, mode]);
+    }, [enableDesignCycle, enableColorCycle, mode, hasUserInteracted]);
 
     // Lerp Refs
     const currentPosition = useRef(new THREE.Vector3(...position));
@@ -794,23 +796,39 @@ const ProductModel = ({
     // Resolve Front URL: Custom Front OR Cycle
     // Hoodie always shows logo (3) on front in customizing mode per user request
     // State for color-matched front design (Hoodie/T-shirt auto-cycle)
-    // State for color-matched front design (Hoodie/T-shirt auto-cycle)
     const [colorMatchedFrontDesign, setColorMatchedFrontDesign] = useState<string | null>(null);
 
-    // Sync pairing on re-entry to showcase (prevents stale design)
+    // Helper to check if product is hoodie or t-shirt (using includes for label matching)
+    const isHoodieOrTshirt = label && (label.includes('duksica') || label.includes('majica'));
+
+    // Initialize color-matched design on mount (for showcase mode initial load)
     useEffect(() => {
-        if (!isCustomizing && (label === 'HOODICA' || label === 'MAJICA') && colorToLogoMap && color) {
-            const logo = colorToLogoMap[color];
+        if (isHoodieOrTshirt && colorToLogoMap) {
+            const currentColorHex = '#' + targetColorRef.current.getHexString();
+            const logo = colorToLogoMap[currentColorHex];
             if (logo) setColorMatchedFrontDesign(logo);
         }
-    }, [isCustomizing, label, color, colorToLogoMap]);
+    }, []); // Empty deps = run once on mount
+
+    // Sync pairing on color changes (cycle or manual selection)
+    useEffect(() => {
+        if (isHoodieOrTshirt && colorToLogoMap) {
+            const colorToUse = isCustomizing && hasUserInteracted && color 
+                ? color 
+                : '#' + targetColorRef.current.getHexString();
+            const logo = colorToLogoMap[colorToUse];
+            if (logo && logo !== colorMatchedFrontDesign) {
+                setColorMatchedFrontDesign(logo);
+            }
+        }
+    }, [isCustomizing, hasUserInteracted, label, color, colorToLogoMap, colorMatchedFrontDesign, isHoodieOrTshirt]);
 
     // Resolve Front URL: Strict pairing for Hoodie AND T-Shirt
     // Also use this logic if NOT customizing (showcase) but auto-cycling, to ensure match.
     // CRITICAL: If we're in customizing mode and NOT active, force null (no design visible)
     const shouldHideDesigns = isCustomizing && !isActive;
 
-    const strictColorSyncFront = !shouldHideDesigns && ((label === 'HOODICA' || label === 'MAJICA') && colorToLogoMap) ?
+    const strictColorSyncFront = !shouldHideDesigns && (isHoodieOrTshirt && colorToLogoMap) ?
         colorToLogoMap[isCustomizing && hasUserInteracted && color ? color : ('#' + targetColorRef.current.getHexString())] : null;
 
     const manualFront = (isCustomizing && hasUserInteracted && designs?.front) ? designs.front : null;
@@ -1900,40 +1918,55 @@ export const ShopScene = ({
 
     return (
         <div className="w-full h-full absolute inset-0">
-            {/* Loading Skeleton Overlay - Individual cards fade out as models load */}
-            <div className={`absolute inset-0 z-50 flex items-center justify-center pointer-events-none transition-opacity duration-500 ${isFullyLoaded ? 'opacity-0' : 'opacity-100'}`}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 w-full max-w-7xl px-4 md:px-12 mb-8">
-                    {MODEL_LOAD_ORDER.map((item, i) => {
-                        const isLoaded = loadedModels.has(item.id);
-                        // Show if global warmup active OR item not loaded yet
-                        const isVisible = isInitialLoading || !isLoaded;
-                        // Active = currently loading this specific item
-                        const isActive = currentLoadIndex === i;
-
-                        return (
-                            <div
-                                key={item.id}
-                                className={`aspect-[3/5] rounded-3xl border border-white/10 shadow-lg relative overflow-hidden backdrop-blur-[2px] transition-all duration-700 ease-out transform
-                                    ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
-                                    ${isActive ? 'bg-white/10 border-white/20' : 'bg-white/5'}
-                                `}
-                            >
-                                {/* Shimmer Effect (only when active/waiting) */}
-                                {isVisible && (
-                                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                                )}
-
-                                {/* Per-Product Loading Bar (Bottom) */}
-                                <div className="absolute bottom-4 left-4 right-4">
-                                    <div className="h-1 bg-black/20 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-500 ease-out ${isLoaded ? 'bg-green-400 w-full' : (isActive ? 'bg-white animate-pulse w-1/2' : 'bg-white/20 w-0')}`}
-                                        />
-                                    </div>
+            {/* Loading Skeleton Overlay - Product-specific loaders positioned like the actual products */}
+            <div className={`absolute inset-0 z-50 pointer-events-none transition-opacity duration-500 ${isFullyLoaded ? 'opacity-0' : 'opacity-100'}`}>
+                {/* Product-specific skeleton placeholders */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative w-full max-w-6xl h-[60vh]">
+                        {/* Bottle - Left */}
+                        <div className={`absolute left-[10%] md:left-[15%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-24 h-56 md:w-32 md:h-72 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>termosica</p>
+                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('bottle') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
+                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
                             </div>
-                        );
-                    })}
+                        </div>
+                        
+                        {/* T-Shirt - Left Center */}
+                        <div className={`absolute left-[28%] md:left-[30%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-28 h-40 md:w-40 md:h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>majica</p>
+                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('tshirt') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Hoodie - Right Center */}
+                        <div className={`absolute right-[28%] md:right-[30%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-28 h-44 md:w-40 md:h-56 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>duksica</p>
+                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('hoodie') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('hoodie') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Cap - Right */}
+                        <div className={`absolute right-[10%] md:right-[15%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
+                            <div className="w-24 h-28 md:w-32 md:h-36 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
+                                <p className="text-white font-['DynaPuff'] text-sm md:text-base text-center leading-tight">Dišpet<br/>kapa</p>
+                                <div className="mt-3 w-16 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                    <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('cap') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
+                                </div>
+                                <p className="mt-1 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('cap') ? '100%' : '...'}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
