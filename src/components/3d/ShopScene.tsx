@@ -823,8 +823,8 @@ const ProductModel = ({
     // Sync pairing on color changes (cycle or manual selection)
     useEffect(() => {
         if (isHoodieOrTshirt && colorToLogoMap) {
-            const colorToUse = isCustomizing && hasUserInteracted && color 
-                ? color 
+            const colorToUse = isCustomizing && hasUserInteracted && color
+                ? color
                 : '#' + targetColorRef.current.getHexString();
             const logo = colorToLogoMap[colorToUse];
             if (logo && logo !== colorMatchedFrontDesign) {
@@ -865,7 +865,7 @@ const ProductModel = ({
     // Returns true if both URLs are color variants of the same base design
     const isColorOnlyChange = (prevUrl: string | null, newUrl: string): boolean => {
         if (!prevUrl || prevUrl === newUrl) return false;
-        
+
         // Extract base design name (e.g., "logo" from "logo-231f20.png" or "logo-231f20-XXXXXX.png" with vite hash)
         const getBaseDesign = (url: string): string | null => {
             // Match patterns like:
@@ -873,22 +873,22 @@ const ProductModel = ({
             // - /assets/logo-231f20-DtpIa2tO.png (production with vite content hash)
             // - /assets/logo-1-DPzWvlUW.png (numbered logos in production)
             // - /path/logo-grey-white.png (special case)
-            
+
             // First try: logo-HEXCODE-VITEHASH.png or logo-NUMBER-VITEHASH.png
             const match = url.match(/\/([^/]+)-(?:[0-9a-fA-F]{6}|\d+|grey-white)(?:-[a-zA-Z0-9]+)?\.png$/);
             if (match) return match[1]; // e.g., "logo"
-            
+
             return null;
         };
-        
+
         const prevBase = getBaseDesign(prevUrl);
         const newBase = getBaseDesign(newUrl);
-        
+
         // If both have color-matched patterns and same base, it's a color-only change
         if (prevBase && newBase && prevBase === newBase) {
             return true;
         }
-        
+
         return false;
     };
 
@@ -938,7 +938,7 @@ const ProductModel = ({
             pendingFrontTexRef.current = tex;
             hasPendingFrontUpdate.current = true;
 
-            // Trigger Glitch NOW (after load is done) - SKIP for color-only changes
+            // Trigger Glitch NOW (after load is done)
             if (frontMaterialsRef.current.length > 0 && !skipGlitch) {
                 designTransitionProgress.current = 0;
                 isDesignTransitioning.current = true;
@@ -948,8 +948,12 @@ const ProductModel = ({
                 frontMaterialsRef.current.forEach(mat => {
                     if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
                 });
+            } else {
+                // IMMEDIATE SWAP (Color-only change or no materials)
+                setFrontTextureBase(tex);
+                hasPendingFrontUpdate.current = false;
             }
-            
+
             // Update prev URL ref AFTER processing (for next comparison)
             prevFrontUrlRef.current = safeFrontUrl;
         });
@@ -978,8 +982,12 @@ const ProductModel = ({
                 backMaterialsRef.current.forEach(mat => {
                     if (mat.userData?.uniforms) mat.userData.uniforms.uGlitchIntensity.value = 0;
                 });
+            } else {
+                // IMMEDIATE SWAP
+                setBackTextureBase(tex);
+                hasPendingBackUpdate.current = false;
             }
-            
+
             // Update prev URL ref AFTER processing (for next comparison)
             prevBackUrlRef.current = safeBackUrl;
         });
@@ -1978,40 +1986,40 @@ export const ShopScene = ({
                         {/* Bottle - Left */}
                         <div className={`absolute left-[8%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-40 h-96 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
-                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>termosica</p>
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br />termosica</p>
                                 <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('bottle') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* T-Shirt - Left Center */}
                         <div className={`absolute left-[26%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-52 h-72 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
-                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>majica</p>
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br />majica</p>
                                 <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('tshirt') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* Hoodie - Right Center */}
                         <div className={`absolute right-[26%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-52 h-80 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
-                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>duksica</p>
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br />duksica</p>
                                 <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('hoodie') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-sm font-['DynaPuff']">{loadedModels.has('hoodie') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* Cap - Right */}
                         <div className={`absolute right-[8%] top-1/2 -translate-y-1/2 transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-44 h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-5">
-                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br/>kapa</p>
+                                <p className="text-white font-['DynaPuff'] text-lg text-center leading-tight">Dišpet<br />kapa</p>
                                 <div className="mt-4 w-20 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('cap') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
@@ -2019,48 +2027,48 @@ export const ShopScene = ({
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* Mobile: 2x2 Grid layout with adjusted positions to prevent overlap */}
                     <div className="flex md:hidden relative w-full h-[70vh] items-center justify-center">
                         {/* Top Row */}
                         {/* T-Shirt - Top Left */}
                         <div className={`absolute left-[5%] top-[2%] transition-all duration-500 ${loadedModels.has('tshirt') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-36 h-44 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>majica</p>
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br />majica</p>
                                 <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('tshirt') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('tshirt') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* Cap - Top Right */}
                         <div className={`absolute right-[3%] top-[0%] transition-all duration-500 ${loadedModels.has('cap') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-32 h-36 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>kapa</p>
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br />kapa</p>
                                 <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('cap') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('cap') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* Bottom Row */}
                         {/* Bottle - Bottom Left - moved down to avoid overlap */}
                         <div className={`absolute left-[5%] bottom-[8%] transition-all duration-500 ${loadedModels.has('bottle') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-32 h-52 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>termosica</p>
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br />termosica</p>
                                 <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('bottle') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
                                 <p className="mt-2 text-white/60 text-xs font-['DynaPuff']">{loadedModels.has('bottle') ? '100%' : '...'}</p>
                             </div>
                         </div>
-                        
+
                         {/* Hoodie - Bottom Right */}
                         <div className={`absolute right-[5%] bottom-[5%] transition-all duration-500 ${loadedModels.has('hoodie') ? 'opacity-0 scale-90' : 'opacity-100'}`}>
                             <div className="w-36 h-48 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4">
-                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br/>duksica</p>
+                                <p className="text-white font-['DynaPuff'] text-base text-center leading-tight">Dišpet<br />duksica</p>
                                 <div className="mt-3 w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                                     <div className={`h-full bg-white transition-all duration-500 ${loadedModels.has('hoodie') ? 'w-full' : 'w-2/3 animate-pulse'}`} />
                                 </div>
