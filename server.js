@@ -548,6 +548,27 @@ ${message}
         }
     };
 
+    // Helper: Map hex colors to WooCommerce color names
+    const HEX_TO_COLOR_NAME = {
+        '#231f20': 'Crna',
+        '#d1d5db': 'Siva',
+        '#00ab98': 'Tirkizna',
+        '#00aeef': 'Cijan',
+        '#387bbf': 'Plava',
+        '#8358a4': 'Ljubičasta',
+        '#ffffff': 'Bijela',
+        '#e78fab': 'Roza',
+        '#a1d7c0': 'Mint',
+    };
+
+    const resolveColorName = (color) => {
+        if (!color) return '';
+        const lower = color.toLowerCase();
+        // If it's already a name (not starting with #), return as-is
+        if (!color.startsWith('#')) return color;
+        return HEX_TO_COLOR_NAME[lower] || color;
+    };
+
     // Helper: Decrement inventory for an order
     const decrementInventoryForOrder = (items) => {
         const inventory = readInventory();
@@ -556,7 +577,8 @@ ${message}
         for (const item of items) {
             const productKey = String(item.product_id || item.id);
             const size = item.size || item.selectedSize || '';
-            const color = item.color || item.selectedColor || '';
+            const rawColor = item.color || item.selectedColor || '';
+            const color = resolveColorName(rawColor);
             const qty = item.quantity || 1;
 
             // Build variant key: "productId" or "productId|size|color"
@@ -713,6 +735,115 @@ ${message}
             res.status(500).json({ error: 'Failed to delete inventory item' });
         }
     });
+
+    // POST /api/inventory/sync - Sync inventory from WooCommerce variations
+    app.post('/api/inventory/sync', async (req, res) => {
+        try {
+            const WP_API_BASE = (process.env.WP_API_URL || 'https://wp.dispet.fun/wp-json').replace(/\/$/, '');
+            const ck = process.env.WC_CONSUMER_KEY;
+            const cs = process.env.WC_CONSUMER_SECRET;
+
+            if (!ck || !cs) {
+                return res.status(500).json({ error: 'WooCommerce credentials not configured' });
+            }
+
+            const wcFetch = async (path) => {
+                const sep = path.includes('?') ? '&' : '?';
+                const url = `${WP_API_BASE}${path}${sep}consumer_key=${ck}&consumer_secret=${cs}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`WC API error: ${response.status}`);
+                return response.json();
+            };
+
+            // 1. Fetch all products
+            const products = await wcFetch('/wc/v3/products?per_page=100');
+            const inventory = readInventory();
+            let synced = 0;
+            let skipped = 0;
+
+            for (const product of products) {
+                if (product.type === 'variable' && product.variations && product.variations.length > 0) {
+                    // Fetch variations for this product
+                    const variations = await wcFetch(`/wc/v3/products/${product.id}/variations?per_page=100`);
+
+                    for (const v of variations) {
+                        const sizeAttr = v.attributes.find(a => a.name === 'Veličina');
+                        const colorAttr = v.attributes.find(a => a.name === 'Boja');
+                        const size = sizeAttr ? sizeAttr.option : '';
+                        const color = colorAttr ? colorAttr.option : '';
+
+                        // Key format: productId|Size|Color (using names, not hex codes)
+                        const key = (size || color)
+                            ? `${product.id}|${size}|${color}`
+                            : String(product.id);
+
+                        const wcStock = v.stock_quantity || 0;
+
+                        if (!inventory.products[key]) {
+                            // New item — import from WC
+                            inventory.products[key] = {
+                                product_id: product.id,
+                                name: product.name,
+                                size,
+                                color,
+                                stock: wcStock,
+                                total_sold: 0,
+                                wc_variation_id: v.id,
+                                synced_from_wc: true,
+                                synced_at: new Date().toISOString(),
+                            };
+                            synced++;
+                        } else {
+                            // Existing item — update WC variation ID but keep local stock as source of truth
+                            inventory.products[key].wc_variation_id = v.id;
+                            inventory.products[key].name = product.name;
+                            inventory.products[key].synced_at = new Date().toISOString();
+                            // If this was auto_created with wrong data, update stock from WC
+                            if (inventory.products[key].auto_created) {
+                                inventory.products[key].stock = wcStock;
+                                inventory.products[key].auto_created = false;
+                                synced++;
+                            } else {
+                                skipped++;
+                            }
+                        }
+                    }
+                } else if (product.type === 'simple') {
+                    const key = String(product.id);
+                    if (!inventory.products[key]) {
+                        inventory.products[key] = {
+                            product_id: product.id,
+                            name: product.name,
+                            size: '',
+                            color: '',
+                            stock: product.stock_quantity || 0,
+                            total_sold: 0,
+                            synced_from_wc: true,
+                            synced_at: new Date().toISOString(),
+                        };
+                        synced++;
+                    } else {
+                        skipped++;
+                    }
+                }
+            }
+
+            writeInventory(inventory);
+            console.log(`📦 Inventory sync complete: ${synced} synced, ${skipped} skipped`);
+
+            res.json({
+                success: true,
+                synced,
+                skipped,
+                total: Object.keys(inventory.products).length,
+                message: `Synced ${synced} items from WooCommerce. ${skipped} already existed.`
+            });
+        } catch (err) {
+            console.error('Failed to sync inventory from WC:', err);
+            res.status(500).json({ error: 'Failed to sync from WooCommerce: ' + err.message });
+        }
+    });
+
     // --- UPLOAD DESIGN TO WORDPRESS MEDIA LIBRARY ---
     app.post('/api/upload-design', async (req, res) => {
         const { image, filename } = req.body;

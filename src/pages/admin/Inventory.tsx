@@ -5,7 +5,7 @@ import { WCProduct } from "@/integrations/wordpress/types";
 import {
     Loader2, Package, Plus, Save, Trash2, AlertTriangle,
     RefreshCw, Search, Palette, Ruler, Box, TrendingDown,
-    ChevronDown, X, Check, Edit2
+    ChevronDown, X, Check, Edit2, CloudDownload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,21 +23,28 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 
-const COLOR_NAME_MAP: Record<string, string> = {
-    '#231f20': 'Crna',
-    '#ffffff': 'Bijela',
-    '#e83e70': 'Roza',
-    '#e78fab': 'Pink',
-    '#a1d7c0': 'Mint',
-    '#00aeef': 'Plava',
-    '#00ab98': 'Tirkizna',
-    '#387bbf': 'Plava',
-    '#8358a4': 'Ljubičasta',
-    '#c7b299': 'Bež',
-    '#d1d5db': 'Siva',
+// Color name → hex (matching Products tab exactly)
+const COLOR_HEX_MAP: Record<string, string> = {
+    'Crna': '#231f20',
+    'Siva': '#d1d5db',
+    'Tirkizna': '#00ab98',
+    'Cijan': '#00aeef',
+    'Plava': '#387bbf',
+    'Ljubičasta': '#8358a4',
+    'Bijela': '#ffffff',
+    'Roza': '#e78fab',
+    'Mint': '#a1d7c0',
 };
 
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// All colors used in Products tab
+const ALL_COLORS = Object.keys(COLOR_HEX_MAP);
+
+// All sizes used in Products tab (from WooCommerce)
+const ALL_SIZES = ['6-8 g.', '8-10 g.', '10-12 g.', 'S', 'M', 'L', 'XL', '500ml', 'Univerzalna'];
+
+function getColorHex(colorName: string): string {
+    return COLOR_HEX_MAP[colorName] || '#eee';
+}
 
 interface InventoryItem {
     key: string;
@@ -49,6 +56,8 @@ interface InventoryItem {
     total_sold: number;
     last_sold?: string;
     auto_created?: boolean;
+    synced_from_wc?: boolean;
+    wc_variation_id?: number;
     note?: string;
 }
 
@@ -58,6 +67,7 @@ const Inventory = () => {
     const [outOfStock, setOutOfStock] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [editingStock, setEditingStock] = useState<{ [key: string]: number }>({});
     const [products, setProducts] = useState<WCProduct[]>([]);
@@ -115,6 +125,28 @@ const Inventory = () => {
         fetchInventory();
         fetchProducts();
     }, []);
+
+    // Sync from WooCommerce
+    const syncFromWC = async () => {
+        setSyncing(true);
+        try {
+            const res = await fetch('/api/inventory/sync', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                toast({
+                    title: "Sync završen!",
+                    description: data.message,
+                });
+                fetchInventory();
+            } else {
+                toast({ title: "Greška", description: data.error || "Sync neuspješan.", variant: "destructive" });
+            }
+        } catch (err) {
+            toast({ title: "Greška", description: "Sync neuspješan.", variant: "destructive" });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     // Update single item stock
     const updateStock = async (key: string, stock: number) => {
@@ -186,9 +218,10 @@ const Inventory = () => {
             }
 
             await Promise.all(promises);
+            const count = bulkSizes.length * bulkColors.length;
             toast({
                 title: "Bulk dodano!",
-                description: `${bulkSizes.length * bulkColors.length} varijanti dodano za ${selectedProduct.name}.`
+                description: `${count} varijanti dodano za ${selectedProduct.name}.`
             });
             setBulkMode(false);
             setSelectedProduct(null);
@@ -221,8 +254,7 @@ const Inventory = () => {
         return (
             item.name?.toLowerCase().includes(q) ||
             item.size?.toLowerCase().includes(q) ||
-            item.color?.toLowerCase().includes(q) ||
-            (COLOR_NAME_MAP[item.color?.toLowerCase()] || '').toLowerCase().includes(q)
+            item.color?.toLowerCase().includes(q)
         );
     });
 
@@ -255,6 +287,15 @@ const Inventory = () => {
                     </p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
+                    <Button
+                        variant="outline"
+                        className="rounded-full font-bold text-xs uppercase tracking-wider h-10"
+                        onClick={syncFromWC}
+                        disabled={syncing}
+                    >
+                        {syncing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CloudDownload className="w-3 h-3 mr-1" />}
+                        Sync iz WC
+                    </Button>
                     <Button
                         variant="outline"
                         className="rounded-full font-bold text-xs uppercase tracking-wider h-10"
@@ -306,7 +347,10 @@ const Inventory = () => {
                         {lowStock.map(item => (
                             <Badge key={item.key} variant="outline" className="border-amber-300 text-amber-800 bg-amber-100 font-bold text-xs py-1 px-3 rounded-full">
                                 {item.name} {item.size && `/ ${item.size}`} {item.color && (
-                                    <span className="inline-block w-3 h-3 rounded-full border ml-1" style={{ backgroundColor: item.color }} />
+                                    <>
+                                        <span className="inline-block w-3 h-3 rounded-full border ml-1" style={{ backgroundColor: getColorHex(item.color) }} />
+                                        <span className="ml-1">{item.color}</span>
+                                    </>
                                 )} — <span className="text-amber-900 font-black">{item.stock}</span>
                             </Badge>
                         ))}
@@ -367,7 +411,7 @@ const Inventory = () => {
                                             onChange={(e) => setNewItem(prev => ({ ...prev, size: e.target.value }))}
                                         >
                                             <option value="">—</option>
-                                            {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                                            {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -378,8 +422,8 @@ const Inventory = () => {
                                             onChange={(e) => setNewItem(prev => ({ ...prev, color: e.target.value }))}
                                         >
                                             <option value="">—</option>
-                                            {Object.entries(COLOR_NAME_MAP).map(([hex, name]) => (
-                                                <option key={hex} value={hex}>{name}</option>
+                                            {ALL_COLORS.map(name => (
+                                                <option key={name} value={name}>{name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -434,7 +478,7 @@ const Inventory = () => {
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase">Veličine</Label>
                                     <div className="flex flex-wrap gap-2">
-                                        {SIZES.map(size => (
+                                        {ALL_SIZES.map(size => (
                                             <Button
                                                 key={size}
                                                 variant={bulkSizes.includes(size) ? "default" : "outline"}
@@ -451,9 +495,9 @@ const Inventory = () => {
                                             variant="ghost"
                                             size="sm"
                                             className="rounded-full text-xs text-primary font-bold"
-                                            onClick={() => setBulkSizes(bulkSizes.length === SIZES.length ? [] : [...SIZES])}
+                                            onClick={() => setBulkSizes(bulkSizes.length === ALL_SIZES.length ? [] : [...ALL_SIZES])}
                                         >
-                                            {bulkSizes.length === SIZES.length ? 'Ništa' : 'Sve'}
+                                            {bulkSizes.length === ALL_SIZES.length ? 'Ništa' : 'Sve'}
                                         </Button>
                                     </div>
                                 </div>
@@ -461,17 +505,17 @@ const Inventory = () => {
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold uppercase">Boje</Label>
                                     <div className="flex flex-wrap gap-2">
-                                        {Object.entries(COLOR_NAME_MAP).map(([hex, name]) => (
+                                        {ALL_COLORS.map(name => (
                                             <Button
-                                                key={hex}
-                                                variant={bulkColors.includes(hex) ? "default" : "outline"}
+                                                key={name}
+                                                variant={bulkColors.includes(name) ? "default" : "outline"}
                                                 size="sm"
                                                 className="rounded-full font-bold text-xs gap-1.5"
                                                 onClick={() => setBulkColors(prev =>
-                                                    prev.includes(hex) ? prev.filter(c => c !== hex) : [...prev, hex]
+                                                    prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
                                                 )}
                                             >
-                                                <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: hex }} />
+                                                <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: getColorHex(name) }} />
                                                 {name}
                                             </Button>
                                         ))}
@@ -531,7 +575,7 @@ const Inventory = () => {
                     </div>
                     <h3 className="text-xl font-bold text-slate-900">INVENTAR JE PRAZAN</h3>
                     <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
-                        Koristite "Dodaj Stavku" ili "Bulk Dodaj" za početak praćenja zaliha.
+                        Kliknite "Sync iz WC" za uvoz iz WooCommerce-a ili koristite "Dodaj Stavku" za ručno dodavanje.
                     </p>
                 </Card>
             ) : (
@@ -564,7 +608,7 @@ const Inventory = () => {
                             {/* Variant Rows */}
                             <div className="divide-y divide-slate-50">
                                 {productItems.map(item => {
-                                    const colorName = COLOR_NAME_MAP[item.color?.toLowerCase()] || item.color || '—';
+                                    const colorHex = getColorHex(item.color);
                                     const isSaving = saving === item.key;
                                     const currentStock = editingStock[item.key] ?? item.stock;
                                     const hasChanged = currentStock !== item.stock;
@@ -583,8 +627,12 @@ const Inventory = () => {
                                         >
                                             {/* Color swatch */}
                                             <div
-                                                className="w-8 h-8 rounded-full border-2 border-slate-200 shrink-0 shadow-inner"
-                                                style={{ backgroundColor: item.color || '#eee' }}
+                                                className={cn(
+                                                    "w-8 h-8 rounded-full shrink-0 shadow-inner",
+                                                    item.color === 'Bijela' ? "border-2 border-slate-300" : "border-2 border-slate-200"
+                                                )}
+                                                style={{ backgroundColor: colorHex }}
+                                                title={item.color}
                                             />
 
                                             {/* Variant info */}
@@ -595,10 +643,15 @@ const Inventory = () => {
                                                             {item.size}
                                                         </Badge>
                                                     )}
-                                                    <span className="text-xs font-bold text-slate-600">{colorName}</span>
+                                                    <span className="text-xs font-bold text-slate-600">{item.color || '—'}</span>
                                                     {item.auto_created && (
                                                         <Badge variant="outline" className="text-[8px] font-bold text-amber-600 border-amber-200 rounded-full">
                                                             Auto
+                                                        </Badge>
+                                                    )}
+                                                    {item.synced_from_wc && (
+                                                        <Badge variant="outline" className="text-[8px] font-bold text-blue-600 border-blue-200 rounded-full">
+                                                            WC
                                                         </Badge>
                                                     )}
                                                     {isLow && (
