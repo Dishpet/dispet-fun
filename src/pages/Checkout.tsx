@@ -133,9 +133,11 @@ const Checkout = () => {
           const cartItem = item as any;
           const meta_data = [];
 
-          if (cartItem.size) meta_data.push({ key: 'Veličina', value: cartItem.size });
-          if (cartItem.color) meta_data.push({ key: 'Boja', value: cartItem.color });
-          if (cartItem.images?.[0]?.src) meta_data.push({ key: 'Dizajn', value: cartItem.images[0].src });
+          if (cartItem.selectedSize) meta_data.push({ key: 'Veličina', value: cartItem.selectedSize });
+          if (cartItem.selectedColor) meta_data.push({ key: 'Boja', value: cartItem.selectedColor });
+          if (cartItem.selectedDesigns?.back) meta_data.push({ key: 'Dizajn (Leđa)', value: cartItem.selectedDesigns.back });
+          if (cartItem.selectedDesigns?.front) meta_data.push({ key: 'Dizajn (Prednji)', value: cartItem.selectedDesigns.front });
+          if (cartItem.images?.[0]?.src) meta_data.push({ key: 'Dizajn Slika', value: cartItem.images[0].src });
 
           return {
             product_id: item.id,
@@ -172,10 +174,12 @@ const Checkout = () => {
                 postalCode: formData.postalCode,
               },
               items: cartItems.map(item => ({
+                product_id: item.id,
                 name: item.name,
                 image: item.images?.[0]?.src || '',
                 color: item.selectedColor || '',
                 size: item.selectedSize || '',
+                designs: item.selectedDesigns || {},
                 quantity: item.quantity,
               })),
               total: cartTotal.toFixed(2),

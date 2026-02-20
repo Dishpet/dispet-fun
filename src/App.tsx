@@ -35,6 +35,8 @@ const AdminMessages = lazy(() => import("./pages/admin/Messages"));
 const Social = lazy(() => import("./pages/admin/Social"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const ShopRules = lazy(() => import("./pages/admin/ShopRules"));
+const AdminOrders = lazy(() => import("./pages/admin/Orders"));
+const AdminInventory = lazy(() => import("./pages/admin/Inventory"));
 
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -92,6 +94,8 @@ const App = () => (
                     <Route path="contact" element={<AdminContact />} />
                     <Route path="messages" element={<AdminMessages />} />
                     <Route path="social" element={<Social />} />
+                    <Route path="orders" element={<AdminOrders />} />
+                    <Route path="inventory" element={<AdminInventory />} />
                     <Route path="shop-rules" element={<ShopRules />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>

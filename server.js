@@ -349,6 +349,39 @@ ${message}
 
 
     // --- ORDER NOTIFICATION (for printing team) ---
+    // Order log file path
+    const ORDER_LOG_DIR = path.join(CWD, 'data');
+    const ORDER_LOG_FILE = path.join(ORDER_LOG_DIR, 'orders.json');
+
+    // Helper: Save order to JSON log file
+    const saveOrderToLog = (orderData) => {
+        try {
+            // Ensure data directory exists
+            if (!fs.existsSync(ORDER_LOG_DIR)) {
+                fs.mkdirSync(ORDER_LOG_DIR, { recursive: true });
+            }
+
+            // Read existing orders
+            let orders = [];
+            if (fs.existsSync(ORDER_LOG_FILE)) {
+                const raw = fs.readFileSync(ORDER_LOG_FILE, 'utf-8');
+                orders = JSON.parse(raw);
+            }
+
+            // Add new order with timestamp
+            orders.push({
+                ...orderData,
+                logged_at: new Date().toISOString(),
+            });
+
+            // Write back
+            fs.writeFileSync(ORDER_LOG_FILE, JSON.stringify(orders, null, 2), 'utf-8');
+            console.log(`✅ Order #${orderData.orderId} saved to orders log (${orders.length} total orders)`);
+        } catch (err) {
+            console.error('❌ Failed to save order to log:', err);
+        }
+    };
+
     app.post('/api/order-notification', async (req, res) => {
         const { orderId, customer, items, total } = req.body;
 
@@ -357,6 +390,20 @@ ${message}
         }
 
         console.log(`Received Order Notification for Order #${orderId}`);
+        console.log(`  Customer: ${customer?.name || 'N/A'} (${customer?.email || 'N/A'})`);
+        console.log(`  Items: ${items.length}, Total: ${total}€`);
+        items.forEach((item, i) => console.log(`  Item ${i + 1}: ${item.name} | Color: ${item.color || 'N/A'} | Size: ${item.size || 'N/A'}`));
+
+        // 📝 SAVE ORDER TO LOCAL JSON LOG (safety net)
+        saveOrderToLog({ orderId, customer, items, total });
+
+        // 📦 AUTO-DECREMENT INVENTORY
+        try {
+            const inventoryChanges = decrementInventoryForOrder(items);
+            console.log(`📦 Inventory decremented for Order #${orderId}:`, inventoryChanges);
+        } catch (invErr) {
+            console.error('❌ Inventory decrement failed:', invErr);
+        }
 
         let itemsHtml = '';
         for (const item of items) {
@@ -448,6 +495,224 @@ ${message}
         res.json({ success: true });
     });
 
+    // --- VIEW ORDER LOG (Admin) ---
+    app.get('/api/orders-log', async (req, res) => {
+        try {
+            if (fs.existsSync(ORDER_LOG_FILE)) {
+                const raw = fs.readFileSync(ORDER_LOG_FILE, 'utf-8');
+                const orders = JSON.parse(raw);
+                res.json({ success: true, count: orders.length, orders });
+            } else {
+                res.json({ success: true, count: 0, orders: [] });
+            }
+        } catch (err) {
+            console.error('Failed to read orders log:', err);
+            res.status(500).json({ error: 'Failed to read orders log' });
+        }
+    });
+
+    // ======================================================================
+    // --- INVENTORY MANAGEMENT SYSTEM ---
+    // ======================================================================
+    const INVENTORY_FILE = path.join(ORDER_LOG_DIR, 'inventory.json');
+
+    // Helper: Read inventory from file
+    const readInventory = () => {
+        try {
+            if (!fs.existsSync(ORDER_LOG_DIR)) {
+                fs.mkdirSync(ORDER_LOG_DIR, { recursive: true });
+            }
+            if (fs.existsSync(INVENTORY_FILE)) {
+                const raw = fs.readFileSync(INVENTORY_FILE, 'utf-8');
+                return JSON.parse(raw);
+            }
+            return { products: {}, last_updated: null };
+        } catch (err) {
+            console.error('Failed to read inventory:', err);
+            return { products: {}, last_updated: null };
+        }
+    };
+
+    // Helper: Write inventory to file
+    const writeInventory = (data) => {
+        try {
+            if (!fs.existsSync(ORDER_LOG_DIR)) {
+                fs.mkdirSync(ORDER_LOG_DIR, { recursive: true });
+            }
+            data.last_updated = new Date().toISOString();
+            fs.writeFileSync(INVENTORY_FILE, JSON.stringify(data, null, 2), 'utf-8');
+            return true;
+        } catch (err) {
+            console.error('Failed to write inventory:', err);
+            return false;
+        }
+    };
+
+    // Helper: Decrement inventory for an order
+    const decrementInventoryForOrder = (items) => {
+        const inventory = readInventory();
+        const changes = [];
+
+        for (const item of items) {
+            const productKey = String(item.product_id || item.id);
+            const size = item.size || item.selectedSize || '';
+            const color = item.color || item.selectedColor || '';
+            const qty = item.quantity || 1;
+
+            // Build variant key: "productId" or "productId|size|color"
+            const variantKey = (size || color)
+                ? `${productKey}|${size}|${color}`
+                : productKey;
+
+            if (inventory.products[variantKey]) {
+                const prev = inventory.products[variantKey].stock;
+                inventory.products[variantKey].stock = Math.max(0, prev - qty);
+                inventory.products[variantKey].last_sold = new Date().toISOString();
+                inventory.products[variantKey].total_sold = (inventory.products[variantKey].total_sold || 0) + qty;
+                changes.push({ variantKey, prev, now: inventory.products[variantKey].stock, qty });
+            } else {
+                // Auto-create entry with negative awareness (stock -qty means we don't know initial)
+                inventory.products[variantKey] = {
+                    product_id: parseInt(productKey),
+                    name: item.name || 'Unknown',
+                    size,
+                    color,
+                    stock: 0, // Unknown initial stock
+                    total_sold: qty,
+                    last_sold: new Date().toISOString(),
+                    auto_created: true,
+                    note: 'Auto-created from order. Set initial stock manually.'
+                };
+                changes.push({ variantKey, prev: 'N/A', now: 0, qty, auto_created: true });
+            }
+        }
+
+        writeInventory(inventory);
+        return changes;
+    };
+
+    // GET /api/inventory - Get full inventory
+    app.get('/api/inventory', (req, res) => {
+        try {
+            const inventory = readInventory();
+            // Convert object to array for easier frontend consumption
+            const items = Object.entries(inventory.products).map(([key, data]) => ({
+                key,
+                ...(data)
+            }));
+
+            // Sort: out of stock first, then by name
+            items.sort((a, b) => {
+                if (a.stock === 0 && b.stock > 0) return -1;
+                if (a.stock > 0 && b.stock === 0) return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+
+            res.json({
+                success: true,
+                count: items.length,
+                last_updated: inventory.last_updated,
+                items,
+                low_stock: items.filter(i => i.stock <= 3 && i.stock > 0),
+                out_of_stock: items.filter(i => i.stock === 0 && !i.auto_created),
+            });
+        } catch (err) {
+            console.error('Failed to read inventory:', err);
+            res.status(500).json({ error: 'Failed to read inventory' });
+        }
+    });
+
+    // PUT /api/inventory/:key - Update a single inventory item
+    app.put('/api/inventory/:key', (req, res) => {
+        try {
+            const key = decodeURIComponent(req.params.key);
+            const { stock, name, size, color, note } = req.body;
+            const inventory = readInventory();
+
+            if (!inventory.products[key]) {
+                // Create new entry
+                inventory.products[key] = {
+                    product_id: parseInt(key.split('|')[0]) || 0,
+                    name: name || 'Unknown',
+                    size: size || '',
+                    color: color || '',
+                    stock: 0,
+                    total_sold: 0,
+                };
+            }
+
+            // Update fields
+            if (stock !== undefined) inventory.products[key].stock = parseInt(stock);
+            if (name !== undefined) inventory.products[key].name = name;
+            if (size !== undefined) inventory.products[key].size = size;
+            if (color !== undefined) inventory.products[key].color = color;
+            if (note !== undefined) inventory.products[key].note = note;
+            inventory.products[key].auto_created = false; // Mark as manually managed
+
+            writeInventory(inventory);
+            console.log(`📦 Inventory updated: ${key} → stock: ${inventory.products[key].stock}`);
+
+            res.json({ success: true, item: { key, ...inventory.products[key] } });
+        } catch (err) {
+            console.error('Failed to update inventory:', err);
+            res.status(500).json({ error: 'Failed to update inventory' });
+        }
+    });
+
+    // POST /api/inventory - Add a new inventory item
+    app.post('/api/inventory', (req, res) => {
+        try {
+            const { product_id, name, size, color, stock, note } = req.body;
+            if (!product_id || !name) {
+                return res.status(400).json({ error: 'product_id and name are required' });
+            }
+
+            const inventory = readInventory();
+
+            const key = (size || color)
+                ? `${product_id}|${size || ''}|${color || ''}`
+                : String(product_id);
+
+            inventory.products[key] = {
+                product_id: parseInt(product_id),
+                name,
+                size: size || '',
+                color: color || '',
+                stock: parseInt(stock) || 0,
+                total_sold: 0,
+                note: note || '',
+                created_at: new Date().toISOString(),
+            };
+
+            writeInventory(inventory);
+            console.log(`📦 Inventory item added: ${key} (${name}) → stock: ${stock || 0}`);
+
+            res.json({ success: true, item: { key, ...inventory.products[key] } });
+        } catch (err) {
+            console.error('Failed to add inventory item:', err);
+            res.status(500).json({ error: 'Failed to add inventory item' });
+        }
+    });
+
+    // DELETE /api/inventory/:key - Remove an inventory item
+    app.delete('/api/inventory/:key', (req, res) => {
+        try {
+            const key = decodeURIComponent(req.params.key);
+            const inventory = readInventory();
+
+            if (inventory.products[key]) {
+                delete inventory.products[key];
+                writeInventory(inventory);
+                console.log(`📦 Inventory item removed: ${key}`);
+                res.json({ success: true });
+            } else {
+                res.status(404).json({ error: 'Item not found' });
+            }
+        } catch (err) {
+            console.error('Failed to delete inventory item:', err);
+            res.status(500).json({ error: 'Failed to delete inventory item' });
+        }
+    });
     // --- UPLOAD DESIGN TO WORDPRESS MEDIA LIBRARY ---
     app.post('/api/upload-design', async (req, res) => {
         const { image, filename } = req.body;
@@ -562,7 +827,7 @@ ${message}
         const apiPath = subPath.startsWith('/') ? subPath : `/${subPath}`;
 
         // SAFETY: Skip internal routes
-        const internalRoutes = ['/messages', '/health', '/debug-auth', '/contact', '/upload-design'];
+        const internalRoutes = ['/messages', '/health', '/debug-auth', '/contact', '/upload-design', '/order-notification', '/orders-log', '/inventory'];
         if (internalRoutes.some(route => apiPath.startsWith(route))) {
             return next();
         }

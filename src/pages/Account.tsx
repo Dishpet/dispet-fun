@@ -24,11 +24,20 @@ const Account = () => {
             if (user?.id) {
                 try {
                     // Fetch orders for the logged-in user
-                    // const userOrders = await getOrders(user.id);
-                    // setOrders(userOrders);
+                    // Try by customer ID first, fallback to search by email
+                    let userOrders = await getOrders(user.id > 1000000000000 ? undefined : user.id);
 
-                    // Mocking orders for now as we don't have full auth flow yet
-                    setOrders([]);
+                    // If no orders found by customer_id (could be 0 for Google users), 
+                    // the WP admin can check manually by email
+                    if ((!userOrders || userOrders.length === 0) && user.email) {
+                        // Fetch all recent orders and filter by email client-side
+                        const allOrders = await getOrders();
+                        userOrders = allOrders.filter((order: WCOrder) =>
+                            order.billing?.email?.toLowerCase() === user.email?.toLowerCase()
+                        );
+                    }
+
+                    setOrders(userOrders || []);
                 } catch (error) {
                     console.error("Failed to fetch orders", error);
                 } finally {
