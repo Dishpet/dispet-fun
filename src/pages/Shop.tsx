@@ -49,19 +49,19 @@ const FILENAME_TO_URL: Record<string, string> = {};
 const findDesignUrlByFilename = (filename: string): string | null => {
     // Direct lookup
     if (FILENAME_TO_URL[filename]) return FILENAME_TO_URL[filename];
-    
+
     // Try case-insensitive lookup
     const lowerFilename = filename.toLowerCase();
     for (const [fn, url] of Object.entries(FILENAME_TO_URL)) {
         if (fn.toLowerCase() === lowerFilename) return url;
     }
-    
+
     // Try finding in ALL_DESIGNS by partial match
     const match = ALL_DESIGNS.find(url => {
         const fn = URL_TO_FILENAME[url] || url.split('/').pop()?.split('?')[0] || '';
         return fn.toLowerCase() === lowerFilename;
     });
-    
+
     return match || null;
 };
 
@@ -160,6 +160,7 @@ const INITIAL_PRODUCTS = {
         stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
+        variations: [] as number[],
     },
     hoodie: {
         id: 'hoodie-001',
@@ -171,6 +172,7 @@ const INITIAL_PRODUCTS = {
         stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
+        variations: [] as number[],
     },
     cap: {
         id: 'cap-001',
@@ -182,6 +184,7 @@ const INITIAL_PRODUCTS = {
         stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
+        variations: [] as number[],
     },
     bottle: {
         id: 'bottle-001',
@@ -196,6 +199,7 @@ const INITIAL_PRODUCTS = {
         stockQuantity: null as number | null,
         averageRating: 0,
         ratingCount: 0,
+        variations: [] as number[],
     }
 };
 
@@ -205,6 +209,7 @@ const Shop = () => {
     // State
     const [searchParams, setSearchParams] = useSearchParams();
     const [products, setProducts] = useState(INITIAL_PRODUCTS);
+    const [variationCache, setVariationCache] = useState<Record<string, any[]>>({});
     const [selectedProduct, setSelectedProduct] = useState<'hoodie' | 'tshirt' | 'cap' | 'bottle'>('tshirt');
     const [isCustomizing, setIsCustomizing] = useState(false);
 
@@ -267,21 +272,21 @@ const Shop = () => {
         const productParam = searchParams.get('product');
         if (productParam && Object.keys(INITIAL_PRODUCTS).includes(productParam as string)) {
             setSelectedProduct(productParam as any);
-            
+
             // Parse additional parameters when product is specified
             const designParam = searchParams.get('design');
             const colorParam = searchParams.get('color');
             const zoneParam = searchParams.get('zone');
-            
+
             // Apply design if specified
             if (designParam) {
                 const designUrl = findDesignUrlByFilename(designParam);
                 if (designUrl) {
                     // Determine which zone to apply design to
-                    const targetZone = zoneParam === 'front' || zoneParam === 'back' 
-                        ? zoneParam 
+                    const targetZone = zoneParam === 'front' || zoneParam === 'back'
+                        ? zoneParam
                         : (productParam === 'hoodie' || productParam === 'tshirt' ? 'back' : 'front');
-                    
+
                     setDesigns(prev => ({
                         ...prev,
                         [targetZone]: designUrl
@@ -289,7 +294,7 @@ const Shop = () => {
                     setHasUserInteracted(true); // Mark as interacted since URL specified a design
                 }
             }
-            
+
             // Apply color if specified (hex format, URL-encoded # as %23)
             if (colorParam) {
                 const decodedColor = decodeURIComponent(colorParam);
@@ -298,7 +303,7 @@ const Shop = () => {
                     setSelectedColor(decodedColor.toLowerCase());
                 }
             }
-            
+
             // Apply zone if specified
             if (zoneParam === 'front' || zoneParam === 'back') {
                 setActiveZone(zoneParam);
@@ -333,6 +338,7 @@ const Shop = () => {
                 const wpProducts = await res.json();
                 console.log('Fetched products:', wpProducts);
 
+                const productIdMap: Record<string, number> = {};
                 setProducts(current => {
                     const newProducts = { ...current };
 
@@ -346,6 +352,7 @@ const Shop = () => {
                         else if (lowerName.includes('bottle') || lowerName.includes('boca') || lowerName.includes('termosica')) key = 'bottle';
 
                         if (key) {
+                            productIdMap[key] = wp.id;
                             newProducts[key] = {
                                 ...newProducts[key],
                                 id: wp.id.toString(),
@@ -355,13 +362,29 @@ const Shop = () => {
                                 stockQuantity: wp.stock_quantity ?? null,
                                 averageRating: parseFloat(wp.average_rating) || 0,
                                 ratingCount: wp.rating_count || 0,
-                                variations: wp.variations || [], // Store variations
+                                variations: wp.variations || [], // Store variation IDs
                             };
                         }
                     });
 
                     return newProducts;
                 });
+
+                // Fetch full variation details for each product (with attributes)
+                const cache: Record<string, any[]> = {};
+                for (const [key, productId] of Object.entries(productIdMap)) {
+                    try {
+                        const varRes = await fetch(`/api/wc/v3/products/${productId}/variations?per_page=100`);
+                        if (varRes.ok) {
+                            const vars = await varRes.json();
+                            cache[productId.toString()] = vars;
+                            console.log(`Fetched ${vars.length} variations for ${key} (ID: ${productId})`);
+                        }
+                    } catch (varErr) {
+                        console.warn(`Failed to fetch variations for ${key}:`, varErr);
+                    }
+                }
+                setVariationCache(cache);
             } catch (error) {
                 console.error('Error fetching WP products:', error);
             }
@@ -486,7 +509,7 @@ const Shop = () => {
         const isComingFromShowcase = viewMode === 'showcase';
 
         setSelectedProduct(product);
-        
+
         // When coming from showcase, DON'T reset interaction - let the cycle continue
         // The cycle will provide the initial design/color
         if (isComingFromShowcase) {
@@ -551,34 +574,27 @@ const Shop = () => {
 
         // LOGIC TO RESOLVE VARIATION ID
         let resolvedVariationId: number | undefined;
-        // @ts-ignore
-        if (product.variations && product.variations.length > 0) {
-            // @ts-ignore
-            const vars = product.variations;
-            const sizeVal = selectedSize.toLowerCase();
-            const colorObj = SHARED_COLORS.find(c => c.hex === selectedColor);
-            const colorName = colorObj ? colorObj.name.toLowerCase() : ''; // e.g. 'crna'
-            const colorHex = selectedColor.toLowerCase();
+        const productId = product.id?.toString();
+        const cachedVars = productId ? variationCache[productId] : null;
 
-            const match = vars.find((v: any) => {
-                const attrs = v.attributes;
+        if (cachedVars && cachedVars.length > 0) {
+            const colorObj = SHARED_COLORS.find(c => c.hex === selectedColor);
+            const colorName = colorObj ? colorObj.name.toLowerCase() : '';
+            const sizeVal = selectedSize.toLowerCase();
+
+            const match = cachedVars.find((v: any) => {
+                if (!v.attributes || !Array.isArray(v.attributes)) return false;
                 let sizeMatch = true;
                 let colorMatch = true;
 
-                // Fuzzy match attributes
-                for (const key in attrs) {
-                    const val = String(attrs[key]).toLowerCase(); // slug from WC
-                    if (!val) continue;
+                for (const attr of v.attributes) {
+                    const attrName = (attr.name || '').toLowerCase();
+                    const attrOption = (attr.option || '').toLowerCase();
 
-                    if (key.includes('size') || key.includes('velicina')) {
-                        if (val !== sizeVal && val !== selectedSize.toLowerCase()) sizeMatch = false;
-                    }
-                    else if (key.includes('color') || key.includes('boja')) {
-                        // Match against Slug (Name) or Hex
-                        // 'crna' == 'crna'? 'black' == 'crna'?
-                        // If backend is English 'black', frontend 'crna', we fail unless we map.
-                        // But usually slug matches local name if created there.
-                        if (val !== colorName && val !== colorHex) colorMatch = false;
+                    if (attrName.includes('veli') || attrName.includes('size')) {
+                        sizeMatch = (attrOption === sizeVal);
+                    } else if (attrName.includes('boja') || attrName.includes('color')) {
+                        colorMatch = (attrOption === colorName);
                     }
                 }
                 return sizeMatch && colorMatch;
@@ -586,10 +602,12 @@ const Shop = () => {
 
             if (match) {
                 resolvedVariationId = match.id;
-                console.log('Resolved Variation ID:', resolvedVariationId);
+                console.log('Resolved Variation ID:', resolvedVariationId, 'for', selectedSize, colorName);
             } else {
-                console.warn('Could not resolve variation for:', selectedSize, colorName);
+                console.warn('Could not resolve variation for:', selectedSize, colorName, '(checked', cachedVars.length, 'variations)');
             }
+        } else {
+            console.warn('No cached variations for product:', productId);
         }
 
         const mainImage = (selectedProduct === 'hoodie' || selectedProduct === 'tshirt')
@@ -624,7 +642,7 @@ const Shop = () => {
     const handleDesignSelect = (designUrl: string) => {
         // Prevent rapid clicking - 150ms debounce
         if (isDesignClickPendingRef.current) return;
-        
+
         isDesignClickPendingRef.current = true;
         if (designClickTimeoutRef.current) {
             clearTimeout(designClickTimeoutRef.current);
@@ -632,7 +650,7 @@ const Shop = () => {
         designClickTimeoutRef.current = setTimeout(() => {
             isDesignClickPendingRef.current = false;
         }, 150);
-        
+
         if (selectedProduct === 'hoodie' || selectedProduct === 'tshirt') {
             // Hoodie/T-shirt Logic: Selection applies to Back. Front is managed by color sync.
             setDesigns(prev => ({
@@ -647,7 +665,7 @@ const Shop = () => {
             }));
         }
         handleInteraction();
-        
+
         // Update URL with selected design
         const filename = URL_TO_FILENAME[designUrl] || designUrl.split('/').pop()?.split('?')[0] || '';
         if (filename) {
@@ -668,7 +686,7 @@ const Shop = () => {
     const handleColorSelect = (newHex: string) => {
         setSelectedColor(newHex);
         handleInteraction();
-        
+
         // Update URL with selected color (URL-encode the #)
         setSearchParams(prev => {
             const newParams = new URLSearchParams(prev);
@@ -713,7 +731,7 @@ const Shop = () => {
                 } else {
                     setDesigns(prev => ({ ...prev, [activeZone]: compatibleDesign }));
                 }
-                
+
                 // Update URL with the new compatible design
                 const filename = URL_TO_FILENAME[compatibleDesign] || compatibleDesign.split('/').pop()?.split('?')[0] || '';
                 if (filename) {
@@ -1073,7 +1091,7 @@ const Shop = () => {
                                         <div className="flex justify-between items-center px-1">
                                             <label className="text-sm font-bold uppercase tracking-wider text-gray-400 font-['DynaPuff']">Veličina</label>
                                         </div>
-                                        
+
                                         {/* Mobile: Native Select Dropdown */}
                                         <div className="sm:hidden">
                                             <div className="relative">
@@ -1095,7 +1113,7 @@ const Shop = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         {/* Desktop: Circular Buttons */}
                                         <div className="hidden sm:flex justify-between items-center gap-3 bg-white rounded-full border border-gray-100 shadow-sm px-3 py-2">
                                             {[
