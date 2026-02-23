@@ -234,6 +234,43 @@ const Shop = () => {
     const [isSizePickerOpen, setIsSizePickerOpen] = useState(false);
     const [expandedCollection, setExpandedCollection] = useState<string>('Logotip');
     const [activeTab, setActiveTab] = useState<'details' | 'features' | 'reviews'>('details');
+    const [cartCount, setCartCount] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Resolve current variation for price and matching
+    const currentVariation = useMemo(() => {
+        const product = products[selectedProduct];
+        const productId = product.id?.toString();
+        const cachedVars = productId ? variationCache[productId] : null;
+
+        if (cachedVars && cachedVars.length > 0) {
+            const colorObj = SHARED_COLORS.find(c => c.hex === selectedColor);
+            const colorName = colorObj ? colorObj.name.toLowerCase() : '';
+            const sizeVal = selectedSize.toLowerCase();
+
+            return cachedVars.find((v: any) => {
+                if (!v.attributes || !Array.isArray(v.attributes)) return false;
+                let sizeMatch = true;
+                let colorMatch = true;
+
+                for (const attr of v.attributes) {
+                    const attrName = (attr.name || '').toLowerCase();
+                    const attrOption = (attr.option || '').toLowerCase();
+
+                    if (attrName.includes('veli') || attrName.includes('size')) {
+                        sizeMatch = (attrOption === sizeVal);
+                    } else if (attrName.includes('boja') || attrName.includes('color')) {
+                        colorMatch = (attrOption === colorName);
+                    }
+                }
+                return sizeMatch && colorMatch;
+            });
+        }
+        return null;
+    }, [selectedProduct, products, variationCache, selectedColor, selectedSize]);
+
+    const displayPrice = currentVariation ? parseFloat(currentVariation.price) : products[selectedProduct].price;
+
     const [quantity, setQuantity] = useState(1);
 
     const { addToCart } = useCart();
@@ -758,7 +795,10 @@ const Shop = () => {
         handleProductSelect(PRODUCT_KEYS[newIndex]);
     };
 
-    const activeProductData = products[selectedProduct];
+    const activeProductData = useMemo(() => ({
+        ...products[selectedProduct],
+        price: displayPrice
+    }), [products, selectedProduct, displayPrice]);
 
     return (
         <div className="min-h-screen bg-white">

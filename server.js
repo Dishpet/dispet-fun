@@ -430,14 +430,18 @@ ${message}
         `;
         }
 
-        const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #ff69b4, #9b59b6); padding: 20px; text-align: center; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0;">🛒 Nova Narudžba #${orderId}</h1>
+        // --- PREPARE EMAILS ---
+        const footerStyle = `background: #333; color: white; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; font-size: 14px;`;
+
+        const printEmailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #ff69b4, #9b59b6); padding: 25px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">🛒 Nova Narudžba #${orderId}</h1>
+            <p style="color: white; opacity: 0.9; margin-top: 5px;">Spremno za printanje</p>
         </div>
         
-        <div style="background: #f9f9f9; padding: 20px;">
-            <h3 style="margin-top: 0;">👤 Kupac:</h3>
+        <div style="background: #f9f9f9; padding: 20px; border-bottom: 1px solid #eee;">
+            <h3 style="margin-top: 0; color: #333;">👤 Kupac:</h3>
             <p style="margin: 5px 0;"><strong>Ime:</strong> ${customer?.name || 'N/A'}</p>
             <p style="margin: 5px 0;"><strong>Email:</strong> ${customer?.email || 'N/A'}</p>
             <p style="margin: 5px 0;"><strong>Telefon:</strong> ${customer?.phone || 'N/A'}</p>
@@ -445,12 +449,12 @@ ${message}
         </div>
 
         <div style="padding: 20px;">
-            <h3>📦 Proizvodi za Print:</h3>
+            <h3 style="color: #333;">📦 Proizvodi:</h3>
             <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                     <tr style="background: #eee;">
-                        <th style="padding: 10px; text-align: left;">Dizajn</th>
-                        <th style="padding: 10px; text-align: left;">Detalji</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Dizajn</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Detalji</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -459,8 +463,42 @@ ${message}
             </table>
         </div>
 
-        <div style="background: #333; color: white; padding: 15px; text-align: center; border-radius: 0 0 12px 12px;">
-            <strong>Ukupno: ${total || '0.00'} €</strong>
+        <div style="padding: 15px; background: #f9f9f9; text-align: center; font-weight: bold; font-size: 20px; border-top: 1px solid #eee;">
+            Ukupno: ${total || '0.00'} €
+        </div>
+
+        <div style="${footerStyle}">
+            <strong>ANTIGRAVITY PRINT SUSTAV</strong>
+        </div>
+    </div>
+    `;
+
+        const customerEmailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #00ffbf, #0089cd); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Hvala na narudžbi! 🤘</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 10px;">Vaša narudžba #${orderId} je zaprimljena.</p>
+        </div>
+        
+        <div style="padding: 30px; line-height: 1.6; color: #333;">
+            <p>Bok ${customer?.name?.split(' ')[0] || 'tamo'},</p>
+            <p>Hvala što si odabrao <strong>Dišpet</strong>! Tvoja narudžba je upravo sletjela u naš sustav i čim prođe provjeru, krećemo u akciju.</p>
+            
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #0089cd;">Sažetak narudžbe:</h3>
+                <p><strong>Broj narudžbe:</strong> #${orderId}</p>
+                <p><strong>Ukupno za platiti:</strong> ${total} €</p>
+            </div>
+
+            <p>Čim pošaljemo paket, dobit ćeš poruku s brojem za praćenje.</p>
+            
+            <p>Ako imaš bilo kakvih pitanja, slobodno nam se javi na <a href="mailto:info@dispet.fun" style="color: #0089cd;">info@dispet.fun</a>.</p>
+            
+            <p style="margin-top: 30px;">Pozdrav,<br/><strong>Dišpet Tim</strong></p>
+        </div>
+        
+        <div style="${footerStyle}">
+            <p>&copy; ${new Date().getFullYear()} Dišpet. Sva prava pridržana.</p>
         </div>
     </div>
     `;
@@ -477,16 +515,28 @@ ${message}
                     },
                 });
 
+                // 1. Send to Admin/Print team
                 await transporter.sendMail({
                     from: `"Dišpet Narudžbe" <${process.env.SMTP_USER}>`,
                     to: 'info@dispet.fun, dispet.fun@gmail.com',
-                    subject: `🛒 Nova Narudžba #${orderId} - Za Print`,
-                    html: emailHtml
+                    subject: `🛒 Nova Narudžba #${orderId} - ZA PRINT`,
+                    html: printEmailHtml
                 });
 
-                console.log(`Order notification email sent for Order #${orderId}`);
+                // 2. Send to Customer (if email exists)
+                if (customer?.email) {
+                    await transporter.sendMail({
+                        from: `"Dišpet" <${process.env.SMTP_USER}>`,
+                        to: customer.email,
+                        subject: `Potvrda narudžbe #${orderId} - Dišpet`,
+                        html: customerEmailHtml
+                    });
+                    console.log(`Customer confirmation sent to ${customer.email} for order #${orderId}`);
+                }
+
+                console.log(`Order notification emails sent for Order #${orderId}`);
             } catch (error) {
-                console.error('Failed to send order notification:', error);
+                console.error('Failed to send order notifications:', error);
             }
         } else {
             console.warn('SMTP not configured - order notification logged only');
