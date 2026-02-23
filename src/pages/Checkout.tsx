@@ -152,8 +152,12 @@ const Checkout = () => {
       };
 
       const response: any = await executeHeadlessPayment(orderData, token.id);
+      console.log('[Checkout] Payment response:', JSON.stringify(response).substring(0, 500));
 
-      if (response.id) {
+      // Check various response formats (WC might wrap the order differently)
+      const orderId = response.id || response.order_id || response.data?.id;
+
+      if (orderId) {
         // Send order notification with design details for printing team
         try {
           const notificationApiUrl = import.meta.env.DEV
@@ -164,7 +168,7 @@ const Checkout = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              orderId: response.id,
+              orderId: orderId,
               customer: {
                 name: `${formData.firstName} ${formData.lastName}`,
                 email: formData.email,
@@ -202,7 +206,8 @@ const Checkout = () => {
         }, 1500);
 
       } else {
-        throw new Error("Invalid order response");
+        const errMsg = response.message || response.code || JSON.stringify(response).substring(0, 200);
+        throw new Error(`Narudžba nije kreirana: ${errMsg}`);
       }
 
     } catch (error) {
