@@ -845,7 +845,9 @@ const ProductModel = ({
     const isManualDesignALogo = manualFront && colorToLogoMap && Object.values(colorToLogoMap).includes(manualFront);
 
     const frontUrl = shouldHideDesigns ? null :
-        ((manualFront && !isManualDesignALogo) ? manualFront : (strictColorSyncFront || manualFront || colorMatchedFrontDesign || frontCycleUrl));
+        isHoodieOrTshirt 
+            ? (strictColorSyncFront || colorMatchedFrontDesign || frontCycleUrl)
+            : ((manualFront && !isManualDesignALogo) ? manualFront : (strictColorSyncFront || manualFront || colorMatchedFrontDesign || frontCycleUrl));
 
     // Resolve Back URL: Custom Back OR Cycle
     // Update: If customizing but NOT active (background), show NO design.
