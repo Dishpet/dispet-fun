@@ -333,14 +333,23 @@ const tmpColorB = new THREE.Color();
 /*  One act (product) on the stage                                     */
 /* ------------------------------------------------------------------ */
 
-const ActModel = ({ act, index, progress, reduce }: {
+const ActModel = ({ act, index, progress, reduce, onLoaded }: {
     act: ActSpec;
     index: number;
     progress: MotionValue<number>;
     reduce: boolean;
+    onLoaded?: () => void;
 }) => {
     const { scene } = useGLTF(act.url);
     const groupRef = useRef<THREE.Group>(null);
+
+    useEffect(() => {
+        if (scene && onLoaded) {
+            // Slight delay to let React commit before unblocking the next model
+            const t = setTimeout(onLoaded, 100);
+            return () => clearTimeout(t);
+        }
+    }, [scene, onLoaded]);
 
     const designTexRaw = useTexture(act.designs);
     const logoUrls = useMemo(
@@ -596,11 +605,27 @@ const ActModel = ({ act, index, progress, reduce }: {
 const Stage = ({ progress, reduce }: { progress: MotionValue<number>; reduce: boolean }) => {
     const { viewport } = useThree();
     const s = Math.min(1, (viewport.width * 0.82) / 4.4);
+    const [loadedModels, setLoadedModels] = useState<Set<string>>(new Set());
+
+    const handleModelLoaded = useCallback((id: string) => {
+        setLoadedModels((prev) => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
+    }, []);
+
     return (
         <group scale={s} position={[0, -0.1, 0]}>
-            {ACTS.map((act, i) => (
-                <ActModel key={act.id} act={act} index={i} progress={progress} reduce={reduce} />
-            ))}
+            {ACTS.map((act, i) => {
+                const shouldRender = i === 0 || loadedModels.has(ACTS[i - 1].id);
+                if (!shouldRender) return null;
+                return (
+                    <Suspense key={act.id} fallback={null}>
+                        <ActModel act={act} index={i} progress={progress} reduce={reduce} onLoaded={() => handleModelLoaded(act.id)} />
+                    </Suspense>
+                );
+            })}
         </group>
     );
 };
