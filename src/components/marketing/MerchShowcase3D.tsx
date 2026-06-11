@@ -12,6 +12,23 @@ import {
     useReducedMotion,
     type MotionValue,
 } from "framer-motion";
+import React, { Component, ErrorInfo, ReactNode } from "react";
+
+class CanvasErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean}> {
+    state = { hasError: false };
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(err: Error, info: ErrorInfo) { console.error("3D Canvas crashed:", err, info); }
+    render() {
+        if (this.state.hasError) return (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+                <div className="mk-display text-sm uppercase tracking-[0.1em] text-white/50">
+                    3D prikaz nije podržan na ovom uređaju.
+                </div>
+            </div>
+        );
+        return this.props.children;
+    }
+}
 
 const trackEvent = (name: string, params?: Record<string, unknown>) => {
     const w = window as unknown as { gtag?: (...args: unknown[]) => void };
@@ -702,21 +719,23 @@ export const MerchShowcase3D = () => {
                             </div>
                         </div>
                     )}
-                    <Canvas
-                        camera={{ position: [0, 0.1, 8.5], fov: 35 }}
-                        dpr={[1, 1.75]}
-                        gl={{ antialias: true, alpha: true }}
-                        style={{ background: "transparent", pointerEvents: "none" }}
-                    >
-                        <ambientLight intensity={0.55} />
-                        <directionalLight position={[4, 6, 6]} intensity={1.1} />
-                        <pointLight position={[-6, 2, -4]} intensity={0.4} color="#f74180" />
-                        <pointLight position={[6, -2, -4]} intensity={0.4} color="#00c4c4" />
-                        <Suspense fallback={null}>
-                            <Stage progress={scrollYProgress} reduce={reduce} />
-                            <Environment preset="city" />
-                        </Suspense>
-                    </Canvas>
+                    <CanvasErrorBoundary>
+                        <Canvas
+                            camera={{ position: [0, 0.1, 8.5], fov: 35 }}
+                            dpr={[1, 1.75]}
+                            gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+                            style={{ background: "transparent", pointerEvents: "none" }}
+                        >
+                            <ambientLight intensity={0.55} />
+                            <directionalLight position={[4, 6, 6]} intensity={1.1} />
+                            <pointLight position={[-6, 2, -4]} intensity={0.4} color="#f74180" />
+                            <pointLight position={[6, -2, -4]} intensity={0.4} color="#00c4c4" />
+                            <Suspense fallback={null}>
+                                <Stage progress={scrollYProgress} reduce={reduce} />
+                                <Environment preset="city" />
+                            </Suspense>
+                        </Canvas>
+                    </CanvasErrorBoundary>
 
                     {/* Made with Dišpet — one phrase at a time beside the model,
                         typed out character by character, scrubbed by scroll,
@@ -872,7 +891,5 @@ export const MerchShowcase3D = () => {
         </div>
     );
 };
-
-ACTS.forEach((a) => useGLTF.preload(a.url));
 
 export default MerchShowcase3D;

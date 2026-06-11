@@ -416,7 +416,7 @@ const Driven = ({
                 rotate: 0,
                 scale: 1,
             }}
-            viewport={{ once: true, margin: "-8% 0px -8% 0px" }}
+            viewport={{ once: true, margin: "-50px 0px -50px 0px" }}
             transition={{
                 duration: 0.8,
                 delay: delay,
@@ -464,7 +464,7 @@ const Parallax = ({
 const ScrollCount = ({ value, className }: { value: string; className?: string }) => {
     const ref = useRef<HTMLSpanElement>(null);
     const reduce = useReducedMotion();
-    const isInView = useInView(ref, { once: true, margin: "-8% 0px" });
+    const isInView = useInView(ref, { once: true, margin: "-50px 0px" });
     const match = value.match(/^([\d.,]+)(.*)$/);
     const rawNum = match ? match[1] : "";
     const suffix = match ? match[2] : value;
@@ -503,7 +503,7 @@ const DrivenRule = ({ className = "" }: { className?: string }) => {
                 className="mk-rainbow h-full w-full origin-left"
                 initial={reduce ? undefined : { scaleX: 0 }}
                 whileInView={reduce ? undefined : { scaleX: 1 }}
-                viewport={{ once: true, margin: "-8% 0px" }}
+                viewport={{ once: true, margin: "-50px 0px" }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
             />
         </div>
