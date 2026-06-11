@@ -7,7 +7,6 @@ import {
     useScroll,
     useTransform,
     useSpring,
-    useReducedMotion,
     useMotionValueEvent,
     useInView,
     animate,
@@ -389,15 +388,6 @@ const Driven = ({
     delay = 0,
     style,
 }: DrivenProps) => {
-    const reduce = useReducedMotion();
-
-    if (reduce) {
-        return (
-            <div className={className} style={style}>
-                {children}
-            </div>
-        );
-    }
     return (
         <motion.div
             className={className}
@@ -441,16 +431,8 @@ const Parallax = ({
     style?: CSSProperties;
 }) => {
     const ref = useRef<HTMLDivElement>(null);
-    const reduce = useReducedMotion();
     const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
     const y = useTransform(scrollYProgress, [0, 1], [dist, -dist]);
-    if (reduce) {
-        return (
-            <div ref={ref} className={className} style={style}>
-                {children}
-            </div>
-        );
-    }
     return (
         <motion.div ref={ref} className={className} style={{ ...style, y }}>
             {children}
@@ -463,7 +445,6 @@ const Parallax = ({
  *  always carry the real number. */
 const ScrollCount = ({ value, className }: { value: string; className?: string }) => {
     const ref = useRef<HTMLSpanElement>(null);
-    const reduce = useReducedMotion();
     const isInView = useInView(ref, { once: true, margin: "-50px 0px" });
     const match = value.match(/^([\d.,]+)(.*)$/);
     const rawNum = match ? match[1] : "";
@@ -471,10 +452,10 @@ const ScrollCount = ({ value, className }: { value: string; className?: string }
     const target = match ? parseFloat(rawNum.replace(/\./g, "").replace(",", ".")) : 0;
     const useThousands = rawNum.includes(".");
 
-    const [text, setText] = useState(reduce || !match ? value : "0" + suffix);
+    const [text, setText] = useState(!match ? value : "0" + suffix);
 
     useEffect(() => {
-        if (reduce || !match || !isInView) return;
+        if (!match || !isInView) return;
 
         const controls = animate(0, target, {
             duration: 1.4,
@@ -485,7 +466,7 @@ const ScrollCount = ({ value, className }: { value: string; className?: string }
             }
         });
         return () => controls.stop();
-    }, [isInView, target, reduce, match, useThousands, suffix]);
+    }, [isInView, target, match, useThousands, suffix]);
 
     return (
         <span ref={ref} className={className}>
@@ -496,13 +477,12 @@ const ScrollCount = ({ value, className }: { value: string; className?: string }
 
 /** Underline that draws itself in when it enters the viewport. */
 const DrivenRule = ({ className = "" }: { className?: string }) => {
-    const reduce = useReducedMotion();
     return (
         <div className={`h-1 w-full overflow-hidden ${className}`}>
             <motion.div
                 className="mk-rainbow h-full w-full origin-left"
-                initial={reduce ? undefined : { scaleX: 0 }}
-                whileInView={reduce ? undefined : { scaleX: 1 }}
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
                 viewport={{ once: true, margin: "-50px 0px" }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
             />
@@ -590,13 +570,12 @@ const NAV_LINKS = [
 
 const Nav = ({ pageProgress }: { pageProgress: MotionValue<number> }) => {
     const [open, setOpen] = useState(false);
-    const reduce = useReducedMotion();
     const scaleX = useSpring(pageProgress, { stiffness: 220, damping: 40, restDelta: 0.001 });
     return (
         <header className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-lg" style={{ backgroundColor: "rgba(7,17,35,0.85)" }}>
             {/* Scroll progress bar — the rainbow fills as you read */}
             <div className="h-1 w-full bg-white/5">
-                <motion.div className="mk-rainbow h-full w-full origin-left" style={reduce ? undefined : { scaleX }} />
+                <motion.div className="mk-rainbow h-full w-full origin-left" style={{ scaleX }} />
             </div>
             <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
                 <a href="#top" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>

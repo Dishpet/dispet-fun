@@ -333,11 +333,10 @@ const tmpColorB = new THREE.Color();
 /*  One act (product) on the stage                                     */
 /* ------------------------------------------------------------------ */
 
-const ActModel = ({ act, index, progress, reduce, onLoaded }: {
+const ActModel = ({ act, index, progress, onLoaded }: {
     act: ActSpec;
     index: number;
     progress: MotionValue<number>;
-    reduce: boolean;
     onLoaded?: () => void;
 }) => {
     const { scene } = useGLTF(act.url);
@@ -503,7 +502,7 @@ const ActModel = ({ act, index, progress, reduce, onLoaded }: {
         if (!g) return;
         const segStart = BOUNDS[index];
         const segLen = BOUNDS[index + 1] - segStart;
-        const p = reduce ? segStart + segLen * 0.4 : progress.get();
+        const p = progress.get();
 
         // Local act time: 0 → spinning in, 1 → gone
         const t = (p - segStart) / segLen;
@@ -602,7 +601,7 @@ const ActModel = ({ act, index, progress, reduce, onLoaded }: {
 /*  Stage — fits the single product into any viewport                  */
 /* ------------------------------------------------------------------ */
 
-const Stage = ({ progress, reduce }: { progress: MotionValue<number>; reduce: boolean }) => {
+const Stage = ({ progress }: { progress: MotionValue<number> }) => {
     const { viewport } = useThree();
     const s = Math.min(1, (viewport.width * 0.82) / 4.4);
     const [loadedModels, setLoadedModels] = useState<Set<string>>(new Set());
@@ -622,7 +621,7 @@ const Stage = ({ progress, reduce }: { progress: MotionValue<number>; reduce: bo
                 if (!shouldRender) return null;
                 return (
                     <Suspense key={act.id} fallback={null}>
-                        <ActModel act={act} index={i} progress={progress} reduce={reduce} onLoaded={() => handleModelLoaded(act.id)} />
+                        <ActModel act={act} index={i} progress={progress} onLoaded={() => handleModelLoaded(act.id)} />
                     </Suspense>
                 );
             })}
@@ -637,7 +636,6 @@ const Stage = ({ progress, reduce }: { progress: MotionValue<number>; reduce: bo
 
 export const MerchShowcase3D = () => {
     const trackRef = useRef<HTMLDivElement>(null);
-    const reduce = !!useReducedMotion();
     // "start 0.55": progress starts while the stage is still ~half a viewport
     // below — the first product is already spinning in as the stage arrives.
     const { scrollYProgress } = useScroll({ target: trackRef, offset: ["start 0.55", "end end"] });
@@ -756,7 +754,7 @@ export const MerchShowcase3D = () => {
                             <pointLight position={[-6, 2, -4]} intensity={0.4} color="#f74180" />
                             <pointLight position={[6, -2, -4]} intensity={0.4} color="#00c4c4" />
                             <Suspense fallback={null}>
-                                <Stage progress={scrollYProgress} reduce={reduce} />
+                                <Stage progress={scrollYProgress} />
                                 <Environment preset="city" />
                             </Suspense>
                         </Canvas>
@@ -767,17 +765,10 @@ export const MerchShowcase3D = () => {
                         lasting the entire 3D show. */}
                     <motion.div
                         className="absolute left-5 top-[14%] z-10 max-w-[260px] drop-shadow-[0_6px_18px_rgba(0,0,0,0.85)] md:left-[6%] md:top-[34%] md:max-w-[360px]"
-                        style={reduce ? undefined : { y: madeInY, x: madeInX }}
+                        style={{ y: madeInY, x: madeInX }}
                         aria-label="100% hrvatski proizvod — dizajnirano, tiskano i pakirano u Dalmaciji. Made with Dišpet in Dalmatia."
                     >
-                        {reduce ? (
-                            <>
-                                <p className={PHRASES[0].cls}>{PHRASES[0].text}</p>
-                                <p className={`mt-2 ${PHRASES[1].cls}`}>{PHRASES[1].text}</p>
-                                <p className={`mt-3 ${PHRASES[2].cls}`}>{PHRASES[2].text}</p>
-                            </>
-                        ) : (
-                            <div className="relative min-h-[8rem]">
+                        <div className="relative min-h-[8rem]">
                                 {PHRASES.map((ph, i) => {
                                     let charIdx = 0;
                                     const words = ph.text.split(" ");
@@ -809,7 +800,6 @@ export const MerchShowcase3D = () => {
                                     );
                                 })}
                             </div>
-                        )}
                     </motion.div>
 
                     {/* Act labels — crossfade with each product, scrubbed.
@@ -820,7 +810,7 @@ export const MerchShowcase3D = () => {
                                 <motion.div
                                     key={a.id}
                                     className="absolute inset-x-0 text-center"
-                                    style={reduce ? (i === 0 ? undefined : { opacity: 0 }) : { opacity: labelOpacities[i], y: labelYs[i] }}
+                                    style={{ opacity: labelOpacities[i], y: labelYs[i] }}
                                 >
                                     <a
                                         href={shopUrl(a.id)}
@@ -845,7 +835,7 @@ export const MerchShowcase3D = () => {
                 {/* progress rail + act dots */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 mx-auto w-full max-w-md px-5 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] md:bottom-[260px]">
                     <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                        <motion.div className="mk-rainbow h-full w-full origin-left" style={reduce ? undefined : { scaleX: railScale }} />
+                        <motion.div className="mk-rainbow h-full w-full origin-left" style={{ scaleX: railScale }} />
                     </div>
                     <div className="mt-3 flex items-center justify-center gap-2" aria-hidden>
                         {ACTS.map((a, i) => (
