@@ -105,195 +105,68 @@ const GalleryLightbox = ({
     );
 };
 
-const GALLERY_WIDTHS_A = ["w-[200px] md:w-[340px]", "w-[170px] md:w-[280px]", "w-[230px] md:w-[420px]", "w-[190px] md:w-[320px]"];
-const GALLERY_WIDTHS_B = ["w-[240px] md:w-[380px]", "w-[160px] md:w-[260px]", "w-[210px] md:w-[360px]", "w-[180px] md:w-[300px]"];
-const GALLERY_WIDTHS_C = ["w-[190px] md:w-[300px]", "w-[250px] md:w-[440px]", "w-[170px] md:w-[290px]", "w-[220px] md:w-[370px]"];
+const GALLERY_WIDTHS = [
+    "w-[220px] md:w-[400px]",
+    "w-[180px] md:w-[310px]",
+    "w-[250px] md:w-[500px]",
+    "w-[200px] md:w-[360px]",
+];
 
-/** VARIATION A — Tilted filmstrip (single row, slight rotation, scroll-driven) */
-const GalleryFilmstrip = ({
+/** One marquee row, exactly like the merch section's GalleryRow but flat (without 3D) */
+const SectionGalleryRow = ({
     photos,
     progress,
-    tilt,
-    accentColor,
+    direction = "left",
+    offset = 0,
+    accentColor = "var(--mk-pink)",
+    shadowColor = "rgba(247,65,128,0.5)",
     onPhotoClick,
 }: {
     photos: string[];
     progress: MotionValue<number>;
-    tilt?: number;
+    direction?: "left" | "right";
+    offset?: number;
     accentColor?: string;
+    shadowColor?: string;
     onPhotoClick: (idx: number) => void;
 }) => {
     const reduce = useReducedMotion();
     const doubled = [...photos, ...photos];
-    const x = useTransform(progress, [0, 1], ["-2%", "-28%"]);
-    const borderColor = accentColor || "var(--mk-pink)";
+    // Gentle travel across the whole page scroll - matching merch slow drift
+    const x = useTransform(
+        progress,
+        [0, 1],
+        direction === "left" ? [`${-4 - offset}%`, `${-20 - offset}%`] : [`${-20 - offset}%`, `${-4 - offset}%`],
+    );
     return (
-        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ transform: `rotateZ(${tilt ?? -3}deg)` }}>
+        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6">
             <div className="flex overflow-hidden">
-                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x }}>
+                <motion.div className="flex flex-nowrap gap-3 md:gap-5" style={reduce ? undefined : { x }}>
                     {doubled.map((src, i) => (
                         <button
                             key={`${src}-${i}`}
                             type="button"
                             onClick={() => onPhotoClick(photos.indexOf(src))}
-                            className={`group relative h-[130px] ${GALLERY_WIDTHS_A[i % GALLERY_WIDTHS_A.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.06] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none focus-visible:ring-2 md:h-[200px] md:rounded-2xl`}
-                            style={{ ['--hover-border' as string]: borderColor }}
+                            className={`group relative h-[140px] ${GALLERY_WIDTHS[i % GALLERY_WIDTHS.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-4 border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.04] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none focus-visible:ring-2 md:h-[230px]`}
+                            style={{
+                                ['--hover-border' as string]: accentColor,
+                                ['--hover-shadow' as string]: `0 25px 60px -20px ${shadowColor}`,
+                            } as CSSProperties}
                         >
-                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.12]" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent transition group-hover:from-black/15" />
-                            <span className="mk-display absolute bottom-2 right-2.5 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
-                                {(photos.indexOf(src) + 1).toString().padStart(2, "0")}
+                            <img
+                                src={src}
+                                alt="Dišpet"
+                                loading="lazy"
+                                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition-colors group-hover:from-black/10" />
+                            <span className="mk-display absolute bottom-2.5 right-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] text-white/85 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100" aria-hidden>
+                                {(photos.indexOf(src) + 1).toString().padStart(2, "0")} / {photos.length}
                             </span>
                         </button>
                     ))}
                 </motion.div>
             </div>
-        </div>
-    );
-};
-
-/** VARIATION B — Dual counter-scrolling rows (straight, no tilt) */
-const GalleryDualScroll = ({
-    photos,
-    progress,
-    accentColor,
-    onPhotoClick,
-}: {
-    photos: string[];
-    progress: MotionValue<number>;
-    accentColor?: string;
-    onPhotoClick: (idx: number) => void;
-}) => {
-    const reduce = useReducedMotion();
-    const half = Math.ceil(photos.length / 2);
-    const rowA = photos.slice(0, half);
-    const rowB = photos.slice(half);
-    const doubledA = [...rowA, ...rowA, ...rowA];
-    const doubledB = [...rowB, ...rowB, ...rowB];
-    const xA = useTransform(progress, [0, 1], ["0%", "-35%"]);
-    const xB = useTransform(progress, [0, 1], ["-25%", "0%"]);
-    const borderColor = accentColor || "var(--mk-teal)";
-    return (
-        <div className="relative -mx-5 space-y-3 overflow-hidden py-4 sm:py-6 md:space-y-4">
-            <div className="flex overflow-hidden">
-                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x: xA }}>
-                    {doubledA.map((src, i) => (
-                        <button
-                            key={`a-${src}-${i}`}
-                            type="button"
-                            onClick={() => onPhotoClick(photos.indexOf(src))}
-                            className={`group relative h-[120px] ${GALLERY_WIDTHS_B[i % GALLERY_WIDTHS_B.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[180px]`}
-                            style={{ ['--hover-border' as string]: borderColor }}
-                        >
-                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30 transition group-hover:to-black/10" />
-                        </button>
-                    ))}
-                </motion.div>
-            </div>
-            <div className="flex overflow-hidden">
-                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x: xB }}>
-                    {doubledB.map((src, i) => (
-                        <button
-                            key={`b-${src}-${i}`}
-                            type="button"
-                            onClick={() => onPhotoClick(photos.indexOf(src))}
-                            className={`group relative h-[120px] ${GALLERY_WIDTHS_B[(i + 2) % GALLERY_WIDTHS_B.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[180px]`}
-                            style={{ ['--hover-border' as string]: borderColor }}
-                        >
-                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition group-hover:from-black/10" />
-                        </button>
-                    ))}
-                </motion.div>
-            </div>
-        </div>
-    );
-};
-
-/** VARIATION C — Cascading cards with stagger (wider, rounded, numbered) */
-const GalleryCascade = ({
-    photos,
-    progress,
-    accentColor,
-    onPhotoClick,
-}: {
-    photos: string[];
-    progress: MotionValue<number>;
-    accentColor?: string;
-    onPhotoClick: (idx: number) => void;
-}) => {
-    const reduce = useReducedMotion();
-    const tripled = [...photos, ...photos, ...photos];
-    const x = useTransform(progress, [0, 1], ["2%", "-38%"]);
-    const borderColor = accentColor || "var(--mk-yellow)";
-    return (
-        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ transform: "rotateZ(2deg)" }}>
-            <div className="flex overflow-hidden">
-                <motion.div className="flex flex-nowrap items-end gap-4 md:gap-5" style={reduce ? undefined : { x }}>
-                    {tripled.map((src, i) => {
-                        const isOdd = i % 2 === 1;
-                        return (
-                            <button
-                                key={`${src}-${i}`}
-                                type="button"
-                                onClick={() => onPhotoClick(photos.indexOf(src))}
-                                className={`group relative ${GALLERY_WIDTHS_C[i % GALLERY_WIDTHS_C.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)] focus-visible:outline-none md:rounded-3xl`}
-                                style={{
-                                    height: isOdd ? "clamp(100px, 16vw, 170px)" : "clamp(140px, 22vw, 230px)",
-                                    marginBottom: isOdd ? "1rem" : "0",
-                                    ['--hover-border' as string]: borderColor,
-                                }}
-                            >
-                                <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent transition group-hover:from-black/15" />
-                                <span className="mk-display absolute bottom-2 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
-                                    {(photos.indexOf(src) + 1).toString().padStart(2, "0")} / {photos.length}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </motion.div>
-            </div>
-        </div>
-    );
-};
-
-/** VARIATION D — Perspective depth row (3D-perspective vanishing point feel) */
-const GalleryPerspective = ({
-    photos,
-    progress,
-    accentColor,
-    onPhotoClick,
-}: {
-    photos: string[];
-    progress: MotionValue<number>;
-    accentColor?: string;
-    onPhotoClick: (idx: number) => void;
-}) => {
-    const reduce = useReducedMotion();
-    const tripled = [...photos, ...photos, ...photos];
-    const x = useTransform(progress, [0, 1], ["5%", "-30%"]);
-    const borderColor = accentColor || "var(--mk-green)";
-    return (
-        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ perspective: "800px" }}>
-            <motion.div className="flex flex-nowrap gap-4 md:gap-5" style={reduce ? undefined : { x, rotateY: -4, transformStyle: "preserve-3d" }}>
-                {tripled.map((src, i) => (
-                    <button
-                        key={`${src}-${i}`}
-                        type="button"
-                        onClick={() => onPhotoClick(photos.indexOf(src))}
-                        className={`group relative h-[150px] ${GALLERY_WIDTHS_A[(i + 1) % GALLERY_WIDTHS_A.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.07] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[220px] md:rounded-2xl`}
-                        style={{ ['--hover-border' as string]: borderColor }}
-                    >
-                        <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.12]" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20 transition group-hover:from-black/10 group-hover:to-black/5" />
-                        <span className="mk-display absolute top-2.5 left-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
-                            {(photos.indexOf(src) + 1).toString().padStart(2, "0")}
-                        </span>
-                    </button>
-                ))}
-            </motion.div>
         </div>
     );
 };
@@ -1107,10 +980,13 @@ const MarketingPonuda = () => {
                             </div>
                         </div>
                         <div className="md:col-span-7">
-                            <GalleryCascade
+                            <SectionGalleryRow
                                 photos={SECTION_PHOTOS.onama}
                                 progress={pageProgress}
+                                direction="left"
+                                offset={0}
                                 accentColor="var(--mk-yellow)"
+                                shadowColor="rgba(249,198,53,0.5)"
                                 onPhotoClick={(idx) => {
                                     setActiveSection("onama");
                                     setSelectedPhotoIdx(idx);
@@ -1139,10 +1015,13 @@ const MarketingPonuda = () => {
                             </Driven>
                         </div>
                         <div className="mt-10">
-                            <GalleryDualScroll
+                            <SectionGalleryRow
                                 photos={SECTION_PHOTOS.teren}
                                 progress={pageProgress}
+                                direction="right"
+                                offset={4}
                                 accentColor="var(--mk-pink)"
+                                shadowColor="rgba(247,65,128,0.5)"
                                 onPhotoClick={(idx) => {
                                     setActiveSection("teren");
                                     setSelectedPhotoIdx(idx);
@@ -1247,10 +1126,13 @@ const MarketingPonuda = () => {
                 <section className="mx-auto max-w-7xl px-5 pb-14 sm:pb-20 md:pb-28">
                     <div className="grid gap-12 md:grid-cols-12">
                         <div className="md:col-span-6">
-                            <GalleryPerspective
+                            <SectionGalleryRow
                                 photos={SECTION_PHOTOS.sponsor}
                                 progress={pageProgress}
+                                direction="left"
+                                offset={2}
                                 accentColor="var(--mk-teal)"
+                                shadowColor="rgba(0,196,196,0.5)"
                                 onPhotoClick={(idx) => {
                                     setActiveSection("sponsor");
                                     setSelectedPhotoIdx(idx);
@@ -1446,11 +1328,13 @@ const MarketingPonuda = () => {
                                     ))}
                                 </div>
                                 <div className="mt-4">
-                                    <GalleryFilmstrip
+                                    <SectionGalleryRow
                                         photos={SECTION_PHOTOS.partneri}
                                         progress={pageProgress}
-                                        tilt={-1.5}
+                                        direction="right"
+                                        offset={6}
                                         accentColor="var(--mk-green)"
+                                        shadowColor="rgba(76,193,87,0.5)"
                                         onPhotoClick={(idx) => {
                                             setActiveSection("partneri");
                                             setSelectedPhotoIdx(idx);

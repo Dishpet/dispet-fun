@@ -1,4 +1,4 @@
-﻿import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, useTexture, Environment, useProgress } from "@react-three/drei";
@@ -374,6 +374,85 @@ const ActModel = ({ act, index, progress, reduce }: {
                 } else {
                     if (!(mat.name || "").toLowerCase().includes("blackring")) {
                         bodyMats.push(mat);
+                        mat.transparent = false;
+                        mat.depthWrite = true;
+                        if (mat.map || mat.alphaMap) {
+                            mat.alphaTest = 0.5;
+                        } else {
+                            mat.alphaTest = 0;
+                        }
+                        if (act.colors) {
+                            mat.userData.uniforms = {
+                                uRevealProgress: { value: 1.0 },
+                                uOldColor: { value: new THREE.Color(act.colors[0]) },
+                                uNewColor: { value: new THREE.Color(act.colors[0]) },
+                                uTime: { value: 0 },
+                                uModelHeight: { value: 2.0 },
+                                uModelMinY: { value: -1.0 },
+                            };
+                            mat.onBeforeCompile = (shader) => {
+                                shader.uniforms.uRevealProgress = mat.userData.uniforms.uRevealProgress;
+                                shader.uniforms.uOldColor = mat.userData.uniforms.uOldColor;
+                                shader.uniforms.uNewColor = mat.userData.uniforms.uNewColor;
+                                shader.uniforms.uTime = mat.userData.uniforms.uTime;
+                                shader.uniforms.uModelHeight = mat.userData.uniforms.uModelHeight;
+                                shader.uniforms.uModelMinY = mat.userData.uniforms.uModelMinY;
+
+                                shader.vertexShader = shader.vertexShader.replace(
+                                    "#include <common>",
+                                    `#include <common>
+                                    varying vec3 vWorldPos;`
+                                ).replace(
+                                    "#include <begin_vertex>",
+                                    `#include <begin_vertex>
+                                    vec4 worldP = modelMatrix * vec4(position, 1.0);
+                                    vWorldPos = worldP.xyz;`
+                                );
+
+                                shader.fragmentShader = shader.fragmentShader.replace(
+                                    "#include <common>",
+                                    `#include <common>
+                                    uniform float uRevealProgress;
+                                    uniform vec3 uOldColor;
+                                    uniform vec3 uNewColor;
+                                    uniform float uTime;
+                                    uniform float uModelHeight;
+                                    uniform float uModelMinY;
+                                    varying vec3 vWorldPos;
+
+                                    vec3 hsl2rgb_holo(float h, float s, float l) {
+                                        vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+                                        return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+                                    }`
+                                ).replace(
+                                    "#include <color_fragment>",
+                                    `#include <color_fragment>
+                                    float normalizedY = (vWorldPos.y - uModelMinY) / uModelHeight;
+                                    normalizedY = clamp(normalizedY, 0.0, 1.0);
+
+                                    normalizedY = 1.0 - normalizedY;
+
+                                    float edgeWidth = 0.12;
+                                    float cutoff = uRevealProgress;
+                                    float blend = smoothstep(cutoff - edgeWidth, cutoff + edgeWidth * 0.2, normalizedY);
+
+                                    vec3 transitionColor = mix(uNewColor, uOldColor, blend);
+                                    diffuseColor.rgb = transitionColor;
+
+                                    float edgeDist = abs(normalizedY - cutoff);
+                                    if (edgeDist < edgeWidth && uRevealProgress > 0.01 && uRevealProgress < 0.99) {
+                                        float edgeIntensity = 1.0 - (edgeDist / edgeWidth);
+                                        edgeIntensity = pow(edgeIntensity, 1.5);
+                                        float hue = fract(normalizedY * 2.0 + uTime * 0.5);
+                                        vec3 rainbow = hsl2rgb_holo(hue, 1.0, 0.6);
+                                        float scanline = sin(normalizedY * 80.0 + uTime * 10.0) * 0.5 + 0.5;
+                                        scanline = pow(scanline, 4.0);
+                                        diffuseColor.rgb += rainbow * edgeIntensity * 0.5;
+                                        diffuseColor.rgb += vec3(1.0) * scanline * edgeIntensity * 0.2;
+                                    }`
+                                );
+                            };
+                        }
                     }
                     mat.roughness = Math.max(0.7, mat.roughness);
                 }
@@ -461,11 +540,24 @@ const ActModel = ({ act, index, progress, reduce }: {
 
         /* --- Body color follows the active design ------------------ */
         if (act.colors) {
-            const blend = bell(tc, act.switchAt, 0.05);
-            tmpColorA.set(act.colors[0]);
-            tmpColorB.set(act.colors[1]);
-            const mixed = designIdx === 0 ? tmpColorA.lerp(tmpColorB, blend) : tmpColorB.lerp(tmpColorA, blend);
-            bodyMats.forEach((m) => m.color.copy(mixed));
+            g.updateMatrixWorld(true);
+            const bbox = new THREE.Box3().setFromObject(g);
+            const worldH = bbox.max.y - bbox.min.y;
+            const worldMin = bbox.min.y;
+
+            const w = 0.06;
+            const revealProgress = clamp01((tc - (act.switchAt - w)) / (2 * w));
+
+            bodyMats.forEach((m) => {
+                if (m.userData?.uniforms) {
+                    m.userData.uniforms.uModelHeight.value = worldH;
+                    m.userData.uniforms.uModelMinY.value = worldMin;
+                    m.userData.uniforms.uRevealProgress.value = revealProgress;
+                    m.userData.uniforms.uTime.value = state.clock.elapsedTime;
+                    m.userData.uniforms.uOldColor.value.set(act.colors[0]);
+                    m.userData.uniforms.uNewColor.value.set(act.colors[1]);
+                }
+            });
         } else if (act.staticColor) {
             bodyMats.forEach((m) => m.color.set(act.staticColor!));
         }
