@@ -44,9 +44,30 @@
 .bg-mk-green { background-color: var(--mk-green); }
 .bg-mk-navy { background-color: var(--mk-navy); }
 .bg-mk-navy-deep { background-color: var(--mk-navy-deep); }
-.bg-mk-card { background-color: var(--mk-card); }
+
+/* Cards get a barely-there vertical gradient + inner highlight for depth */
+.bg-mk-card {
+    background-color: var(--mk-card);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 38%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
 
 .text-on-bright { color: var(--mk-navy-deep); }
+
+/* Primary button glow — used on every pink CTA for a consistent finish */
+.mk-btn-glow {
+    box-shadow: 0 10px 30px -10px rgba(247, 65, 128, 0.55);
+}
+.mk-btn-glow:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 14px 36px -10px rgba(247, 65, 128, 0.65);
+}
+
+/* Decorative hairline that fades at both ends */
+.mk-hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+}
 
 /* Rainbow brand strip */
 .mk-rainbow {

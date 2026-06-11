@@ -17,39 +17,47 @@ import { MerchShowcase3D } from "@/components/marketing/MerchShowcase3D";
 import "./marketing-ponuda.css";
 
 /* ------------------------------------------------------------------ */
-/*  Assets (downloaded from the reference project into /public)        */
+/*  Assets (dynamically imported from the gallery folder)              */
 /* ------------------------------------------------------------------ */
 const A = (name: string) => `/marketing/${name}`;
 const IMG = {
     hero: A("hero.jpg"),
-    about: A("about.jpg"),
-    action1: A("action1.jpg"),
-    action2: A("action2.jpg"),
-    action3: A("action3.jpg"),
-    action4: A("action4.jpg"),
-    sponsor: A("sponsor.jpg"),
-    event1: A("event1.jpg"),
-    partners: A("partners.jpg"),
     logo: A("dispet-logo-official.png"),
     mascotWave: A("dispet-mascot-wave.gif"),
     mascotDance: A("dispet-mascot-dance.gif"),
 };
 
-const trackEvent = (name: string, params?: Record<string, unknown>) => {
-    const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-    w.gtag?.("event", name, params || {});
-};
+// Import all real gallery images and videos used on the home page
+const galleryImagesMap = import.meta.glob("@/assets/gallery/dispet galerija (*).webp", { eager: true, import: 'default' });
+const galleryVideosMap = import.meta.glob(["@/assets/gallery/*.webm", "@/assets/gallery/*.mp4"], { eager: true, import: 'default' });
 
-/* ------------------------------------------------------------------ */
-/*  Section gallery infrastructure (variations of the merch gallery)   */
-/* ------------------------------------------------------------------ */
+const allImages = Object.values(galleryImagesMap) as string[];
+const allVideos = Object.values(galleryVideosMap) as string[];
+
+/** Helper to render either video or image transparently */
+const MediaItem = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+    const isVideo = src.endsWith('.webm') || src.endsWith('.mp4');
+    if (isVideo) {
+        return (
+            <video
+                src={src}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className={className}
+            />
+        );
+    }
+    return <img src={src} alt={alt} loading="lazy" className={className} />;
+};
 
 /** All section photos for the lightbox — grouped by section */
 const SECTION_PHOTOS = {
-    onama: [IMG.about, IMG.action2, IMG.action3, IMG.action4, IMG.hero, IMG.event1],
-    teren: [IMG.action1, IMG.action2, IMG.action3, IMG.action4, IMG.about, IMG.event1, IMG.hero, IMG.sponsor],
-    sponsor: [IMG.sponsor, IMG.action1, IMG.event1, IMG.partners, IMG.about, IMG.action4],
-    partneri: [IMG.partners, IMG.event1, IMG.action1, IMG.action2, IMG.action3, IMG.sponsor, IMG.about, IMG.hero],
+    onama: [allVideos[0] || allImages[0], allImages[1], allImages[2], allImages[3], allImages[4], allImages[5]],
+    teren: [allImages[6], allVideos[1] || allImages[7], allImages[8], allImages[9], allImages[10], allImages[11]],
+    sponsor: [allVideos[2] || allImages[12], allImages[13], allImages[14]],
+    partneri: [allImages[15], allImages[16], allVideos[3] || allImages[17], allImages[18]],
 };
 const ALL_GALLERY_PHOTOS = [...new Set(Object.values(SECTION_PHOTOS).flat())];
 
@@ -96,7 +104,7 @@ const GalleryLightbox = ({
                 <ChevronRight className="h-6 w-6" />
             </button>
             <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex h-full w-full flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                <img src={photos[selected]} alt="Dišpet fotografija" className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl" />
+                <MediaItem src={photos[selected]} alt="Dišpet fotografija" className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl" />
                 <div className="mt-4 rounded-full bg-black/50 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-md">
                     {selected + 1} / {photos.length}
                 </div>
@@ -117,49 +125,45 @@ const AboutCollage = ({
     onPhotoClick: (idx: number) => void;
 }) => {
     return (
-        <div className="relative h-[300px] w-full sm:h-[420px] md:h-[520px]">
-            <Driven fromX={-30} fromY={0} delay={0} className="absolute left-0 top-0 w-[80%] sm:w-3/4">
-                <Parallax dist={15}>
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <Driven fromY={20} className="col-span-3">
+                <button
+                    type="button"
+                    onClick={() => onPhotoClick(0)}
+                    className="group relative w-full aspect-[16/9] sm:aspect-[2/1] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                    style={{
+                        ["--hover-border" as string]: accentColor,
+                        ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                    } as CSSProperties}
+                >
+                    <MediaItem
+                        src={photos[0]}
+                        alt="Dišpet o nama 1"
+                        className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                </button>
+            </Driven>
+            {[1, 2, 3].map((i) => (
+                <Driven key={i} fromY={20} delay={i * 0.1} className="col-span-1">
                     <button
                         type="button"
-                        onClick={() => onPhotoClick(0)}
-                        className="group relative w-full aspect-[4/5] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        onClick={() => onPhotoClick(i)}
+                        className="group relative w-full aspect-square sm:aspect-[4/3] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:scale-[1.05] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
                         style={{
                             ["--hover-border" as string]: accentColor,
                             ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
                         } as CSSProperties}
                     >
-                        <img
-                            src={photos[0]}
-                            alt="Dišpet o nama"
-                            loading="lazy"
+                        <MediaItem
+                            src={photos[i]}
+                            alt={`Dišpet o nama ${i + 1}`}
                             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
                     </button>
-                </Parallax>
-            </Driven>
-            <Driven fromX={30} fromY={40} delay={0.1} className="absolute right-0 bottom-0 sm:bottom-4 w-[55%] sm:w-[50%]">
-                <Parallax dist={-25}>
-                    <button
-                        type="button"
-                        onClick={() => onPhotoClick(1)}
-                        className="group relative w-full aspect-[4/5] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.03] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                        style={{
-                            ["--hover-border" as string]: accentColor,
-                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
-                        } as CSSProperties}
-                    >
-                        <img
-                            src={photos[1]}
-                            alt="Dišpet učenje"
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                    </button>
-                </Parallax>
-            </Driven>
+                </Driven>
+            ))}
         </div>
     );
 };
@@ -176,72 +180,27 @@ const TerenCollage = ({
     onPhotoClick: (idx: number) => void;
 }) => {
     return (
-        <div className="grid gap-4 sm:gap-6">
-            <Driven fromY={40} delay={0}>
-                <Parallax dist={10}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {[0, 1, 2, 3].map((i) => (
+                <Driven key={i} fromY={30} delay={i * 0.05}>
                     <button
                         type="button"
-                        onClick={() => onPhotoClick(0)}
-                        className="group relative w-full aspect-[16/9] sm:aspect-[2.4/1] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.01] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        onClick={() => onPhotoClick(i)}
+                        className="group relative w-full aspect-[3/4] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:scale-[1.03] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
                         style={{
                             ["--hover-border" as string]: accentColor,
                             ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
                         } as CSSProperties}
                     >
-                        <img
-                            src={photos[0]}
-                            alt="Dišpet teren 1"
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-103"
+                        <MediaItem
+                            src={photos[i]}
+                            alt={`Dišpet teren ${i + 1}`}
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
                     </button>
-                </Parallax>
-            </Driven>
-            <div className="grid grid-cols-2 gap-3 sm:gap-6">
-                <Driven fromX={-30} fromY={20} delay={0.05}>
-                    <Parallax dist={-15}>
-                        <button
-                            type="button"
-                            onClick={() => onPhotoClick(1)}
-                            className="group relative w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                            style={{
-                                ["--hover-border" as string]: accentColor,
-                                ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
-                            } as CSSProperties}
-                        >
-                            <img
-                                src={photos[1]}
-                                alt="Dišpet teren 2"
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                        </button>
-                    </Parallax>
                 </Driven>
-                <Driven fromX={30} fromY={20} delay={0.1}>
-                    <Parallax dist={20}>
-                        <button
-                            type="button"
-                            onClick={() => onPhotoClick(2)}
-                            className="group relative w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                            style={{
-                                ["--hover-border" as string]: accentColor,
-                                ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
-                            } as CSSProperties}
-                        >
-                            <img
-                                src={photos[2]}
-                                alt="Dišpet teren 3"
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                        </button>
-                    </Parallax>
-                </Driven>
-            </div>
+            ))}
         </div>
     );
 };
@@ -258,50 +217,24 @@ const SponsorCollage = ({
     onPhotoClick: (idx: number) => void;
 }) => {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
-            <Driven fromY={40} delay={0}>
-                <Parallax dist={20}>
-                    <button
-                        type="button"
-                        onClick={() => onPhotoClick(0)}
-                        className="group relative w-full aspect-[4/3] sm:aspect-[3/4] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                        style={{
-                            ["--hover-border" as string]: accentColor,
-                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
-                        } as CSSProperties}
-                    >
-                        <img
-                            src={photos[0]}
-                            alt="Dišpet sponzorstvo"
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                    </button>
-                </Parallax>
-            </Driven>
-            <Driven fromY={40} delay={0.1} className="sm:mt-12">
-                <Parallax dist={-20}>
-                    <button
-                        type="button"
-                        onClick={() => onPhotoClick(1)}
-                        className="group relative w-full aspect-[4/3] sm:aspect-[3/4] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                        style={{
-                            ["--hover-border" as string]: accentColor,
-                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
-                        } as CSSProperties}
-                    >
-                        <img
-                            src={photos[1]}
-                            alt="Dišpet sponzori"
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                    </button>
-                </Parallax>
-            </Driven>
-        </div>
+        <Driven fromY={20}>
+            <button
+                type="button"
+                onClick={() => onPhotoClick(0)}
+                className="group relative w-full aspect-[4/3] sm:aspect-[16/9] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                style={{
+                    ["--hover-border" as string]: accentColor,
+                    ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                } as CSSProperties}
+            >
+                <MediaItem
+                    src={photos[0]}
+                    alt="Dišpet sponzorstvo"
+                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+            </button>
+        </Driven>
     );
 };
 
@@ -317,49 +250,27 @@ const PartneriCollage = ({
     onPhotoClick: (idx: number) => void;
 }) => {
     return (
-        <div className="relative h-[280px] w-full sm:h-[380px] md:h-[480px]">
-            <Driven fromX={-30} fromRotate={-6} delay={0} className="absolute left-1 top-1 sm:left-4 sm:top-4 w-[62%] sm:w-[60%] origin-bottom-left">
-                <Parallax dist={10}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {[0, 1].map((i) => (
+                <Driven key={i} fromY={20} delay={i * 0.1}>
                     <button
                         type="button"
-                        onClick={() => onPhotoClick(0)}
-                        className="group relative w-full aspect-[4/5] -rotate-2 sm:-rotate-3 cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-20 hover:scale-[1.04] hover:rotate-0 hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        onClick={() => onPhotoClick(i)}
+                        className="group relative w-full aspect-[4/3] sm:aspect-[16/9] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
                         style={{
                             ["--hover-border" as string]: accentColor,
-                            ["--hover-shadow" as string]: `0 20px 45px -12px ${shadowColor}`,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
                         } as CSSProperties}
                     >
-                        <img
-                            src={photos[0]}
-                            alt="Dišpet partner"
-                            loading="lazy"
+                        <MediaItem
+                            src={photos[i]}
+                            alt={`Dišpet partner ${i + 1}`}
                             className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
                     </button>
-                </Parallax>
-            </Driven>
-            <Driven fromX={30} fromRotate={6} delay={0.1} className="absolute right-1 bottom-1 sm:right-4 sm:bottom-4 w-[62%] sm:w-[60%] origin-bottom-right">
-                <Parallax dist={-15}>
-                    <button
-                        type="button"
-                        onClick={() => onPhotoClick(1)}
-                        className="group relative w-full aspect-[4/5] rotate-2 sm:rotate-3 cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-20 hover:scale-[1.04] hover:rotate-0 hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
-                        style={{
-                            ["--hover-border" as string]: accentColor,
-                            ["--hover-shadow" as string]: `0 20px 45px -12px ${shadowColor}`,
-                        } as CSSProperties}
-                    >
-                        <img
-                            src={photos[1]}
-                            alt="Dišpet partnerstvo"
-                            loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
-                    </button>
-                </Parallax>
-            </Driven>
+                </Driven>
+            ))}
         </div>
     );
 };
@@ -587,24 +498,54 @@ const TAG_COLORS = {
 
 const SectionTag = ({ label, color = "teal" }: { label: string; color?: keyof typeof TAG_COLORS }) => (
     <span
-        className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] ${TAG_COLORS[color]}`}
+        className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.3em] shadow-[0_4px_14px_-4px_rgba(0,0,0,0.5)] ${TAG_COLORS[color]}`}
     >
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
         {label}
     </span>
 );
 
+/** Unified section header — one rhythm for the whole page. */
+const SectionHeader = ({
+    tag,
+    tagColor = "teal",
+    title,
+    lede,
+    rule = false,
+    className = "max-w-3xl",
+}: {
+    tag: string;
+    tagColor?: keyof typeof TAG_COLORS;
+    title: ReactNode;
+    lede?: ReactNode;
+    rule?: boolean;
+    className?: string;
+}) => (
+    <Driven fromY={36} className={className}>
+        <SectionTag label={tag} color={tagColor} />
+        <h2 className="mk-display mt-5 leading-[1.04] text-[clamp(1.9rem,5.5vw,3.25rem)] text-white">
+            {title}
+        </h2>
+        {rule && <DrivenRule className="mt-5 max-w-[120px] rounded-full" />}
+        {lede && <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/70 sm:text-lg">{lede}</p>}
+    </Driven>
+);
+
 /** Inline conversion row — reuses the sticky-bar strings. */
 const CtaRow = ({ location }: { location: string }) => (
-    <Driven fromY={28} className="mt-12 flex flex-col items-center gap-3 text-center">
-        <a
-            href="#kontakt"
-            onClick={() => trackEvent("cta_request_offer_click", { location })}
-            className="inline-flex min-h-11 items-center rounded-full bg-mk-pink px-8 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:opacity-90"
-        >
-            Zatraži ponudu
-        </a>
-        <p className="text-sm text-white/75">Kreiramo paket po mjeri — odgovor u 24h.</p>
+    <Driven fromY={28} className="mt-14 flex items-center gap-5 sm:gap-8">
+        <div className="mk-hairline flex-1" />
+        <div className="flex flex-col items-center gap-2.5 text-center">
+            <a
+                href="#kontakt"
+                onClick={() => trackEvent("cta_request_offer_click", { location })}
+                className="mk-btn-glow inline-flex min-h-11 items-center rounded-full bg-mk-pink px-8 py-3 text-sm font-bold uppercase tracking-wider text-white transition"
+            >
+                Zatraži ponudu
+            </a>
+            <p className="text-xs text-white/60 sm:text-sm">Kreiramo paket po mjeri — odgovor u 24h.</p>
+        </div>
+        <div className="mk-hairline flex-1" />
     </Driven>
 );
 
@@ -985,36 +926,38 @@ const Hero = () => {
                         </h1>
                     </motion.div>
                     <motion.div style={{ y: mv(introY), opacity: mv(titleOpacity) }}>
-                        <p className="mt-6 max-w-lg text-lg leading-snug text-white/85 sm:text-xl">
+                        <p className="mt-7 max-w-lg text-lg leading-relaxed text-white/80 sm:text-xl">
                             Besplatan dan sporta, edukacije i{" "}
-                            <mark className="bg-mk-yellow px-1.5 font-bold text-on-bright">zabave za djecu</mark>{" "}
+                            <mark className="rounded-[4px] bg-mk-yellow px-1.5 font-bold text-on-bright">zabave za djecu</mark>{" "}
                             — pokret koji pokreće generaciju.
                         </p>
-                        <div className="mt-8 flex flex-wrap gap-3">
+                        <div className="mt-9 flex flex-wrap gap-3">
                             <a
                                 href="#kontakt"
                                 onClick={() => trackEvent("cta_request_offer_click", { location: "hero" })}
-                                className="inline-flex min-h-11 items-center rounded-full bg-mk-pink px-6 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                                className="mk-btn-glow inline-flex min-h-11 items-center rounded-full bg-mk-pink px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition"
                             >
                                 Zatraži ponudu
                             </a>
                             <a
                                 href="#paketi"
                                 onClick={() => trackEvent("hero_cta_packages_click")}
-                                className="inline-flex min-h-11 items-center rounded-full border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+                                className="inline-flex min-h-11 items-center rounded-full border border-white/25 bg-white/[0.03] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:border-white/50 hover:bg-white/[0.07]"
                             >
                                 Pogledaj pakete
                             </a>
                         </div>
-                        <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-[0.2em] text-white/70">
-                            <span className="mk-teal">Partneri:</span>
-                            <span>HNK Hajduk</span>
-                            <span className="h-1 w-1 rounded-full bg-white/30" />
-                            <span>Rocket FA</span>
-                            <span className="h-1 w-1 rounded-full bg-white/30" />
-                            <span>Automall Split</span>
-                            <span className="h-1 w-1 rounded-full bg-white/30" />
-                            <span>Splitska Dica</span>
+                        <div className="mt-12 border-t border-white/10 pt-6">
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] font-bold uppercase tracking-[0.22em] text-white/65">
+                                <span className="mk-teal">Partneri</span>
+                                <span>HNK Hajduk</span>
+                                <span className="h-1 w-1 rounded-full bg-white/25" />
+                                <span>Rocket FA</span>
+                                <span className="h-1 w-1 rounded-full bg-white/25" />
+                                <span>Automall Split</span>
+                                <span className="h-1 w-1 rounded-full bg-white/25" />
+                                <span>Splitska Dica</span>
+                            </div>
                         </div>
                     </motion.div>
                 </div>
@@ -1037,12 +980,12 @@ const Hero = () => {
                         />
                         <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-3">
                             <div>
-                                <div className="mk-display text-3xl leading-none text-white">SPLIT</div>
-                                <div className="mt-1 text-xs font-bold uppercase tracking-[0.25em] text-white/80">
+                                <div className="mk-display text-3xl leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">SPLIT</div>
+                                <div className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-white/80">
                                     Baza pokreta · širimo se u 2026.
                                 </div>
                             </div>
-                            <div className="rounded-full bg-mk-teal px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-on-bright">
+                            <div className="rounded-full bg-mk-teal px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-on-bright shadow-[0_6px_18px_-6px_rgba(0,196,196,0.7)]">
                                 Cilj · 3 grada
                             </div>
                         </div>
@@ -1069,15 +1012,17 @@ const Marquee = ({ pageProgress }: { pageProgress: MotionValue<number> }) => {
     const items = ["HNK Hajduk", "Rocket Football Academy", "Automall Split", "Splitska Dica", "dispet.fun", "10.000+ djece"];
     const row = [...items, ...items, ...items];
     return (
-        <div className="relative overflow-hidden border-y border-white/10 bg-mk-navy py-4" aria-hidden="true">
-            <motion.div className="flex w-max items-center gap-10 whitespace-nowrap" style={reduce ? undefined : { x }}>
+        <div className="relative overflow-hidden border-y border-white/10 bg-mk-navy py-3.5" aria-hidden="true">
+            <motion.div className="flex w-max items-center gap-12 whitespace-nowrap" style={reduce ? undefined : { x }}>
                 {row.map((t, i) => (
-                    <span key={i} className="flex items-center gap-10">
-                        <span className="mk-display text-sm uppercase tracking-[0.25em] text-white/45">{t}</span>
-                        <span className={`h-2 w-2 rounded-full ${["bg-mk-pink", "bg-mk-teal", "bg-mk-yellow", "bg-mk-green"][i % 4]}`} />
+                    <span key={i} className="flex items-center gap-12">
+                        <span className="mk-display text-[13px] uppercase tracking-[0.3em] text-white/35">{t}</span>
+                        <span className={`h-1.5 w-1.5 rounded-full opacity-70 ${["bg-mk-pink", "bg-mk-teal", "bg-mk-yellow", "bg-mk-green"][i % 4]}`} />
                     </span>
                 ))}
             </motion.div>
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[var(--mk-navy)] to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[var(--mk-navy)] to-transparent" />
         </div>
     );
 };
@@ -1119,15 +1064,16 @@ const MarketingPonuda = () => {
                 <section className="border-y border-white/10 bg-mk-navy" aria-label="Brojke">
                     <div className="mx-auto grid max-w-7xl grid-cols-3 divide-x divide-white/10">
                         {[
-                            { n: "10.000+", l: "Djece · cilj 2026.", c: "mk-teal" },
-                            { n: "3", l: "Grada · širenje", c: "mk-pink" },
-                            { n: "100K+", l: "Digital reach", c: "mk-yellow" },
+                            { n: "10.000+", l: "Djece · cilj 2026.", c: "mk-teal", bar: "bg-mk-teal" },
+                            { n: "3", l: "Grada · širenje", c: "mk-pink", bar: "bg-mk-pink" },
+                            { n: "100K+", l: "Digital reach", c: "mk-yellow", bar: "bg-mk-yellow" },
                         ].map((s, i) => (
-                            <Driven key={s.l} fromY={26} delay={i * 0.04} className="min-w-0 px-2 py-7 text-center sm:px-4 md:py-10">
-                                <div className={`mk-display leading-[0.95] ${s.c}`} style={{ fontSize: "clamp(1.5rem, 6vw, 3.75rem)" }}>
+                            <Driven key={s.l} fromY={26} delay={i * 0.04} className="min-w-0 px-2 py-8 text-center sm:px-4 md:py-12">
+                                <div className={`mk-display leading-[0.95] ${s.c}`} style={{ fontSize: "clamp(1.5rem, 5.5vw, 3.5rem)" }}>
                                     <ScrollCount value={s.n} />
                                 </div>
-                                <div className="mt-2 text-[9px] font-bold uppercase tracking-[0.18em] text-white/70 sm:text-xs sm:tracking-[0.22em]">
+                                <span className={`mx-auto mt-3 block h-1 w-8 rounded-full ${s.bar} opacity-80`} aria-hidden />
+                                <div className="mt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-white/60 sm:text-[11px] sm:tracking-[0.25em]">
                                     {s.l}
                                 </div>
                             </Driven>
@@ -1139,33 +1085,33 @@ const MarketingPonuda = () => {
                 <section id="o-nama" className="mx-auto max-w-7xl px-5 py-14 sm:py-20 md:py-28">
                     <div className="grid gap-12 md:grid-cols-12">
                         <div className="md:col-span-5">
-                            <Driven fromX={-56} fromY={0}>
-                                <SectionTag label="O nama" color="yellow" />
-                                <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                    ŠTO JE <span className="mk-yellow">DIŠPET?</span>
-                                </h2>
-                                <DrivenRule className="mt-4 max-w-[180px] rounded-full" />
-                            </Driven>
+                            <SectionHeader
+                                tag="O nama"
+                                tagColor="yellow"
+                                rule
+                                title={<>ŠTO JE <span className="mk-yellow">DIŠPET?</span></>}
+                                className=""
+                            />
                             <Driven fromY={36} delay={0.05}>
-                                <p className="mt-6 text-lg text-white/80">
+                                <p className="mt-6 text-base leading-relaxed text-white/80 sm:text-lg">
                                     Dišpet nije događaj — Dišpet je <strong className="text-white">pokret i projekt</strong> koji
                                     spaja <strong className="text-white">zabavu, sport i edukaciju</strong> za djecu predškolske
                                     dobi i nižih razreda osnovne škole.
                                 </p>
-                                <p className="mt-4 text-lg text-white/80">
+                                <p className="mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
                                     Financira se isključivo od sponzora — za svu djecu uvijek{" "}
-                                    <mark className="bg-mk-yellow px-1.5 font-bold text-on-bright">BESPLATNO!</mark>
+                                    <mark className="rounded-[4px] bg-mk-yellow px-1.5 font-bold text-on-bright">BESPLATNO!</mark>
                                 </p>
                             </Driven>
-                            <div className="mt-7 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                            <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                                 {[
                                     { l: "Sport", c: "bg-mk-teal text-on-bright" },
                                     { l: "Edukacija", c: "bg-mk-green text-on-bright" },
                                     { l: "Digital", c: "bg-mk-yellow text-on-bright" },
                                     { l: "Kreativa", c: "bg-mk-pink text-white" },
                                 ].map((p, i) => (
-                                    <Driven key={p.l} fromY={28} fromScale={0.8} fromRotate={i % 2 ? 4 : -4} delay={i * 0.05}>
-                                        <span className={`block rounded-xl px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wider ${p.c}`}>
+                                    <Driven key={p.l} fromY={24} fromScale={0.9} delay={i * 0.04}>
+                                        <span className={`block rounded-full px-3 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.14em] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)] ${p.c}`}>
                                             {p.l}
                                         </span>
                                     </Driven>
@@ -1190,17 +1136,14 @@ const MarketingPonuda = () => {
                 <section id="teren" className="relative bg-mk-navy py-14 sm:py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-5">
                         <div className="grid items-end gap-6 md:grid-cols-12">
-                            <Driven fromX={-56} fromY={0} className="md:col-span-8">
-                                <SectionTag label="Na terenu" color="pink" />
-                                <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                    DIŠPET <span className="mk-pink">U AKCIJI.</span>
-                                </h2>
-                                <p className="mt-5 max-w-xl text-base text-white/75 sm:text-lg">
-                                    Svako događanje je puna energija, smijeh i sport. Profesionalni kadar, pravi momenti,
-                                    stvarni efekt — diljem Dalmacije.
-                                </p>
-                            </Driven>
-                            <Driven fromX={40} fromY={0} delay={0.06} className="text-xs font-bold uppercase tracking-[0.25em] text-white/70 md:col-span-4 md:text-right">
+                            <SectionHeader
+                                tag="Na terenu"
+                                tagColor="pink"
+                                title={<>DIŠPET <span className="mk-pink">U AKCIJI.</span></>}
+                                lede="Svako događanje je puna energija, smijeh i sport. Profesionalni kadar, pravi momenti, stvarni efekt — diljem Dalmacije."
+                                className="md:col-span-8"
+                            />
+                            <Driven fromX={40} fromY={0} delay={0.06} className="text-[11px] font-bold uppercase tracking-[0.25em] text-white/55 md:col-span-4 md:pb-1 md:text-right">
                                 Rekreacija · Edukacija · Iskustvo · 2025.
                             </Driven>
                         </div>
@@ -1223,26 +1166,26 @@ const MarketingPonuda = () => {
                 {/* ZAŠTO DIŠPET */}
                 <section id="zasto" className="bg-mk-navy py-14 sm:py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-5">
-                        <Driven fromY={40} className="max-w-3xl">
-                            <SectionTag label="Zašto Dišpet" color="pink" />
-                            <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                ZAŠTO SPONZORI <span className="mk-pink">BIRAJU DIŠPET?</span>
-                            </h2>
-                            <DrivenRule className="mt-4 max-w-[240px] rounded-full" />
-                        </Driven>
-                        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <SectionHeader
+                            tag="Zašto Dišpet"
+                            tagColor="pink"
+                            rule
+                            title={<>ZAŠTO SPONZORI <span className="mk-pink">BIRAJU DIŠPET?</span></>}
+                        />
+                        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
                             {[
-                                { t: "Direktan kontakt", d: "S djecom i roditeljima na terenu, oči u oči.", c: "mk-teal" },
-                                { t: "Brend kroz igru", d: "Vaš logo viđen kroz pokret, ne kroz reklamu.", c: "mk-pink" },
-                                { t: "Pozitivne asocijacije", d: "Sport, zabava, zdravlje — vrijednosti koje grade brend.", c: "mk-yellow" },
-                                { t: "Lokalna zajednica", d: "Split kao baza — širenje na 3 grada u 2026.", c: "mk-green" },
-                                { t: "Foto & video", d: "Profesionalna dokumentacija s vašim logom.", c: "mk-teal" },
-                                { t: "100.000+ impressions", d: "Digital reach kroz cijelu sezonu.", c: "mk-pink" },
+                                { t: "Direktan kontakt", d: "S djecom i roditeljima na terenu, oči u oči.", c: "mk-teal", bar: "bg-mk-teal" },
+                                { t: "Brend kroz igru", d: "Vaš logo viđen kroz pokret, ne kroz reklamu.", c: "mk-pink", bar: "bg-mk-pink" },
+                                { t: "Pozitivne asocijacije", d: "Sport, zabava, zdravlje — vrijednosti koje grade brend.", c: "mk-yellow", bar: "bg-mk-yellow" },
+                                { t: "Lokalna zajednica", d: "Split kao baza — širenje na 3 grada u 2026.", c: "mk-green", bar: "bg-mk-green" },
+                                { t: "Foto & video", d: "Profesionalna dokumentacija s vašim logom.", c: "mk-teal", bar: "bg-mk-teal" },
+                                { t: "100.000+ impressions", d: "Digital reach kroz cijelu sezonu.", c: "mk-pink", bar: "bg-mk-pink" },
                             ].map((b, i) => (
-                                <Driven key={b.t} fromY={56} fromScale={0.94} delay={(i % 3) * 0.05}>
-                                    <article className="mk-ring-gradient h-full rounded-2xl border border-white/10 bg-mk-card p-6 transition duration-300 hover:-translate-y-1.5 hover:mk-glow-pink">
-                                        <h3 className={`mk-display text-base uppercase tracking-wide ${b.c}`}>{b.t}</h3>
-                                        <p className="mt-2 text-sm text-white/75 sm:text-base">{b.d}</p>
+                                <Driven key={b.t} fromY={48} fromScale={0.96} delay={(i % 3) * 0.05}>
+                                    <article className="mk-ring-gradient relative h-full overflow-hidden rounded-2xl border border-white/10 bg-mk-card p-6 transition duration-300 hover:-translate-y-1 sm:p-7">
+                                        <span className={`absolute left-6 top-0 h-1 w-9 rounded-b-full ${b.bar} sm:left-7`} aria-hidden />
+                                        <h3 className={`mk-display pt-1 text-base uppercase tracking-wide ${b.c}`}>{b.t}</h3>
+                                        <p className="mt-2.5 text-sm leading-relaxed text-white/70 sm:text-[15px]">{b.d}</p>
                                     </article>
                                 </Driven>
                             ))}
@@ -1253,17 +1196,13 @@ const MarketingPonuda = () => {
 
                 {/* PAKETI */}
                 <section id="paketi" className="mx-auto max-w-7xl px-5 py-14 sm:py-20 md:py-28">
-                    <Driven fromY={40}>
-                        <SectionTag label="Sponzorski paketi" color="yellow" />
-                        <h2 className="mk-display mt-5 max-w-3xl leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                            MARKETING <span className="mk-yellow">MOGUĆNOSTI.</span>
-                        </h2>
-                        <p className="mt-5 max-w-2xl text-base text-white/70 sm:text-lg">
-                            Pet ravnopravnih kanala kroz koje gradimo vašu vidljivost — birajte jedan ili kombinirajte
-                            sve u paket po mjeri.
-                        </p>
-                    </Driven>
-                    <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <SectionHeader
+                        tag="Sponzorski paketi"
+                        tagColor="yellow"
+                        title={<>MARKETING <span className="mk-yellow">MOGUĆNOSTI.</span></>}
+                        lede="Pet ravnopravnih kanala kroz koje gradimo vašu vidljivost — birajte jedan ili kombinirajte sve u paket po mjeri."
+                    />
+                    <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
                         {[
                             { n: "01", t: "Sponzorske površine", d: "150m+ ograde, brendirani paneli i logo na svim materijalima na terenu.", c: "bg-mk-teal" },
                             { n: "02", t: "Digitalna vidljivost", d: "dispet.fun, društvene mreže, foto i video sadržaj te newsletter.", c: "bg-mk-pink" },
@@ -1271,38 +1210,40 @@ const MarketingPonuda = () => {
                             { n: "04", t: "Reklamni materijali", d: "Majice i oprema s vašim logom, pokloni za djecu, web integracija.", c: "bg-mk-green" },
                             { n: "05", t: "Medijske kampanje", d: "Zajednički PR nastup i koordinirane kampanje na svim kanalima.", c: "bg-mk-pink" },
                         ].map((p, i) => (
-                            <Driven key={p.n} fromX={i % 2 ? 56 : -56} fromY={24} delay={(i % 3) * 0.04}>
-                                <article className="mk-ring-gradient group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-mk-card p-6 transition duration-300 hover:-translate-y-1.5 hover:mk-glow-teal">
+                            <Driven key={p.n} fromX={i % 2 ? 40 : -40} fromY={20} delay={(i % 3) * 0.04}>
+                                <article className="mk-ring-gradient group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-mk-card p-6 transition duration-300 hover:-translate-y-1 sm:p-7">
                                     <span className="mk-ghost-num" aria-hidden>{p.n}</span>
-                                    <div className={`mk-display inline-flex h-12 w-12 items-center justify-center rounded-xl ${p.c} text-xl text-on-bright transition duration-500 group-hover:rotate-3 group-hover:scale-110`}>
+                                    <div className={`mk-display inline-flex h-11 w-11 items-center justify-center rounded-xl ${p.c} text-lg text-on-bright shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)] transition duration-500 group-hover:rotate-3 group-hover:scale-105`}>
                                         {p.n}
                                     </div>
-                                    <h3 className="mk-display mt-5 text-xl text-white sm:text-2xl">{p.t}</h3>
-                                    <p className="mt-3 flex-1 text-sm text-white/75 sm:text-base">{p.d}</p>
+                                    <h3 className="mk-display mt-5 text-xl text-white">{p.t}</h3>
+                                    <p className="mt-2.5 flex-1 text-sm leading-relaxed text-white/70 sm:text-[15px]">{p.d}</p>
                                     <a
                                         href="#kontakt"
                                         onClick={() => pickPackage(p.t, `package_${p.n}`)}
-                                        className="relative mt-5 inline-flex items-center text-xs font-bold uppercase tracking-widest mk-pink transition hover:underline"
+                                        className="relative mt-6 inline-flex items-center gap-1.5 border-t border-white/[0.07] pt-4 text-[11px] font-bold uppercase tracking-[0.18em] mk-pink transition hover:brightness-110"
                                     >
-                                        Zatraži ponudu →
+                                        Zatraži ponudu
+                                        <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>→</span>
                                     </a>
                                 </article>
                             </Driven>
                         ))}
-                        <Driven fromY={40} fromScale={0.95} delay={0.08}>
+                        <Driven fromY={32} fromScale={0.96} delay={0.08}>
                             <a
                                 href="#kontakt"
                                 onClick={() => pickPackage("Paket po mjeri", "packages_custom")}
-                                className="flex h-full min-h-[200px] flex-col justify-between rounded-2xl border border-dashed border-white/30 bg-transparent p-6 transition hover:border-[var(--mk-pink)] hover:bg-[rgba(247,65,128,0.05)]"
+                                className="group flex h-full min-h-[200px] flex-col justify-between rounded-2xl border border-dashed border-white/25 bg-white/[0.02] p-6 transition hover:border-[var(--mk-pink)] hover:bg-[rgba(247,65,128,0.05)] sm:p-7"
                             >
                                 <div>
-                                    <div className="mk-display text-xl mk-pink sm:text-2xl">Paket po mjeri</div>
-                                    <p className="mt-3 text-sm text-white/80 sm:text-base">
+                                    <div className="mk-display text-xl mk-pink">Paket po mjeri</div>
+                                    <p className="mt-2.5 text-sm leading-relaxed text-white/70 sm:text-[15px]">
                                         Kombiniramo sve elemente prema vašim ciljevima i budžetu. Sve je moguće.
                                     </p>
                                 </div>
-                                <div className="mt-6 text-sm font-bold uppercase tracking-widest text-white">
-                                    Dogovorite poziv →
+                                <div className="mt-6 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
+                                    Dogovorite poziv
+                                    <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden>→</span>
                                 </div>
                             </a>
                         </Driven>
@@ -1324,28 +1265,26 @@ const MarketingPonuda = () => {
                             />
                         </div>
                         <div className="md:col-span-6">
-                            <Driven fromX={48} fromY={0}>
-                                <SectionTag label="Sponzorske površine" color="teal" />
-                                <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                    VAŠA REKLAMA <span className="mk-teal">NA TERENU.</span>
-                                </h2>
-                                <p className="mt-5 text-base text-white/75 sm:text-lg">
-                                    Brendirane površine koje okružuju svako Dišpet događanje. Vaš logo vidljiv kroz sport,
-                                    igru i pokret — a ne kroz reklamu.
-                                </p>
-                            </Driven>
-                            <div className="mt-8 grid grid-cols-3 gap-2.5 sm:gap-4">
+                            <SectionHeader
+                                tag="Sponzorske površine"
+                                tagColor="teal"
+                                title={<>VAŠA REKLAMA <span className="mk-teal">NA TERENU.</span></>}
+                                lede="Brendirane površine koje okružuju svako Dišpet događanje. Vaš logo vidljiv kroz sport, igru i pokret — a ne kroz reklamu."
+                                className=""
+                            />
+                            <div className="mt-9 grid grid-cols-3 gap-2.5 sm:gap-4">
                                 {[
                                     { n: "150m+", l: "Sponzorske površine" },
                                     { n: "Teren", l: "+ ograda i okolica" },
                                     { n: "Sve", l: "Lokacije u gradu" },
                                 ].map((s, i) => (
-                                    <Driven key={s.l} fromY={40} fromScale={0.9} delay={0.06 + i * 0.05}>
-                                        <div className="min-w-0 rounded-xl border border-white/10 bg-mk-card p-3 transition duration-300 hover:border-[rgba(249,198,53,0.5)] sm:p-4">
-                                            <div className="mk-display leading-none mk-yellow" style={{ fontSize: "clamp(1rem, 3.2vw, 1.5rem)" }}>
+                                    <Driven key={s.l} fromY={32} fromScale={0.94} delay={0.06 + i * 0.05}>
+                                        <div className="min-w-0 rounded-xl border border-white/10 bg-mk-card p-3.5 transition duration-300 hover:border-[rgba(249,198,53,0.45)] sm:p-5">
+                                            <div className="mk-display leading-none mk-yellow" style={{ fontSize: "clamp(1.05rem, 3.2vw, 1.55rem)" }}>
                                                 {/^[\d.,]/.test(s.n) ? <ScrollCount value={s.n} /> : s.n}
                                             </div>
-                                            <div className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/70 sm:text-xs">
+                                            <span className="mt-2.5 block h-0.5 w-6 rounded-full bg-mk-yellow opacity-70" aria-hidden />
+                                            <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60 sm:text-[11px]">
                                                 {s.l}
                                             </div>
                                         </div>
@@ -1359,28 +1298,26 @@ const MarketingPonuda = () => {
                 {/* DIGITAL */}
                 <section id="digital" className="bg-mk-navy py-14 sm:py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-5">
-                        <Driven fromY={40} className="max-w-3xl">
-                            <SectionTag label="Online ekosustav" color="teal" />
-                            <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                DISPET.<span className="mk-teal">FUN</span>
-                            </h2>
-                            <p className="mt-5 text-base text-white/75 sm:text-lg">
-                                Više od web stranice — kompletan digitalni ekosustav koji radi za vas 24/7.
-                            </p>
-                        </Driven>
+                        <SectionHeader
+                            tag="Online ekosustav"
+                            tagColor="teal"
+                            title={<>DISPET.<span className="mk-teal">FUN</span></>}
+                            lede="Više od web stranice — kompletan digitalni ekosustav koji radi za vas 24/7."
+                        />
 
                         <div className="mt-10 grid grid-cols-3 gap-3 sm:gap-4">
                             {[
-                                { n: "2.000+", l: "Članova Kluba", c: "mk-pink" },
-                                { n: "100K+", l: "Digital reach godišnje", c: "mk-teal" },
-                                { n: "24/7", l: "Vidljivost vašeg loga", c: "mk-yellow" },
+                                { n: "2.000+", l: "Članova Kluba", c: "mk-pink", bar: "bg-mk-pink" },
+                                { n: "100K+", l: "Digital reach godišnje", c: "mk-teal", bar: "bg-mk-teal" },
+                                { n: "24/7", l: "Vidljivost vašeg loga", c: "mk-yellow", bar: "bg-mk-yellow" },
                             ].map((s, i) => (
-                                <Driven key={s.l} fromY={44} delay={i * 0.05}>
-                                    <div className="min-w-0 rounded-2xl border border-white/10 bg-mk-card p-3 transition duration-300 hover:border-white/25 sm:p-5">
+                                <Driven key={s.l} fromY={36} delay={i * 0.05}>
+                                    <div className="min-w-0 rounded-2xl border border-white/10 bg-mk-card p-3.5 transition duration-300 hover:border-white/25 sm:p-5">
                                         <div className={`mk-display leading-none ${s.c}`} style={{ fontSize: "clamp(1.25rem, 4.5vw, 1.875rem)" }}>
                                             {/^[\d.,]/.test(s.n) ? <ScrollCount value={s.n} /> : s.n}
                                         </div>
-                                        <div className="mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-white/70 sm:text-xs">
+                                        <span className={`mt-2.5 block h-0.5 w-6 rounded-full ${s.bar} opacity-70`} aria-hidden />
+                                        <div className="mt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60 sm:text-[11px]">
                                             {s.l}
                                         </div>
                                     </div>
@@ -1388,35 +1325,36 @@ const MarketingPonuda = () => {
                             ))}
                         </div>
 
-                        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
                             {[
                                 { t: "Web trgovina", d: "Majice, hoodiesi, kape, termosice — s opcijom sponzorskog loga.", c: "border-t-[var(--mk-teal)]", icon: "🛍️", href: "https://dispet.fun/shop" },
                                 { t: "Dječji kutak", d: "AI treninzi, igre za mozak i edukativni sadržaj za djecu.", c: "border-t-[var(--mk-yellow)]", icon: "🧠", href: "/games" },
                                 { t: "Dišpet Klub", d: "Membership, popusti i merch drops — 2.000+ članova.", c: "border-t-[var(--mk-pink)]", icon: "💛", href: null },
                                 { t: "Blog & novosti", d: "Eventi i profesionalni sadržaj — istaknuto partnerstvo.", c: "border-t-[var(--mk-green)]", icon: "📰", href: "/blog" },
                             ].map((c, i) => (
-                                <Driven key={c.t} fromY={52} fromScale={0.95} delay={(i % 4) * 0.045}>
-                                    <div className={`h-full rounded-2xl border border-white/10 border-t-4 ${c.c} bg-mk-card p-5 transition duration-500 hover:-translate-y-1.5`}>
-                                        <div className="text-2xl" aria-hidden>{c.icon}</div>
-                                        <h3 className="mk-display mt-3 text-lg text-white">
+                                <Driven key={c.t} fromY={44} fromScale={0.96} delay={(i % 4) * 0.045}>
+                                    <div className={`h-full rounded-2xl border border-white/10 border-t-4 ${c.c} bg-mk-card p-6 transition duration-500 hover:-translate-y-1`}>
+                                        <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/[0.06] text-xl ring-1 ring-white/10" aria-hidden>{c.icon}</div>
+                                        <h3 className="mk-display mt-4 text-lg text-white">
                                             {c.href ? (
                                                 <a href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel={c.href.startsWith("http") ? "noreferrer" : undefined} className="hover:underline">
                                                     {c.t}
                                                 </a>
                                             ) : c.t}
                                         </h3>
-                                        <p className="mt-2 text-sm text-white/70">{c.d}</p>
+                                        <p className="mt-2 text-sm leading-relaxed text-white/70">{c.d}</p>
                                     </div>
                                 </Driven>
                             ))}
                         </div>
 
-                        <Driven fromY={44}>
-                            <div className="mt-6 rounded-2xl border border-white/10 bg-mk-card p-6 sm:p-8">
+                        <Driven fromY={36}>
+                            <div className="mt-5 rounded-2xl border border-white/10 bg-mk-card p-6 sm:p-8">
                                 <div className="mk-display text-base uppercase tracking-wide text-white/90 sm:text-xl">
                                     Zašto digitalno znači više za vas?
                                 </div>
-                                <ul className="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4">
+                                <div className="mk-hairline mt-4" />
+                                <ul className="mt-5 grid gap-3.5 sm:grid-cols-2 sm:gap-4">
                                     {[
                                         "Logo vidljiv na svim stranicama i u web shopu",
                                         "Istaknuto partnerstvo u blog postovima i newsletteru",
@@ -1424,8 +1362,8 @@ const MarketingPonuda = () => {
                                         "100.000+ digital impressions godišnje",
                                     ].map((b) => (
                                         <li key={b} className="flex items-start gap-3">
-                                            <span className="mt-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full bg-mk-pink" />
-                                            <span className="text-sm text-white/85 sm:text-base">{b}</span>
+                                            <span className="mt-[7px] inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-mk-pink" />
+                                            <span className="text-sm leading-relaxed text-white/80 sm:text-[15px]">{b}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -1440,15 +1378,13 @@ const MarketingPonuda = () => {
                     <div className="mk-rainbow absolute inset-0 opacity-10" />
                     <div className="relative mx-auto max-w-7xl px-5 py-20 md:py-24">
                         <div className="grid items-center gap-10 md:grid-cols-12">
-                            <Driven fromX={-56} fromY={0} className="md:col-span-5">
-                                <SectionTag label="Ciljevi 2026." color="teal" />
-                                <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                    KAMO <span className="mk-teal">IDEMO.</span>
-                                </h2>
-                                <p className="mt-5 text-base text-white/75 sm:text-lg">
-                                    Jasni, mjerljivi ciljevi za iduću sezonu — i mjesto za vaš brend u svakoj brojci.
-                                </p>
-                            </Driven>
+                            <SectionHeader
+                                tag="Ciljevi 2026."
+                                tagColor="teal"
+                                title={<>KAMO <span className="mk-teal">IDEMO.</span></>}
+                                lede="Jasni, mjerljivi ciljevi za iduću sezonu — i mjesto za vaš brend u svakoj brojci."
+                                className="md:col-span-5"
+                            />
                             <div className="md:col-span-7">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <Driven fromY={56} fromScale={0.93} delay={0.04}>
@@ -1480,33 +1416,32 @@ const MarketingPonuda = () => {
                     <div className="mx-auto max-w-7xl px-5">
                         <div className="grid gap-10 md:grid-cols-12">
                             <div className="md:col-span-5">
-                                <Driven fromX={-48} fromY={0}>
-                                    <SectionTag label="Zajednica" color="teal" />
-                                    <h2 className="mk-display mt-5 leading-[1.02] text-[clamp(2rem,6vw,3.5rem)] text-white">
-                                        NAŠI <span className="mk-teal">PARTNERI.</span>
-                                    </h2>
-                                    <p className="mt-5 text-base text-white/75 sm:text-lg">
-                                        Partneri koji dijele jednu viziju — aktivna i educirana djeca Hrvatske.
-                                    </p>
-                                </Driven>
-                                <Driven fromY={48} delay={0.05} className="mt-6 overflow-hidden rounded-2xl ring-1 ring-white/10">
+                                <SectionHeader
+                                    tag="Zajednica"
+                                    tagColor="teal"
+                                    title={<>NAŠI <span className="mk-teal">PARTNERI.</span></>}
+                                    lede="Partneri koji dijele jednu viziju — aktivna i educirana djeca Hrvatske."
+                                    className=""
+                                />
+                                <Driven fromY={40} delay={0.05} className="mt-7 overflow-hidden rounded-2xl ring-1 ring-white/10">
                                     <Parallax dist={20}>
-                                        <img src={IMG.partners} alt="Dišpet partneri" className="aspect-[4/3] w-full scale-110 object-cover" loading="lazy" />
+                                        <MediaItem src={allImages[20] || allImages[0]} alt="Dišpet partneri" className="aspect-[4/3] w-full scale-110 object-cover" />
                                     </Parallax>
                                 </Driven>
                             </div>
                             <div className="md:col-span-7">
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-4 sm:grid-cols-2 lg:gap-5">
                                     {[
-                                        { t: "HNK Hajduk", d: "Dječja tribina Poljud + Hajduk Fan Shop aktivacija.", c: "mk-pink" },
-                                        { t: "Rocket Football Academy", d: "Partnerstvo s akademijom Ivana Rakitića.", c: "mk-teal" },
-                                        { t: "Automall Split", d: "Strateški partner — 400+ djece u autosalonu.", c: "mk-yellow" },
-                                        { t: "Splitska Dica", d: "Zajednički festival Split za djecu — sport, igra i edukacija.", c: "mk-green" },
+                                        { t: "HNK Hajduk", d: "Dječja tribina Poljud + Hajduk Fan Shop aktivacija.", c: "mk-pink", bar: "bg-mk-pink" },
+                                        { t: "Rocket Football Academy", d: "Partnerstvo s akademijom Ivana Rakitića.", c: "mk-teal", bar: "bg-mk-teal" },
+                                        { t: "Automall Split", d: "Strateški partner — 400+ djece u autosalonu.", c: "mk-yellow", bar: "bg-mk-yellow" },
+                                        { t: "Splitska Dica", d: "Zajednički festival Split za djecu — sport, igra i edukacija.", c: "mk-green", bar: "bg-mk-green" },
                                     ].map((p, i) => (
-                                        <Driven key={p.t} fromX={i % 2 ? 48 : -48} fromY={20} delay={(i % 2) * 0.05}>
-                                            <article className="mk-ring-gradient h-full rounded-2xl border border-white/10 bg-mk-card p-5 transition duration-500 hover:-translate-y-1 hover:border-white/25">
-                                                <h3 className={`mk-display text-lg sm:text-xl ${p.c}`}>{p.t}</h3>
-                                                <p className="mt-2 text-sm text-white/75">{p.d}</p>
+                                        <Driven key={p.t} fromX={i % 2 ? 36 : -36} fromY={16} delay={(i % 2) * 0.05}>
+                                            <article className="mk-ring-gradient relative h-full overflow-hidden rounded-2xl border border-white/10 bg-mk-card p-6 transition duration-500 hover:-translate-y-1 hover:border-white/25">
+                                                <span className={`absolute left-6 top-0 h-1 w-9 rounded-b-full ${p.bar}`} aria-hidden />
+                                                <h3 className={`mk-display pt-1 text-lg ${p.c}`}>{p.t}</h3>
+                                                <p className="mt-2 text-sm leading-relaxed text-white/70">{p.d}</p>
                                             </article>
                                         </Driven>
                                     ))}

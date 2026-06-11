@@ -8,7 +8,8 @@ export default defineConfig(({ mode }) => ({
   base: "/",
   server: {
     host: "::",
-    port: 8080,
+    // PORT env (e.g. from preview tooling) wins; defaults to 8080 for normal dev
+    port: Number(process.env.PORT) || 8080,
     proxy: {
       '/api': {
         target: 'https://dispet.fun',
