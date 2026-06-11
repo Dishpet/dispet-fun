@@ -389,13 +389,16 @@ const Driven = ({
 }: DrivenProps) => {
     const ref = useRef<HTMLDivElement>(null);
     const reduce = useReducedMotion();
-    const start = Math.max(0.5, 0.96 - delay);
-    const end = Math.max(0.35, 0.58 - delay);
+    // Wide scrub window so that even on tall mobile screens the animation
+    // fires well before the element reaches the viewport centre.
+    const start = Math.min(1.15, 1.15 - delay * 0.3);
+    const end = Math.max(0.25, 0.5 - delay * 0.3);
     const { scrollYProgress } = useScroll({
         target: ref,
         offset: [`start ${start}`, `start ${end}`],
     });
-    const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+    const raw = useTransform(scrollYProgress, [0, 1], [0, 1]);
+    const opacity = useSpring(raw, { stiffness: 200, damping: 30 });
     const y = useTransform(scrollYProgress, [0, 1], [fromY, 0]);
     const x = useTransform(scrollYProgress, [0, 1], [fromX, 0]);
     const rotate = useTransform(scrollYProgress, [0, 1], [fromRotate, 0]);
