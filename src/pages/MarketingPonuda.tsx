@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode, type CSSProperties } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import {
     motion,
+    AnimatePresence,
     useScroll,
     useTransform,
     useSpring,
@@ -36,6 +38,264 @@ const IMG = {
 const trackEvent = (name: string, params?: Record<string, unknown>) => {
     const w = window as unknown as { gtag?: (...args: unknown[]) => void };
     w.gtag?.("event", name, params || {});
+};
+
+/* ------------------------------------------------------------------ */
+/*  Section gallery infrastructure (variations of the merch gallery)   */
+/* ------------------------------------------------------------------ */
+
+/** All section photos for the lightbox — grouped by section */
+const SECTION_PHOTOS = {
+    onama: [IMG.about, IMG.action2, IMG.action3, IMG.action4, IMG.hero, IMG.event1],
+    teren: [IMG.action1, IMG.action2, IMG.action3, IMG.action4, IMG.about, IMG.event1, IMG.hero, IMG.sponsor],
+    sponsor: [IMG.sponsor, IMG.action1, IMG.event1, IMG.partners, IMG.about, IMG.action4],
+    partneri: [IMG.partners, IMG.event1, IMG.action1, IMG.action2, IMG.action3, IMG.sponsor, IMG.about, IMG.hero],
+};
+const ALL_GALLERY_PHOTOS = [...new Set(Object.values(SECTION_PHOTOS).flat())];
+
+/** Shared lightbox component */
+const GalleryLightbox = ({
+    photos,
+    selected,
+    setSelected,
+}: {
+    photos: string[];
+    selected: number | null;
+    setSelected: (v: number | null) => void;
+}) => {
+    const next = useCallback(() => setSelected(selected === null ? null : (selected + 1) % photos.length), [selected, photos.length, setSelected]);
+    const prev = useCallback(() => setSelected(selected === null ? null : (selected - 1 + photos.length) % photos.length), [selected, photos.length, setSelected]);
+
+    useEffect(() => {
+        if (selected === null) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "ArrowRight") next();
+            if (e.key === "ArrowLeft") prev();
+            if (e.key === "Escape") setSelected(null);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [selected, next, prev, setSelected]);
+
+    if (selected === null) return null;
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/95 p-2 backdrop-blur-sm md:p-8"
+            onClick={() => setSelected(null)}
+        >
+            <button type="button" aria-label="Zatvori" className="fixed right-4 top-4 z-[120] flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50" onClick={(e) => { e.stopPropagation(); setSelected(null); }}>
+                <X className="h-6 w-6" />
+            </button>
+            <button type="button" aria-label="Prethodna" className="fixed left-2 top-1/2 z-[120] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50 md:left-8" onClick={(e) => { e.stopPropagation(); prev(); }}>
+                <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button type="button" aria-label="Sljedeća" className="fixed right-2 top-1/2 z-[120] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50 md:right-8" onClick={(e) => { e.stopPropagation(); next(); }}>
+                <ChevronRight className="h-6 w-6" />
+            </button>
+            <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex h-full w-full flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                <img src={photos[selected]} alt="Dišpet fotografija" className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl" />
+                <div className="mt-4 rounded-full bg-black/50 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-md">
+                    {selected + 1} / {photos.length}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+const GALLERY_WIDTHS_A = ["w-[200px] md:w-[340px]", "w-[170px] md:w-[280px]", "w-[230px] md:w-[420px]", "w-[190px] md:w-[320px]"];
+const GALLERY_WIDTHS_B = ["w-[240px] md:w-[380px]", "w-[160px] md:w-[260px]", "w-[210px] md:w-[360px]", "w-[180px] md:w-[300px]"];
+const GALLERY_WIDTHS_C = ["w-[190px] md:w-[300px]", "w-[250px] md:w-[440px]", "w-[170px] md:w-[290px]", "w-[220px] md:w-[370px]"];
+
+/** VARIATION A — Tilted filmstrip (single row, slight rotation, scroll-driven) */
+const GalleryFilmstrip = ({
+    photos,
+    progress,
+    tilt,
+    accentColor,
+    onPhotoClick,
+}: {
+    photos: string[];
+    progress: MotionValue<number>;
+    tilt?: number;
+    accentColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    const reduce = useReducedMotion();
+    const doubled = [...photos, ...photos];
+    const x = useTransform(progress, [0, 1], ["-2%", "-28%"]);
+    const borderColor = accentColor || "var(--mk-pink)";
+    return (
+        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ transform: `rotateZ(${tilt ?? -3}deg)` }}>
+            <div className="flex overflow-hidden">
+                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x }}>
+                    {doubled.map((src, i) => (
+                        <button
+                            key={`${src}-${i}`}
+                            type="button"
+                            onClick={() => onPhotoClick(photos.indexOf(src))}
+                            className={`group relative h-[130px] ${GALLERY_WIDTHS_A[i % GALLERY_WIDTHS_A.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.06] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none focus-visible:ring-2 md:h-[200px] md:rounded-2xl`}
+                            style={{ ['--hover-border' as string]: borderColor }}
+                        >
+                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.12]" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent transition group-hover:from-black/15" />
+                            <span className="mk-display absolute bottom-2 right-2.5 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
+                                {(photos.indexOf(src) + 1).toString().padStart(2, "0")}
+                            </span>
+                        </button>
+                    ))}
+                </motion.div>
+            </div>
+        </div>
+    );
+};
+
+/** VARIATION B — Dual counter-scrolling rows (straight, no tilt) */
+const GalleryDualScroll = ({
+    photos,
+    progress,
+    accentColor,
+    onPhotoClick,
+}: {
+    photos: string[];
+    progress: MotionValue<number>;
+    accentColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    const reduce = useReducedMotion();
+    const half = Math.ceil(photos.length / 2);
+    const rowA = photos.slice(0, half);
+    const rowB = photos.slice(half);
+    const doubledA = [...rowA, ...rowA, ...rowA];
+    const doubledB = [...rowB, ...rowB, ...rowB];
+    const xA = useTransform(progress, [0, 1], ["0%", "-35%"]);
+    const xB = useTransform(progress, [0, 1], ["-25%", "0%"]);
+    const borderColor = accentColor || "var(--mk-teal)";
+    return (
+        <div className="relative -mx-5 space-y-3 overflow-hidden py-4 sm:py-6 md:space-y-4">
+            <div className="flex overflow-hidden">
+                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x: xA }}>
+                    {doubledA.map((src, i) => (
+                        <button
+                            key={`a-${src}-${i}`}
+                            type="button"
+                            onClick={() => onPhotoClick(photos.indexOf(src))}
+                            className={`group relative h-[120px] ${GALLERY_WIDTHS_B[i % GALLERY_WIDTHS_B.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[180px]`}
+                            style={{ ['--hover-border' as string]: borderColor }}
+                        >
+                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30 transition group-hover:to-black/10" />
+                        </button>
+                    ))}
+                </motion.div>
+            </div>
+            <div className="flex overflow-hidden">
+                <motion.div className="flex flex-nowrap gap-3 md:gap-4" style={reduce ? undefined : { x: xB }}>
+                    {doubledB.map((src, i) => (
+                        <button
+                            key={`b-${src}-${i}`}
+                            type="button"
+                            onClick={() => onPhotoClick(photos.indexOf(src))}
+                            className={`group relative h-[120px] ${GALLERY_WIDTHS_B[(i + 2) % GALLERY_WIDTHS_B.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[180px]`}
+                            style={{ ['--hover-border' as string]: borderColor }}
+                        >
+                            <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition group-hover:from-black/10" />
+                        </button>
+                    ))}
+                </motion.div>
+            </div>
+        </div>
+    );
+};
+
+/** VARIATION C — Cascading cards with stagger (wider, rounded, numbered) */
+const GalleryCascade = ({
+    photos,
+    progress,
+    accentColor,
+    onPhotoClick,
+}: {
+    photos: string[];
+    progress: MotionValue<number>;
+    accentColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    const reduce = useReducedMotion();
+    const tripled = [...photos, ...photos, ...photos];
+    const x = useTransform(progress, [0, 1], ["2%", "-38%"]);
+    const borderColor = accentColor || "var(--mk-yellow)";
+    return (
+        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ transform: "rotateZ(2deg)" }}>
+            <div className="flex overflow-hidden">
+                <motion.div className="flex flex-nowrap items-end gap-4 md:gap-5" style={reduce ? undefined : { x }}>
+                    {tripled.map((src, i) => {
+                        const isOdd = i % 2 === 1;
+                        return (
+                            <button
+                                key={`${src}-${i}`}
+                                type="button"
+                                onClick={() => onPhotoClick(photos.indexOf(src))}
+                                className={`group relative ${GALLERY_WIDTHS_C[i % GALLERY_WIDTHS_C.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.05] hover:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)] focus-visible:outline-none md:rounded-3xl`}
+                                style={{
+                                    height: isOdd ? "clamp(100px, 16vw, 170px)" : "clamp(140px, 22vw, 230px)",
+                                    marginBottom: isOdd ? "1rem" : "0",
+                                    ['--hover-border' as string]: borderColor,
+                                }}
+                            >
+                                <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent transition group-hover:from-black/15" />
+                                <span className="mk-display absolute bottom-2 left-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
+                                    {(photos.indexOf(src) + 1).toString().padStart(2, "0")} / {photos.length}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </motion.div>
+            </div>
+        </div>
+    );
+};
+
+/** VARIATION D — Perspective depth row (3D-perspective vanishing point feel) */
+const GalleryPerspective = ({
+    photos,
+    progress,
+    accentColor,
+    onPhotoClick,
+}: {
+    photos: string[];
+    progress: MotionValue<number>;
+    accentColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    const reduce = useReducedMotion();
+    const tripled = [...photos, ...photos, ...photos];
+    const x = useTransform(progress, [0, 1], ["5%", "-30%"]);
+    const borderColor = accentColor || "var(--mk-green)";
+    return (
+        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6" style={{ perspective: "800px" }}>
+            <motion.div className="flex flex-nowrap gap-4 md:gap-5" style={reduce ? undefined : { x, rotateY: -4, transformStyle: "preserve-3d" }}>
+                {tripled.map((src, i) => (
+                    <button
+                        key={`${src}-${i}`}
+                        type="button"
+                        onClick={() => onPhotoClick(photos.indexOf(src))}
+                        className={`group relative h-[150px] ${GALLERY_WIDTHS_A[(i + 1) % GALLERY_WIDTHS_A.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border-[3px] border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.07] hover:shadow-[0_20px_50px_-18px_rgba(0,0,0,0.6)] focus-visible:outline-none md:h-[220px] md:rounded-2xl`}
+                        style={{ ['--hover-border' as string]: borderColor }}
+                    >
+                        <img src={src} alt="Dišpet" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.12]" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20 transition group-hover:from-black/10 group-hover:to-black/5" />
+                        <span className="mk-display absolute top-2.5 left-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100" aria-hidden>
+                            {(photos.indexOf(src) + 1).toString().padStart(2, "0")}
+                        </span>
+                    </button>
+                ))}
+            </motion.div>
+        </div>
+    );
 };
 
 /* ------------------------------------------------------------------ */
@@ -763,6 +1023,8 @@ const Marquee = ({ pageProgress }: { pageProgress: MotionValue<number> }) => {
 const MarketingPonuda = () => {
     const { scrollYProgress: pageProgress } = useScroll();
     const [preselectedPackage, setPreselectedPackage] = useState("");
+    const [activeSection, setActiveSection] = useState<"onama" | "teren" | "sponsor" | "partneri" | null>(null);
+    const [selectedPhotoIdx, setSelectedPhotoIdx] = useState<number | null>(null);
 
     const pickPackage = (title: string, location: string) => {
         setPreselectedPackage(title);
@@ -845,18 +1107,15 @@ const MarketingPonuda = () => {
                             </div>
                         </div>
                         <div className="md:col-span-7">
-                            <Driven fromY={56} fromScale={0.96}>
-                                <Parallax dist={26} className="overflow-hidden rounded-2xl ring-1 ring-white/10">
-                                    <img src={IMG.about} alt="Dišpet — sport i edukacija" className="aspect-[4/3] w-full scale-110 object-cover" loading="lazy" />
-                                </Parallax>
-                            </Driven>
-                            <div className="mt-4 grid grid-cols-3 gap-3 md:gap-4">
-                                {[IMG.action2, IMG.action3, IMG.action4].map((img, i) => (
-                                    <Driven key={i} fromY={40 + i * 14} delay={i * 0.05} className="overflow-hidden rounded-xl ring-1 ring-white/10">
-                                        <img src={img} alt="" className="aspect-square w-full object-cover" loading="lazy" />
-                                    </Driven>
-                                ))}
-                            </div>
+                            <GalleryCascade
+                                photos={SECTION_PHOTOS.onama}
+                                progress={pageProgress}
+                                accentColor="var(--mk-yellow)"
+                                onPhotoClick={(idx) => {
+                                    setActiveSection("onama");
+                                    setSelectedPhotoIdx(idx);
+                                }}
+                            />
                         </div>
                     </div>
                 </section>
@@ -879,25 +1138,16 @@ const MarketingPonuda = () => {
                                 Rekreacija · Edukacija · Iskustvo · 2025.
                             </Driven>
                         </div>
-                        <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-                            {[IMG.action1, IMG.action2, IMG.action3, IMG.action4].map((img, i) => (
-                                <Driven
-                                    key={i}
-                                    fromY={i % 2 === 0 ? 70 : 30}
-                                    fromRotate={i % 2 === 0 ? -3 : 3}
-                                    delay={i * 0.04}
-                                    className="group overflow-hidden rounded-xl ring-1 ring-white/10 transition duration-500 hover:ring-[rgba(247,65,128,0.6)]"
-                                >
-                                    <Parallax dist={i % 2 === 0 ? 18 : -18}>
-                                        <img
-                                            src={img}
-                                            alt="Dišpet događanje"
-                                            className="aspect-[3/4] w-full scale-110 object-cover transition duration-700 group-hover:scale-125"
-                                            loading="lazy"
-                                        />
-                                    </Parallax>
-                                </Driven>
-                            ))}
+                        <div className="mt-10">
+                            <GalleryDualScroll
+                                photos={SECTION_PHOTOS.teren}
+                                progress={pageProgress}
+                                accentColor="var(--mk-pink)"
+                                onPhotoClick={(idx) => {
+                                    setActiveSection("teren");
+                                    setSelectedPhotoIdx(idx);
+                                }}
+                            />
                         </div>
                     </div>
                 </section>
@@ -996,11 +1246,17 @@ const MarketingPonuda = () => {
                 {/* SPONZORSKE POVRŠINE — detail behind package 01 */}
                 <section className="mx-auto max-w-7xl px-5 pb-14 sm:pb-20 md:pb-28">
                     <div className="grid gap-12 md:grid-cols-12">
-                        <Driven fromX={-64} fromY={0} fromScale={0.96} className="md:col-span-6">
-                            <Parallax dist={24} className="overflow-hidden rounded-2xl ring-1 ring-white/10">
-                                <img src={IMG.sponsor} alt="Sponzorske površine na Dišpet događanju" className="aspect-[4/3] w-full scale-110 object-cover" loading="lazy" />
-                            </Parallax>
-                        </Driven>
+                        <div className="md:col-span-6">
+                            <GalleryPerspective
+                                photos={SECTION_PHOTOS.sponsor}
+                                progress={pageProgress}
+                                accentColor="var(--mk-teal)"
+                                onPhotoClick={(idx) => {
+                                    setActiveSection("sponsor");
+                                    setSelectedPhotoIdx(idx);
+                                }}
+                            />
+                        </div>
                         <div className="md:col-span-6">
                             <Driven fromX={48} fromY={0}>
                                 <SectionTag label="Sponzorske površine" color="teal" />
@@ -1189,11 +1445,18 @@ const MarketingPonuda = () => {
                                         </Driven>
                                     ))}
                                 </div>
-                                <Driven fromY={48} fromScale={0.97} delay={0.08} className="mt-4 overflow-hidden rounded-2xl ring-1 ring-white/10">
-                                    <Parallax dist={22}>
-                                        <img src={IMG.event1} alt="Dišpet događanje" className="aspect-[16/7] w-full scale-110 object-cover" loading="lazy" />
-                                    </Parallax>
-                                </Driven>
+                                <div className="mt-4">
+                                    <GalleryFilmstrip
+                                        photos={SECTION_PHOTOS.partneri}
+                                        progress={pageProgress}
+                                        tilt={-1.5}
+                                        accentColor="var(--mk-green)"
+                                        onPhotoClick={(idx) => {
+                                            setActiveSection("partneri");
+                                            setSelectedPhotoIdx(idx);
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1387,6 +1650,18 @@ const MarketingPonuda = () => {
                     <div className="text-xs">© 2026 Dišpet · dispet.fun · +385 95 514 4085</div>
                 </div>
             </footer>
+            <AnimatePresence>
+                {activeSection && selectedPhotoIdx !== null && (
+                    <GalleryLightbox
+                        photos={SECTION_PHOTOS[activeSection]}
+                        selected={selectedPhotoIdx}
+                        setSelected={(idx) => {
+                            setSelectedPhotoIdx(idx);
+                            if (idx === null) setActiveSection(null);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };
