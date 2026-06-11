@@ -105,68 +105,261 @@ const GalleryLightbox = ({
     );
 };
 
-const GALLERY_WIDTHS = [
-    "w-[220px] md:w-[400px]",
-    "w-[180px] md:w-[310px]",
-    "w-[250px] md:w-[500px]",
-    "w-[200px] md:w-[360px]",
-];
-
-/** One marquee row, exactly like the merch section's GalleryRow but flat (without 3D) */
-const SectionGalleryRow = ({
+const AboutCollage = ({
     photos,
-    progress,
-    direction = "left",
-    offset = 0,
+    accentColor = "var(--mk-yellow)",
+    shadowColor = "rgba(249,198,53,0.5)",
+    onPhotoClick,
+}: {
+    photos: string[];
+    accentColor?: string;
+    shadowColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    return (
+        <div className="relative h-[300px] w-full sm:h-[420px] md:h-[520px]">
+            <Driven fromX={-30} fromY={0} delay={0} className="absolute left-0 top-0 w-[80%] sm:w-3/4">
+                <Parallax dist={15}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(0)}
+                        className="group relative w-full aspect-[4/5] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[0]}
+                            alt="Dišpet o nama"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+            <Driven fromX={30} fromY={40} delay={0.1} className="absolute right-0 bottom-0 sm:bottom-4 w-[55%] sm:w-[50%]">
+                <Parallax dist={-25}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(1)}
+                        className="group relative w-full aspect-[4/5] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.03] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[1]}
+                            alt="Dišpet učenje"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+        </div>
+    );
+};
+
+const TerenCollage = ({
+    photos,
     accentColor = "var(--mk-pink)",
     shadowColor = "rgba(247,65,128,0.5)",
     onPhotoClick,
 }: {
     photos: string[];
-    progress: MotionValue<number>;
-    direction?: "left" | "right";
-    offset?: number;
     accentColor?: string;
     shadowColor?: string;
     onPhotoClick: (idx: number) => void;
 }) => {
-    const reduce = useReducedMotion();
-    const doubled = [...photos, ...photos];
-    // Gentle travel across the whole page scroll - matching merch slow drift
-    const x = useTransform(
-        progress,
-        [0, 1],
-        direction === "left" ? [`${-4 - offset}%`, `${-20 - offset}%`] : [`${-20 - offset}%`, `${-4 - offset}%`],
-    );
     return (
-        <div className="relative -mx-5 overflow-hidden py-4 sm:py-6">
-            <div className="flex overflow-hidden">
-                <motion.div className="flex flex-nowrap gap-3 md:gap-5" style={reduce ? undefined : { x }}>
-                    {doubled.map((src, i) => (
+        <div className="grid gap-4 sm:gap-6">
+            <Driven fromY={40} delay={0}>
+                <Parallax dist={10}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(0)}
+                        className="group relative w-full aspect-[16/9] sm:aspect-[2.4/1] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.01] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[0]}
+                            alt="Dišpet teren 1"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-103"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+                <Driven fromX={-30} fromY={20} delay={0.05}>
+                    <Parallax dist={-15}>
                         <button
-                            key={`${src}-${i}`}
                             type="button"
-                            onClick={() => onPhotoClick(photos.indexOf(src))}
-                            className={`group relative h-[140px] ${GALLERY_WIDTHS[i % GALLERY_WIDTHS.length]} flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border-4 border-transparent transition-all duration-500 hover:z-10 hover:scale-[1.04] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none focus-visible:ring-2 md:h-[230px]`}
+                            onClick={() => onPhotoClick(1)}
+                            className="group relative w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
                             style={{
-                                ['--hover-border' as string]: accentColor,
-                                ['--hover-shadow' as string]: `0 25px 60px -20px ${shadowColor}`,
+                                ["--hover-border" as string]: accentColor,
+                                ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
                             } as CSSProperties}
                         >
                             <img
-                                src={src}
-                                alt="Dišpet"
+                                src={photos[1]}
+                                alt="Dišpet teren 2"
                                 loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent transition-colors group-hover:from-black/10" />
-                            <span className="mk-display absolute bottom-2.5 right-3 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] text-white/85 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100" aria-hidden>
-                                {(photos.indexOf(src) + 1).toString().padStart(2, "0")} / {photos.length}
-                            </span>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
                         </button>
-                    ))}
-                </motion.div>
+                    </Parallax>
+                </Driven>
+                <Driven fromX={30} fromY={20} delay={0.1}>
+                    <Parallax dist={20}>
+                        <button
+                            type="button"
+                            onClick={() => onPhotoClick(2)}
+                            className="group relative w-full aspect-[4/3] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                            style={{
+                                ["--hover-border" as string]: accentColor,
+                                ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                            } as CSSProperties}
+                        >
+                            <img
+                                src={photos[2]}
+                                alt="Dišpet teren 3"
+                                loading="lazy"
+                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                        </button>
+                    </Parallax>
+                </Driven>
             </div>
+        </div>
+    );
+};
+
+const SponsorCollage = ({
+    photos,
+    accentColor = "var(--mk-teal)",
+    shadowColor = "rgba(0,196,196,0.5)",
+    onPhotoClick,
+}: {
+    photos: string[];
+    accentColor?: string;
+    shadowColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 items-start">
+            <Driven fromY={40} delay={0}>
+                <Parallax dist={20}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(0)}
+                        className="group relative w-full aspect-[4/3] sm:aspect-[3/4] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[0]}
+                            alt="Dišpet sponzorstvo"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+            <Driven fromY={40} delay={0.1} className="sm:mt-12">
+                <Parallax dist={-20}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(1)}
+                        className="group relative w-full aspect-[4/3] sm:aspect-[3/4] cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 transition-all duration-500 hover:z-10 hover:scale-[1.02] hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 40px -15px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[1]}
+                            alt="Dišpet sponzori"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+        </div>
+    );
+};
+
+const PartneriCollage = ({
+    photos,
+    accentColor = "var(--mk-green)",
+    shadowColor = "rgba(76,193,87,0.5)",
+    onPhotoClick,
+}: {
+    photos: string[];
+    accentColor?: string;
+    shadowColor?: string;
+    onPhotoClick: (idx: number) => void;
+}) => {
+    return (
+        <div className="relative h-[280px] w-full sm:h-[380px] md:h-[480px]">
+            <Driven fromX={-30} fromRotate={-6} delay={0} className="absolute left-1 top-1 sm:left-4 sm:top-4 w-[62%] sm:w-[60%] origin-bottom-left">
+                <Parallax dist={10}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(0)}
+                        className="group relative w-full aspect-[4/5] -rotate-2 sm:-rotate-3 cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-20 hover:scale-[1.04] hover:rotate-0 hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 45px -12px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[0]}
+                            alt="Dišpet partner"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
+            <Driven fromX={30} fromRotate={6} delay={0.1} className="absolute right-1 bottom-1 sm:right-4 sm:bottom-4 w-[62%] sm:w-[60%] origin-bottom-right">
+                <Parallax dist={-15}>
+                    <button
+                        type="button"
+                        onClick={() => onPhotoClick(1)}
+                        className="group relative w-full aspect-[4/5] rotate-2 sm:rotate-3 cursor-pointer overflow-hidden rounded-xl sm:rounded-2xl border-2 border-[rgba(7,17,35,0.8)] ring-1 ring-white/10 transition-all duration-500 hover:z-20 hover:scale-[1.04] hover:rotate-0 hover:border-[var(--hover-border)] hover:shadow-[var(--hover-shadow)] focus-visible:outline-none"
+                        style={{
+                            ["--hover-border" as string]: accentColor,
+                            ["--hover-shadow" as string]: `0 20px 45px -12px ${shadowColor}`,
+                        } as CSSProperties}
+                    >
+                        <img
+                            src={photos[1]}
+                            alt="Dišpet partnerstvo"
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-30" />
+                    </button>
+                </Parallax>
+            </Driven>
         </div>
     );
 };
@@ -980,11 +1173,8 @@ const MarketingPonuda = () => {
                             </div>
                         </div>
                         <div className="md:col-span-7">
-                            <SectionGalleryRow
+                            <AboutCollage
                                 photos={SECTION_PHOTOS.onama}
-                                progress={pageProgress}
-                                direction="left"
-                                offset={0}
                                 accentColor="var(--mk-yellow)"
                                 shadowColor="rgba(249,198,53,0.5)"
                                 onPhotoClick={(idx) => {
@@ -1015,11 +1205,8 @@ const MarketingPonuda = () => {
                             </Driven>
                         </div>
                         <div className="mt-10">
-                            <SectionGalleryRow
+                            <TerenCollage
                                 photos={SECTION_PHOTOS.teren}
-                                progress={pageProgress}
-                                direction="right"
-                                offset={4}
                                 accentColor="var(--mk-pink)"
                                 shadowColor="rgba(247,65,128,0.5)"
                                 onPhotoClick={(idx) => {
@@ -1126,11 +1313,8 @@ const MarketingPonuda = () => {
                 <section className="mx-auto max-w-7xl px-5 pb-14 sm:pb-20 md:pb-28">
                     <div className="grid gap-12 md:grid-cols-12">
                         <div className="md:col-span-6">
-                            <SectionGalleryRow
+                            <SponsorCollage
                                 photos={SECTION_PHOTOS.sponsor}
-                                progress={pageProgress}
-                                direction="left"
-                                offset={2}
                                 accentColor="var(--mk-teal)"
                                 shadowColor="rgba(0,196,196,0.5)"
                                 onPhotoClick={(idx) => {
@@ -1327,12 +1511,9 @@ const MarketingPonuda = () => {
                                         </Driven>
                                     ))}
                                 </div>
-                                <div className="mt-4">
-                                    <SectionGalleryRow
+                                <div className="mt-6">
+                                    <PartneriCollage
                                         photos={SECTION_PHOTOS.partneri}
-                                        progress={pageProgress}
-                                        direction="right"
-                                        offset={6}
                                         accentColor="var(--mk-green)"
                                         shadowColor="rgba(76,193,87,0.5)"
                                         onPhotoClick={(idx) => {
