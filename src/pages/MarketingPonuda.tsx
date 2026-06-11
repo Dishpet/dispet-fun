@@ -9,6 +9,8 @@ import {
     useSpring,
     useReducedMotion,
     useMotionValueEvent,
+    useInView,
+    animate,
     type MotionValue,
 } from "framer-motion";
 import { z } from "zod";
@@ -376,7 +378,7 @@ interface DrivenProps {
     style?: CSSProperties;
 }
 
-/** Reveal whose progress is bound to the element's own viewport position. */
+/** Reveal whose progress is triggered when the element enters the viewport. */
 const Driven = ({
     children,
     className,
@@ -387,32 +389,40 @@ const Driven = ({
     delay = 0,
     style,
 }: DrivenProps) => {
-    const ref = useRef<HTMLDivElement>(null);
     const reduce = useReducedMotion();
-    // Wide scrub window so that even on tall mobile screens the animation
-    // fires well before the element reaches the viewport centre.
-    const start = Math.min(1.15, 1.15 - delay * 0.3);
-    const end = Math.max(0.25, 0.5 - delay * 0.3);
-    const { scrollYProgress } = useScroll({
-        target: ref,
-        offset: [`start ${start}`, `start ${end}`],
-    });
-    const raw = useTransform(scrollYProgress, [0, 1], [0, 1]);
-    const opacity = useSpring(raw, { stiffness: 200, damping: 30 });
-    const y = useTransform(scrollYProgress, [0, 1], [fromY, 0]);
-    const x = useTransform(scrollYProgress, [0, 1], [fromX, 0]);
-    const rotate = useTransform(scrollYProgress, [0, 1], [fromRotate, 0]);
-    const scale = useTransform(scrollYProgress, [0, 1], [fromScale, 1]);
 
     if (reduce) {
         return (
-            <div ref={ref} className={className} style={style}>
+            <div className={className} style={style}>
                 {children}
             </div>
         );
     }
     return (
-        <motion.div ref={ref} className={className} style={{ ...style, opacity, y, x, rotate, scale }}>
+        <motion.div
+            className={className}
+            style={style}
+            initial={{
+                opacity: 0,
+                y: fromY,
+                x: fromX,
+                rotate: fromRotate,
+                scale: fromScale,
+            }}
+            whileInView={{
+                opacity: 1,
+                y: 0,
+                x: 0,
+                rotate: 0,
+                scale: 1,
+            }}
+            viewport={{ once: true, margin: "-8% 0px -8% 0px" }}
+            transition={{
+                duration: 0.8,
+                delay: delay,
+                ease: [0.16, 1, 0.3, 1], // easeOutQuart
+            }}
+        >
             {children}
         </motion.div>
     );
@@ -448,43 +458,54 @@ const Parallax = ({
     );
 };
 
-/** Counter scrubbed by scroll — counts up AND back down as you scroll.
+/** Counter that counts up when it enters the viewport.
  *  Initial render shows the FINAL value so crawlers and prerendered HTML
  *  always carry the real number. */
 const ScrollCount = ({ value, className }: { value: string; className?: string }) => {
     const ref = useRef<HTMLSpanElement>(null);
     const reduce = useReducedMotion();
+    const isInView = useInView(ref, { once: true, margin: "-8% 0px" });
     const match = value.match(/^([\d.,]+)(.*)$/);
     const rawNum = match ? match[1] : "";
     const suffix = match ? match[2] : value;
     const target = match ? parseFloat(rawNum.replace(/\./g, "").replace(",", ".")) : 0;
     const useThousands = rawNum.includes(".");
 
-    const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.95", "start 0.45"] });
-    const eased = useTransform(scrollYProgress, (p) => 1 - Math.pow(1 - p, 3));
-    const num = useTransform(eased, (p) => Math.round(target * p));
-    const [text, setText] = useState(value);
-    useMotionValueEvent(num, "change", (v) => {
-        if (reduce || !match) return;
-        setText((useThousands ? v.toLocaleString("hr-HR") : String(v)) + suffix);
-    });
+    const [text, setText] = useState(reduce || !match ? value : "0" + suffix);
+
+    useEffect(() => {
+        if (reduce || !match || !isInView) return;
+
+        const controls = animate(0, target, {
+            duration: 1.4,
+            ease: "easeOut",
+            onUpdate: (v) => {
+                const rounded = Math.round(v);
+                setText((useThousands ? rounded.toLocaleString("hr-HR") : String(rounded)) + suffix);
+            }
+        });
+        return () => controls.stop();
+    }, [isInView, target, reduce, match, useThousands, suffix]);
 
     return (
         <span ref={ref} className={className}>
-            {reduce || !match ? value : text}
+            {text}
         </span>
     );
 };
 
-/** Underline that draws itself in, driven by scroll. */
+/** Underline that draws itself in when it enters the viewport. */
 const DrivenRule = ({ className = "" }: { className?: string }) => {
-    const ref = useRef<HTMLDivElement>(null);
     const reduce = useReducedMotion();
-    const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.95", "start 0.55"] });
-    const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
     return (
-        <div ref={ref} className={`h-1 w-full overflow-hidden ${className}`}>
-            <motion.div className="mk-rainbow h-full w-full origin-left" style={reduce ? undefined : { scaleX }} />
+        <div className={`h-1 w-full overflow-hidden ${className}`}>
+            <motion.div
+                className="mk-rainbow h-full w-full origin-left"
+                initial={reduce ? undefined : { scaleX: 0 }}
+                whileInView={reduce ? undefined : { scaleX: 1 }}
+                viewport={{ once: true, margin: "-8% 0px" }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+            />
         </div>
     );
 };
