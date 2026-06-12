@@ -21,7 +21,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Account = lazy(() => import("./pages/Account"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const MarketingPonuda = lazy(() => import("./pages/MarketingPonuda"));
+const MarketingPonuda = lazy(() => import("./pages/marketing-ponuda"));
 
 // Admin - Lazy Load
 const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
